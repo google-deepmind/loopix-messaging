@@ -10,8 +10,6 @@ type NodeOperations interface {
 
 type Mix struct {
 	Id string
-	Host string
-	IP string
 	PubKey int
 	PrvKey int
 }
