@@ -19,6 +19,10 @@ func (m Mix) SendLoopMessage() {
 	fmt.Println("Sending loop message")
 }
 
-func (m Mix) LogInfo(msg string) {
-	fmt.Println(msg)
+func NewMix(id string, pubKey, prvKey int ) Mix{
+	mix := Mix{}
+	mix.Id = id
+	mix.PubKey = pubKey
+	mix.PrvKey = prvKey
+	return mix
 }

@@ -1,8 +1,6 @@
 package anonymous_messaging
 
 type Node interface {
-	ProcessPacket(p string) string
+	ProcessPacket(packet string)
 	SendLoopMessage()
-	LogInfo()
 }
-
