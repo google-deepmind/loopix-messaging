@@ -2,22 +2,17 @@ package anonymous_messaging
 
 import (
 	"fmt"
-	tcp "anonymous-messaging/tcpconn"
 )
 
 type Mix struct {
 	Id string
 	PubKey int
 	PrvKey int
-	Server *tcp.TCPSocketServer
 }
 
-func (m Mix) StartMix() {
-	m.Server.Start()
-}
 
-func (m Mix) ProcessPacket(packet string) string {
-	return packet
+func (m Mix) ProcessPacket(packet string) {
+	fmt.Println("Processing packet: ", packet)
 }
 
 func (m Mix) SendLoopMessage() {

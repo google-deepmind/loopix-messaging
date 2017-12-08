@@ -4,30 +4,34 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	node "anonymous-messaging/node"
 )
 
-type Server interface {
+type TCPServer interface {
 	ReceivedPacket()
 	SendPacket()
 	Start()
 }
 
-type TCPSocketServer struct {
+type MixServer struct {
+	Id string
 	Host string
 	Port string
+	mixWorker node.Mix
 }
 
-func (t *TCPSocketServer) ReceivedPacket(packet string) {
-	fmt.Println(packet)
+func (m *MixServer) ReceivedPacket(packet string) {
+	go m.mixWorker.ProcessPacket(packet)
 }
 
-func (t *TCPSocketServer) SendPacket(packet string) string{
+func (m *MixServer) SendPacket(packet string) string{
 	return packet
 }
 
-func (t *TCPSocketServer) Start() {
+func (m *MixServer) Start() {
 
-	addr, err := net.ResolveTCPAddr("tcp", t.Host+":"+t.Port)
+	addr, err := net.ResolveTCPAddr("tcp", m.Host+":"+m.Port)
 	l, err := net.ListenTCP("tcp", addr)
 
 	if err != nil {
@@ -35,27 +39,39 @@ func (t *TCPSocketServer) Start() {
 		os.Exit(1)
 	}
 	defer l.Close()
-	fmt.Println("Listening on " + t.Host + ":" + t.Port)
 
+	fmt.Println("Listening on " + m.Host + ":" + m.Port)
 	for {
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println("Error in connection accepting:", err.Error())
 			os.Exit(1)
 		}
-		go handleConnection(conn)
+		go m.handleConnection(conn)
 	}
 }
 
-func handleConnection(conn net.Conn) {
+func (m *MixServer) handleConnection(conn net.Conn) {
 	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
+
 	if err != nil {
 		fmt.Println()
 	}
+
 	fmt.Println("ReqLen: ", reqLen)
 	fmt.Println("ReqLen: ", string(buff[:reqLen]))
+	m.mixWorker.ProcessPacket(string(buff[:reqLen]))
+
 	conn.Write([]byte("Message received.\n"))
 	conn.Close()
 }
 
+func NewMixServer(id, host, port string, pubkey, prvkey int) MixServer {
+	mixServer := MixServer{}
+	mixServer.Id = id
+	mixServer.Host = host
+	mixServer.Port = port
+	mixServer.mixWorker = node.Mix{Id : id, PubKey : pubkey, PrvKey : prvkey}
+	return mixServer
+}
