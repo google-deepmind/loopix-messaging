@@ -1,12 +1,15 @@
 package anonymous_messaging
 
-import "fmt"
+import (
+	"fmt"
+	tcp "anonymous-messaging/tcpconn"
+)
 
 type Mix struct {
 	Id string
 	PubKey int
 	PrvKey int
-	Server *TCPSocketServer
+	Server *tcp.TCPSocketServer
 }
 
 func (m Mix) StartMix() {
