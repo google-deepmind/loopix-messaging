@@ -6,6 +6,11 @@ type Mix struct {
 	Id string
 	PubKey int
 	PrvKey int
+	Server *TCPSocketServer
+}
+
+func (m Mix) StartMix() {
+	m.Server.Start()
 }
 
 func (m Mix) ProcessPacket(packet string) string {
