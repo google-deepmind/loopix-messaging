@@ -12,41 +12,62 @@ type MixServer struct {
 	Host string
 	Port string
 	mixWorker node.Mix
+	listener *net.TCPListener
 }
 
 func (m MixServer) ReceivedPacket(packet string) {
-	m.mixWorker.ProcessPacket(packet)
-	//fmt.Println(packet)
+	fmt.Println("> Received packet")
+
+	c := make(chan string)
+	go m.mixWorker.ProcessPacket(packet, c)
+	dePacket := <- c
+
+	fmt.Println("> Decoded packet: ", dePacket)
+	m.ForwardPacket(dePacket)
 }
 
-func (m MixServer) SendPacket(packet string){
-	fmt.Println(packet)
+func (m MixServer) ForwardPacket(packet string) {
+	fmt.Println("> Forwarding packet", packet)
+
+	m.SendPacket(packet, "127.0.0.1", "3332")
+}
+
+func (m MixServer) SendPacket(packet, host, port string){
+
+	conn, err := net.Dial("tcp", host + ":" + port)
+	if err != nil {
+		fmt.Print("Error in Client connect", err.Error())
+		os.Exit(1)
+	}
+
+	conn.Write([]byte(packet))
+	defer conn.Close()
 }
 
 func (m MixServer) Start() {
 
-	addr, err := net.ResolveTCPAddr("tcp", m.Host+":"+m.Port)
-	l, err := net.ListenTCP("tcp", addr)
-
-	if err != nil {
-		fmt.Println("Error listening:", err.Error())
-		os.Exit(1)
-	}
-	defer l.Close()
+	defer m.listener.Close()
 
 	fmt.Println("Listening on " + m.Host + ":" + m.Port)
+	m.listenForConnections()
+}
+
+func (m MixServer) listenForConnections() {
 	for {
-		conn, err := l.Accept()
+		conn, err := m.listener.Accept()
+
 		if err != nil {
 			fmt.Println("Error in connection accepting:", err.Error())
 			os.Exit(1)
 		}
-		//fmt.Println(conn)
+
 		go m.handleConnection(conn)
 	}
 }
 
 func (m MixServer) handleConnection(conn net.Conn) {
+	fmt.Println("> Handle Connection")
+
 	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
 
@@ -54,9 +75,7 @@ func (m MixServer) handleConnection(conn net.Conn) {
 		fmt.Println()
 	}
 
-	m.mixWorker.ProcessPacket(string(buff[:reqLen]))
-
-	conn.Write([]byte("Message received.\n"))
+	m.ReceivedPacket(string(buff[:reqLen]))
 	conn.Close()
 }
 
@@ -66,5 +85,13 @@ func NewMixServer(id, host, port string, pubKey, prvKey int) MixServer {
 	mixServer.Host = host
 	mixServer.Port = port
 	mixServer.mixWorker = node.NewMix(id, pubKey, prvKey)
+
+	addr, err := net.ResolveTCPAddr("tcp", mixServer.Host + ":" + mixServer.Port)
+	mixServer.listener, err = net.ListenTCP("tcp", addr)
+
+	if err != nil {
+		fmt.Println("Error listening:", err.Error())
+		os.Exit(1)
+	}
 	return mixServer
 }
