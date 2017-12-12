@@ -5,6 +5,12 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"math/rand"
+)
+
+const (
+	desiredRateParameter = 5
+	pathLength = 2
 )
 
 type Client struct {
@@ -13,6 +19,7 @@ type Client struct {
 	Port string
 	PubKey int
 	PrvKey int
+	ActiveMixes []string //[]srv.MixServer
 }
 
 
@@ -21,8 +28,8 @@ type ClientOperations interface {
 	DecodeMessage(message string) string
 }
 
-func (c Client) EncodeMessage(message string) packet.Packet {
-	return packet.Encode(message, nil, nil)
+func (c Client) EncodeMessage(message string, path []string, delays []float64) packet.Packet {
+	return packet.Encode(message, path, delays)
 }
 
 func (c Client) DecodeMessage(packet string) string {
@@ -30,8 +37,19 @@ func (c Client) DecodeMessage(packet string) string {
 }
 
 func (c Client) SendMessage(message string, recipientHost string, recipientPort string) {
-	packet := c.EncodeMessage(message)
+	path := c.ActiveMixes
+	delays := c.GenerateDelaySequence(pathLength)
+	packet := c.EncodeMessage(message, path, delays)
 	c.send(packet.ToString(), recipientHost, recipientPort)
+}
+
+func (c Client) GenerateDelaySequence(length int) []float64{
+	var delays []float64
+	for i := 0; i < length; i++{
+		sample := rand.ExpFloat64() / desiredRateParameter
+		delays = append(delays, sample)
+	}
+	return delays
 }
 
 func (c Client) send(packet string, host string, port string) {
