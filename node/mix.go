@@ -2,7 +2,7 @@ package anonymous_messaging
 
 import (
 	"fmt"
-	packet "anonymous-messaging/packet_format"
+	packet_format "anonymous-messaging/packet_format"
 )
 
 type Mix struct {
@@ -12,11 +12,11 @@ type Mix struct {
 }
 
 
-func (m Mix) ProcessPacket(p string, c chan<- string){
+func (m Mix) ProcessPacket(p packet_format.Packet, c chan<- packet_format.Packet){
 	fmt.Println("> Processing packet")
 
-	dePacket := packet.FromString(p)
-	c <- dePacket.ToString()
+	dePacket := p
+	c <- dePacket
 }
 
 func (m Mix) SendLoopMessage() {

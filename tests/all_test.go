@@ -57,7 +57,7 @@ func TestClientGenerateDelays(t *testing.T){
 }
 
 func TestPacketToString(t *testing.T){
-	s := packet.ToString()
+	s := packet_format.ToString(packet)
 	expected := packet_format.FromString(s)
 	if reflect.DeepEqual(packet, expected) == false {
 		t.Error("Incorrect encoding packet to string")
@@ -65,9 +65,9 @@ func TestPacketToString(t *testing.T){
 }
 
 func TestMixProcessPacket(t *testing.T) {
-	ch := make(chan string, 1)
-	mixWorker.ProcessPacket(packet.ToString(), ch)
-	dePacket := packet_format.FromString(<- ch)
+	ch := make(chan packet_format.Packet, 1)
+	mixWorker.ProcessPacket(packet, ch)
+	dePacket := <- ch
 	expectedPacket := packet_format.Packet{"Hello you", []string{"A", "B", "C"}, []float64{1.4, 2.5, 2.3}}
 	if reflect.DeepEqual(dePacket, expectedPacket) == false {
 		t.Error("Test for Mix Process Packet failed")

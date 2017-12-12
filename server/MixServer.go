@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"anonymous-messaging/packet_format"
 )
 
 type MixServer struct {
@@ -15,10 +16,10 @@ type MixServer struct {
 	listener *net.TCPListener
 }
 
-func (m MixServer) ReceivedPacket(packet string) {
+func (m MixServer) ReceivedPacket(packet packet_format.Packet) {
 	fmt.Println("> Received packet")
 
-	c := make(chan string)
+	c := make(chan packet_format.Packet)
 	go m.mixWorker.ProcessPacket(packet, c)
 	dePacket := <- c
 
@@ -26,13 +27,13 @@ func (m MixServer) ReceivedPacket(packet string) {
 	m.ForwardPacket(dePacket)
 }
 
-func (m MixServer) ForwardPacket(packet string) {
+func (m MixServer) ForwardPacket(packet packet_format.Packet) {
 	fmt.Println("> Forwarding packet", packet)
 
 	m.SendPacket(packet, "127.0.0.1", "3332")
 }
 
-func (m MixServer) SendPacket(packet, host, port string){
+func (m MixServer) SendPacket(packet packet_format.Packet, host, port string){
 
 	conn, err := net.Dial("tcp", host + ":" + port)
 	if err != nil {
@@ -40,7 +41,7 @@ func (m MixServer) SendPacket(packet, host, port string){
 		os.Exit(1)
 	}
 
-	conn.Write([]byte(packet))
+	conn.Write([]byte(packet_format.ToString(packet)))
 	defer conn.Close()
 }
 
@@ -75,7 +76,7 @@ func (m MixServer) handleConnection(conn net.Conn) {
 		fmt.Println()
 	}
 
-	m.ReceivedPacket(string(buff[:reqLen]))
+	m.ReceivedPacket(packet_format.FromString(string(buff[:reqLen])))
 	conn.Close()
 }
 

@@ -1,7 +1,7 @@
 package anonymous_messaging
 
 import (
-	packet "anonymous-messaging/packet_format"
+	packet_format "anonymous-messaging/packet_format"
 	"fmt"
 	"net"
 	"os"
@@ -28,8 +28,8 @@ type ClientOperations interface {
 	DecodeMessage(message string) string
 }
 
-func (c Client) EncodeMessage(message string, path []string, delays []float64) packet.Packet {
-	return packet.Encode(message, path, delays)
+func (c Client) EncodeMessage(message string, path []string, delays []float64) packet_format.Packet {
+	return packet_format.Encode(message, path, delays)
 }
 
 func (c Client) DecodeMessage(packet string) string {
@@ -40,7 +40,7 @@ func (c Client) SendMessage(message string, recipientHost string, recipientPort 
 	path := c.ActiveMixes
 	delays := c.GenerateDelaySequence(pathLength)
 	packet := c.EncodeMessage(message, path, delays)
-	c.send(packet.ToString(), recipientHost, recipientPort)
+	c.send(packet_format.ToString(packet), recipientHost, recipientPort)
 }
 
 func (c Client) GenerateDelaySequence(length int) []float64{

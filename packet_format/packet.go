@@ -16,7 +16,7 @@ func Encode(message string, path []string, delays []float64) Packet{
 	return p
 }
 
-func (p Packet) ToString() string {
+func ToString(p Packet) string {
 	s, err := json.Marshal(p)
 
 	if err != nil {
