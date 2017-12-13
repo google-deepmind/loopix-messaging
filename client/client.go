@@ -42,6 +42,7 @@ func (c Client) DecodeMessage(packet packet_format.Packet) packet_format.Packet 
 
 func (c Client) SendMessage(message string, recipientHost string, recipientPort string) {
 	path := c.GetRandomMixSequence(c.ActiveMixes, pathLength)
+	path = append(path, publics.MixPubs{Id:c.Id, Host:c.Host, Port:c.Port, PubKey:0})
 	delays := c.GenerateDelaySequence(desiredRateParameter, pathLength)
 	packet := c.EncodeMessage(message, path, delays)
 	c.Send(packet_format.ToString(packet), recipientHost, recipientPort)
