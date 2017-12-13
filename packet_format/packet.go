@@ -16,6 +16,10 @@ func Encode(message string, path []string, delays []float64) Packet{
 	return p
 }
 
+func Decode(packet Packet) Packet{
+	return packet
+}
+
 func ToString(p Packet) string {
 	s, err := json.Marshal(p)
 

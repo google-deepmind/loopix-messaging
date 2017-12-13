@@ -17,6 +17,7 @@ func (m Mix) ProcessPacket(p packet_format.Packet, c chan<- packet_format.Packet
 	fmt.Println("> Processing packet")
 
 	dePacket := p
+
 	timeoutCh := make(chan packet_format.Packet, 1)
 
 	go func(p packet_format.Packet, delay float64) {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"anonymous-messaging/packet_format"
+	packet_format "anonymous-messaging/packet_format"
 )
 
 type MixServer struct {
@@ -29,8 +29,6 @@ func (m MixServer) ReceivedPacket(packet packet_format.Packet) {
 
 func (m MixServer) ForwardPacket(packet packet_format.Packet) {
 	fmt.Println("> Forwarding packet", packet)
-
-	m.SendPacket(packet, "127.0.0.1", "3332")
 }
 
 func (m MixServer) SendPacket(packet packet_format.Packet, host, port string){
@@ -45,15 +43,26 @@ func (m MixServer) SendPacket(packet packet_format.Packet, host, port string){
 	defer conn.Close()
 }
 
-func (m MixServer) Start() {
-
+func (m MixServer) Run() {
 	defer m.listener.Close()
+	finish := make(chan bool)
 
-	fmt.Println("Listening on " + m.Host + ":" + m.Port)
-	m.listenForConnections()
+	go func() {
+		fmt.Println("Listening on " + m.Host + ":" + m.Port)
+		m.listenForConnections()
+	}()
+	go func() {
+		m.tmp()
+	}()
+
+	<-finish
 }
 
-func (m MixServer) listenForConnections() {
+func (m MixServer) tmp() {
+	fmt.Println("Doing other stuff")
+}
+
+func (m MixServer) listenForConnections(){
 	for {
 		conn, err := m.listener.Accept()
 
@@ -61,7 +70,7 @@ func (m MixServer) listenForConnections() {
 			fmt.Println("Error in connection accepting:", err.Error())
 			os.Exit(1)
 		}
-
+		fmt.Println("Received connection from : ", conn.RemoteAddr())
 		go m.handleConnection(conn)
 	}
 }
@@ -94,5 +103,6 @@ func NewMixServer(id, host, port string, pubKey, prvKey int) MixServer {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)
 	}
+
 	return mixServer
 }

@@ -37,8 +37,8 @@ func TestClientEncode(t *testing.T) {
 }
 
 func TestClientDecode(t *testing.T) {
-	d := c.DecodeMessage("Encoded packet")
-	if d != "Encoded packet" {
+	d := c.DecodeMessage(packet)
+	if reflect.DeepEqual(d, packet) == false {
 		t.Error("Error in decode: ")
 	}
 }
@@ -47,7 +47,7 @@ func TestClientSendMessage(t *testing.T) {
 }
 
 func TestClientGenerateDelays(t *testing.T){
-	delays := c.GenerateDelaySequence(3)
+	delays := c.GenerateDelaySequence(5,3)
 	if len(delays) != 3 {
 		t.Error("Incorrect number of generated delays")
 	}
@@ -79,6 +79,12 @@ func TestConnection(t *testing.T) {
 	fmt.Println(s)
 	fmt.Println(c)
 	// to DO
+}
+
+func TestShuffle(t *testing.T){
+	mixes := []mix.MixServer{mixServer, mixServer, mixServer, mixServer, mixServer}
+	//fmt.Println(h.GetRandomMixSequence(mixes, 2))
+	fmt.Println(mixes)
 }
 
 
