@@ -7,6 +7,7 @@ import (
 	"os"
 	"math/rand"
 	"time"
+	"anonymous-messaging/publics"
 )
 
 const (
@@ -20,7 +21,7 @@ type Client struct {
 	Port string
 	PubKey int
 	PrvKey int
-	ActiveMixes []string//[]mixserver.MixServer
+	ActiveMixes []publics.MixPubs
 
 	listener *net.TCPListener
 }
@@ -31,7 +32,7 @@ type ClientOperations interface {
 	DecodeMessage(message string) string
 }
 
-func (c Client) EncodeMessage(message string, path []string, delays []float64) packet_format.Packet {
+func (c Client) EncodeMessage(message string, path []publics.MixPubs, delays []float64) packet_format.Packet {
 	return packet_format.Encode(message, path, delays)
 }
 
@@ -56,9 +57,9 @@ func (c Client) GenerateDelaySequence(desiredRateParameter float64, length int) 
 	return delays
 }
 
-func (c Client) GetRandomMixSequence(data []string, length int) []string {
+func (c Client) GetRandomMixSequence(data []publics.MixPubs, length int) []publics.MixPubs {
 	rand.Seed(time.Now().UTC().UnixNano())
-	permutedData := make([]string, len(data))
+	permutedData := make([]publics.MixPubs, len(data))
 	permutation := rand.Perm(len(data))
 	for i, v := range permutation {
 		permutedData[v] = data[i]
@@ -112,9 +113,9 @@ func (c Client) handleConnection(conn net.Conn) {
 	conn.Close()
 }
 
-func (c Client) ProcessPacket(packet packet_format.Packet) {
+func (c Client) ProcessPacket(packet packet_format.Packet) string{
 	fmt.Println("Processing packet")
-	fmt.Println(packet.Message)
+	return packet.Message
 }
 
 func (c Client) Run() {

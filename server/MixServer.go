@@ -25,11 +25,19 @@ func (m MixServer) ReceivedPacket(packet packet_format.Packet) {
 	dePacket := <- c
 
 	fmt.Println("> Decoded packet: ", dePacket)
-	m.ForwardPacket(dePacket)
+	if dePacket.Steps[m.Id].Meta.FinalFlag{
+		m.ForwardPacket(dePacket)
+	}
 }
 
 func (m MixServer) ForwardPacket(packet packet_format.Packet) {
 	fmt.Println("> Forwarding packet", packet)
+	next := packet.Steps[m.Id].Meta
+	fmt.Println(next)
+	nextHost := next.NextHopHost
+	nextPort := next.NextHopPort
+	fmt.Println("NEXT PORT: ", nextPort)
+	m.SendPacket(packet, nextHost, nextPort)
 }
 
 func (m MixServer) SendPacket(packet packet_format.Packet, host, port string){

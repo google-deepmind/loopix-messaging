@@ -3,16 +3,48 @@ package packet_format
 import (
 	"encoding/json"
 	"fmt"
+	"anonymous-messaging/publics"
 )
+
+type Header struct {
+	Meta MetaData
+	Delay float64
+}
+
+type MetaData struct {
+	NextHopId string
+	NextHopHost string
+	NextHopPort string
+	FinalFlag bool
+}
 
 type Packet struct {
 	Message string
-	Path []string
+	Path []publics.MixPubs
 	Delays []float64
+	Steps map[string]Header
 }
 
-func Encode(message string, path []string, delays []float64) Packet{
-	p := Packet{Message:message, Delays:delays, Path:path}
+type Packer interface {
+	Encode(message string, path []publics.MixPubs, delays []float64)
+	Decode(packet Packet)
+}
+
+func Encode(message string, path []publics.MixPubs, delays []float64) Packet{
+	steps := make(map[string]Header)
+	//finalIdx := len(path) - 1
+	for i:=0; i < len(path)-1; i++ {
+		if i + 1 >= len(path){
+			mdata := MetaData{NextHopId:"", NextHopHost:"", NextHopPort:"", FinalFlag:false}
+			header := Header{mdata, delays[i]}
+			steps[path[i].Id] = header
+		} else {
+			mdata := MetaData{NextHopId:path[i+1].Id, NextHopHost:path[i+1].Host, NextHopPort:path[i+1].Port, FinalFlag:true}
+			header := Header{mdata, delays[i]}
+			steps[path[i].Id] = header
+		}
+	}
+	p := Packet{Message:message, Delays:delays, Path:path, Steps:steps}
 	return p
 }
 
@@ -39,6 +71,6 @@ func FromString(s string) Packet {
 	return packet
 }
 
-func NewPacket(message string, delays []float64, path []string) Packet{
-	return Packet{Message:message, Delays:delays, Path:path}
+func NewPacket(message string, delays []float64, path []publics.MixPubs, steps map[string]Header) Packet{
+	return Packet{Message:message, Delays:delays, Path:path, Steps:steps}
 }
