@@ -11,7 +11,7 @@ type TCPClient struct {
 	Port string
 }
 
-func (client TCPClient) Connect(message string) {
+func (client *TCPClient) Connect(message string) {
 
 	conn, err := net.Dial("tcp", client.IP + ":" + client.Port)
 	defer conn.Close()

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	//mixserver "anonymous-messaging/server"
 	"math/rand"
 	"time"
 )
@@ -22,6 +21,8 @@ type Client struct {
 	PubKey int
 	PrvKey int
 	ActiveMixes []string//[]mixserver.MixServer
+
+	listener *net.TCPListener
 }
 
 
@@ -42,7 +43,7 @@ func (c Client) SendMessage(message string, recipientHost string, recipientPort 
 	path := c.GetRandomMixSequence(c.ActiveMixes, pathLength)
 	delays := c.GenerateDelaySequence(desiredRateParameter, pathLength)
 	packet := c.EncodeMessage(message, path, delays)
-	c.send(packet_format.ToString(packet), recipientHost, recipientPort)
+	c.Send(packet_format.ToString(packet), recipientHost, recipientPort)
 }
 
 func (c Client) GenerateDelaySequence(desiredRateParameter float64, length int) []float64{
@@ -65,7 +66,7 @@ func (c Client) GetRandomMixSequence(data []string, length int) []string {
 	return permutedData[:length]
 }
 
-func (c Client) send(packet string, host string, port string) {
+func (c Client) Send(packet string, host string, port string) {
 	conn, err := net.Dial("tcp", host + ":" + port)
 	defer conn.Close()
 
@@ -82,6 +83,62 @@ func (c Client) send(packet string, host string, port string) {
 }
 
 
+
+func (c Client) listenForConnections() {
+	for {
+		conn, err := c.listener.Accept()
+
+		if err != nil {
+			fmt.Println("Error in connection accepting:", err.Error())
+			os.Exit(1)
+		}
+		fmt.Println(conn)
+		//fmt.Println("Received connection from : ", conn.RemoteAddr())
+		go c.handleConnection(conn)
+	}
+}
+
+func (c Client) handleConnection(conn net.Conn) {
+	fmt.Println("> Handle Connection")
+
+	buff := make([]byte, 1024)
+	reqLen, err := conn.Read(buff)
+
+	if err != nil {
+		fmt.Println()
+	}
+
+	c.ProcessPacket(packet_format.FromString(string(buff[:reqLen])))
+	conn.Close()
+}
+
+func (c Client) ProcessPacket(packet packet_format.Packet) {
+	fmt.Println("Processing packet")
+	fmt.Println(packet.Message)
+}
+
+func (c Client) Run() {
+	defer c.listener.Close()
+	finish := make(chan bool)
+
+	go func() {
+		fmt.Println("Listening on " + c.Host + ":" + c.Port)
+		c.listenForConnections()
+	}()
+
+	c.SendMessage("Hello world", "localhost", "3330")
+	<-finish
+}
+
 func NewClient(id, host, port string, pubKey, prvKey int) Client{
-	return Client{Id:id, Host:host, Port:port, PubKey:pubKey, PrvKey:prvKey}
+	c := Client{Id:id, Host:host, Port:port, PubKey:pubKey, PrvKey:prvKey}
+
+	addr, err := net.ResolveTCPAddr("tcp", c.Host + ":" + c.Port)
+
+	if err != nil {
+		fmt.Println("Error listening:", err.Error())
+		os.Exit(1)
+	}
+	c.listener, err = net.ListenTCP("tcp", addr)
+	return c
 }

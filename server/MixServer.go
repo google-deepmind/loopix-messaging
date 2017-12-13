@@ -13,6 +13,7 @@ type MixServer struct {
 	Host string
 	Port string
 	mixWorker node.Mix
+
 	listener *net.TCPListener
 }
 
