@@ -81,11 +81,5 @@ func TestConnection(t *testing.T) {
 	// to DO
 }
 
-func TestShuffle(t *testing.T){
-	mixes := []mix.MixServer{mixServer, mixServer, mixServer, mixServer, mixServer}
-	//fmt.Println(h.GetRandomMixSequence(mixes, 2))
-	fmt.Println(mixes)
-}
-
 
 
