@@ -125,6 +125,7 @@ func (c Client) Start() {
 
 	defer c.Run()
 
+	c.SaveInPKI()
 	c.ReadInMixnetPKI()
 }
 
@@ -144,29 +145,53 @@ func (c Client) Run() {
 
 func (c Client) ReadInMixnetPKI() {
 	fmt.Println("Reading network")
+
 	db := c.ConnectToPKI()
 	records := pki.QueryDatabase(db,"Mixes")
 
 	for records.Next() {
 		results := make(map[string]interface{})
 		err := records.MapScan(results)
+
 		if err != nil {
 			panic(err)
+
 		}
-		id := string(results["MixId"].([]byte))
-		host := string(results["Host"].([]byte))
-		port := string(results["Port"].([]byte))
-		pubK := results["PubKey"].(int64)
-		pubs := publics.NewMixPubs(id, host, port, pubK)
+
+		pubs := publics.NewMixPubs(string(results["MixId"].([]byte)), string(results["Host"].([]byte)),
+									string(results["Port"].([]byte)), results["PubKey"].(int64))
+
 		c.ActiveMixes = append(c.ActiveMixes, pubs)
 	}
 	fmt.Println("> The mix network data is uploaded.")
-	fmt.Println(c.ActiveMixes)
+}
 
+
+func (c Client) SaveInPKI() {
+	fmt.Println("> Saving Client Public Info into Database")
+
+	db := c.ConnectToPKI()
+
+	pubInfo := make(map[string]interface{})
+	pubInfo["MixId"] = c.Id
+	pubInfo["Host"] = c.Host
+	pubInfo["Port"] = c.Port
+	pubInfo["PubKey"] = c.PubKey
+	pki.InsertToTable(db, "Clients", pubInfo)
+
+	fmt.Println("> Public info of the mixserver saved in database")
 }
 
 func (c Client) ConnectToPKI() *sqlx.DB{
 	db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+
+	params := make(map[string]string)
+	params["ClientId"] = "TEXT"
+	params["Host"] = "TEXT"
+	params["Port"] = "TEXT"
+	params["PubKey"] = "NUM"
+	pki.CreateTable(db, "Clients", params)
+
 	return db
 }
 
