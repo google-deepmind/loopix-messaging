@@ -10,6 +10,7 @@ import (
 	"anonymous-messaging/publics"
 	"anonymous-messaging/pki"
 	"github.com/jmoiron/sqlx"
+	"reflect"
 )
 
 const (
@@ -24,7 +25,7 @@ type Client struct {
 	PubKey int
 	PrvKey int
 	ActiveMixes []publics.MixPubs
-	OtherClients []publics.ClientPubs
+	OtherClients []publics.MixPubs
 
 	listener *net.TCPListener
 }
@@ -43,16 +44,31 @@ func (c *Client) DecodeMessage(packet packet_format.Packet) packet_format.Packet
 	return packet_format.Decode(packet)
 }
 
-func (c *Client) SendMessage(message string, recipientHost string, recipientPort string) {
-	path := c.GetRandomMixSequence(c.ActiveMixes, pathLength)
-	path = append(path, publics.MixPubs{Id:c.Id, Host:c.Host, Port:c.Port, PubKey:0})
+func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
+	mixSeq := c.GetRandomMixSequence(c.ActiveMixes, pathLength)
+
+	var path []publics.MixPubs
+
+	fmt.Println("MixSeq: ", mixSeq)
+	for _, v := range mixSeq {
+		path = append(path, v)
+	}
+	path = append(path, recipient)
+	fmt.Println("PATH: ", path)
+
+	for _, v := range path {
+		fmt.Println(reflect.TypeOf(v))
+	}
 	delays := c.GenerateDelaySequence(desiredRateParameter, pathLength)
+
+
 	packet := c.EncodeMessage(message, path, delays)
-	c.Send(packet_format.ToString(packet), recipientHost, recipientPort)
+	c.Send(packet_format.ToString(packet), path[0].Host, path[0].Port)
 }
 
 func (c *Client) GenerateDelaySequence(desiredRateParameter float64, length int) []float64{
 	rand.Seed(time.Now().UTC().UnixNano())
+
 	var delays []float64
 	for i := 0; i < length; i++{
 		sample := rand.ExpFloat64() / desiredRateParameter
@@ -61,14 +77,25 @@ func (c *Client) GenerateDelaySequence(desiredRateParameter float64, length int)
 	return delays
 }
 
-func (c *Client) GetRandomMixSequence(data []publics.MixPubs, length int) []publics.MixPubs {
+func (c *Client) GetRandomMixSequence(mixes []publics.MixPubs, length int) []publics.MixPubs {
 	rand.Seed(time.Now().UTC().UnixNano())
-	permutedData := make([]publics.MixPubs, len(data))
-	permutation := rand.Perm(len(data))
-	for i, v := range permutation {
-		permutedData[v] = data[i]
+
+	fmt.Println("Len: ", length)
+	fmt.Println("Len of mixes: ", len(mixes))
+	if length > len(mixes) {
+		return mixes
+	} else {
+		permutedData := make([]publics.MixPubs, len(mixes))
+		permutation := rand.Perm(len(mixes))
+
+		for i, v := range permutation {
+			permutedData[v] = mixes[i]
+		}
+		fmt.Println("Permuted: ", permutedData)
+
+		fmt.Println("Cut: ", permutedData[:length])
+		return permutedData[:length]
 	}
-	return permutedData[:length]
 }
 
 func (c *Client) Send(packet string, host string, port string) {
@@ -82,9 +109,9 @@ func (c *Client) Send(packet string, host string, port string) {
 
 	conn.Write([]byte(packet))
 
-	buff := make([]byte, 1024)
-	n, _ := conn.Read(buff)
-	fmt.Println("Received answer: ", string(buff[:n]))
+	//buff := make([]byte, 1024)
+	//n, _ := conn.Read(buff)
+	//fmt.Println("Received answer: ", string(buff[:n]))
 }
 
 
@@ -118,7 +145,7 @@ func (c *Client) handleConnection(conn net.Conn) {
 }
 
 func (c *Client) ProcessPacket(packet packet_format.Packet) string{
-	fmt.Println("Processing packet")
+	fmt.Println("Processing packet: ", packet)
 	return packet.Message
 }
 
@@ -141,6 +168,10 @@ func (c *Client) Run() {
 	go func() {
 		fmt.Println("Listening on " + c.Host + ":" + c.Port)
 		c.listenForConnections()
+	}()
+
+	go func() {
+		c.SendMessage("Hello world, this is me", c.OtherClients[1])
 	}()
 
 	<-finish
@@ -184,7 +215,7 @@ func (c *Client) ReadInClientsPKI() {
 			panic(err)
 
 		}
-		pubs := publics.NewClientPubs(string(results["ClientId"].([]byte)), string(results["Host"].([]byte)),
+		pubs := publics.NewMixPubs(string(results["ClientId"].([]byte)), string(results["Host"].([]byte)),
 			string(results["Port"].([]byte)), results["PubKey"].(int64))
 		c.OtherClients = append(c.OtherClients, pubs)
 	}

@@ -60,23 +60,11 @@ func InsertToTable(db *sqlx.DB, tableName string, data map[string]interface{}) {
 
 func QueryDatabase(db *sqlx.DB, tableName string) *sqlx.Rows{
 	query := fmt.Sprintf("SELECT * FROM %s", tableName)
-	//stmt, errP := db.Prepare(query)
-	//
-	//if errP != nil {
-	//	panic(errP)
-	//}
-
-	//rows, errQ := stmt.Query()
-	//
-	//if errQ != nil {
-	//	panic(errQ)
-	//}
 	rows, err := db.Queryx(query)
 
 	if err != nil {
 		panic(err)
 	}
-
 	return rows
 }
 

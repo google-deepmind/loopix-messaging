@@ -20,7 +20,7 @@ type MixServer struct {
 	listener *net.TCPListener
 }
 
-func (m MixServer) ReceivedPacket(packet packet_format.Packet) {
+func (m *MixServer) ReceivedPacket(packet packet_format.Packet) {
 	fmt.Println("> Received packet")
 
 	c := make(chan packet_format.Packet)
@@ -33,7 +33,7 @@ func (m MixServer) ReceivedPacket(packet packet_format.Packet) {
 	}
 }
 
-func (m MixServer) ForwardPacket(packet packet_format.Packet) {
+func (m *MixServer) ForwardPacket(packet packet_format.Packet) {
 	fmt.Println("> Forwarding packet", packet)
 	next := packet.Steps[m.Id].Meta
 	fmt.Println(next)
@@ -43,7 +43,7 @@ func (m MixServer) ForwardPacket(packet packet_format.Packet) {
 	m.SendPacket(packet, nextHost, nextPort)
 }
 
-func (m MixServer) SendPacket(packet packet_format.Packet, host, port string){
+func (m *MixServer) SendPacket(packet packet_format.Packet, host, port string){
 
 	conn, err := net.Dial("tcp", host + ":" + port)
 	if err != nil {
@@ -55,7 +55,7 @@ func (m MixServer) SendPacket(packet packet_format.Packet, host, port string){
 	defer conn.Close()
 }
 
-func (m MixServer) Start() {
+func (m *MixServer) Start() {
 
 	defer m.Run()
 
@@ -63,7 +63,7 @@ func (m MixServer) Start() {
 
 }
 
-func (m MixServer) ConnectToPKI() *sqlx.DB{
+func (m *MixServer) ConnectToPKI() *sqlx.DB{
 	db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
 	params := make(map[string]string)
 	params["MixId"] = "TEXT"
@@ -76,7 +76,7 @@ func (m MixServer) ConnectToPKI() *sqlx.DB{
 	return db
 }
 
-func (m MixServer) PublishPublicInfo() {
+func (m *MixServer) PublishPublicInfo() {
 	fmt.Println("> Saving into Database")
 
 	db := m.ConnectToPKI()
@@ -91,7 +91,7 @@ func (m MixServer) PublishPublicInfo() {
 	fmt.Println("> Public info of the mixserver saved in database")
 }
 
-func (m MixServer) Run() {
+func (m *MixServer) Run() {
 
 	fmt.Println("> The Mixserver is running")
 
@@ -109,7 +109,7 @@ func (m MixServer) Run() {
 	<-finish
 }
 
-func (m MixServer) listenForIncomingConnections(){
+func (m *MixServer) listenForIncomingConnections(){
 	for {
 		conn, err := m.listener.Accept()
 
@@ -122,7 +122,7 @@ func (m MixServer) listenForIncomingConnections(){
 	}
 }
 
-func (m MixServer) handleConnection(conn net.Conn) {
+func (m *MixServer) handleConnection(conn net.Conn) {
 	fmt.Println("> Handle Connection")
 
 	buff := make([]byte, 1024)
