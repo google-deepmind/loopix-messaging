@@ -46,14 +46,10 @@ func InsertToTable(db *sql.DB, tableName string, data map[string]interface{}) {
 		values = append(values, data[key])
 	}
 
-	fmt.Println(columns)
-	fmt.Println(values)
-
 	columnsText := strings.Join(columns[:],", ")
 	valuesText := "?" + strings.Repeat(", ?", len(data)-1)
 
 	query := "INSERT INTO " + tableName + " ( " + columnsText + " ) VALUES ( " +  valuesText + " )"
-	fmt.Println(query)
 	stmt, _ := db.Prepare(query)
 
 	stmt.Exec(values...)
@@ -80,7 +76,7 @@ func CloseDatabase(db *sql.DB) {
 	defer db.Close()
 }
 
-func checkRows(rows *sql.Rows) {
+func CheckRows(rows *sql.Rows) {
 	var id int
 	var mixId string
 	var host string

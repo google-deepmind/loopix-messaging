@@ -6,12 +6,15 @@ import (
 	"net"
 	"os"
 	packet_format "anonymous-messaging/packet_format"
+	"anonymous-messaging/pki"
+	"database/sql"
 )
 
 type MixServer struct {
 	Id string
 	Host string
 	Port string
+
 	mixWorker node.Mix
 
 	listener *net.TCPListener
@@ -52,26 +55,61 @@ func (m MixServer) SendPacket(packet packet_format.Packet, host, port string){
 	defer conn.Close()
 }
 
+func (m MixServer) Start() {
+
+	defer m.Run()
+
+	m.PublishPublicInfo()
+
+}
+
+func (m MixServer) ConnectToPKI() *sql.DB{
+	db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+	params := make(map[string]string)
+	params["MixId"] = "TEXT"
+	params["Host"] = "TEXT"
+	params["Port"] = "TEXT"
+	params["PubKey"] = "NUM"
+	pki.CreateTable(db, "Mixes", params)
+
+
+	return db
+}
+
+func (m MixServer) PublishPublicInfo() {
+	fmt.Println("> Saving into Database")
+
+	db := m.ConnectToPKI()
+
+	pubInfo := make(map[string]interface{})
+	pubInfo["MixId"] = m.Id
+	pubInfo["Host"] = m.Host
+	pubInfo["Port"] = m.Port
+	pubInfo["PubKey"] = m.mixWorker.PubKey
+	pki.InsertToTable(db, "Mixes", pubInfo)
+
+	fmt.Println("> Public info of the mixserver saved in database")
+}
+
 func (m MixServer) Run() {
+
+	fmt.Println("> The Mixserver is running")
+
 	defer m.listener.Close()
 	finish := make(chan bool)
 
 	go func() {
 		fmt.Println("Listening on " + m.Host + ":" + m.Port)
-		m.listenForConnections()
+		m.listenForIncomingConnections()
 	}()
 	go func() {
-		m.tmp()
+		// Other operations performed here as non-blocking
 	}()
 
 	<-finish
 }
 
-func (m MixServer) tmp() {
-	fmt.Println("Doing other stuff")
-}
-
-func (m MixServer) listenForConnections(){
+func (m MixServer) listenForIncomingConnections(){
 	for {
 		conn, err := m.listener.Accept()
 

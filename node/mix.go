@@ -32,6 +32,7 @@ func (m Mix) ProcessPacket(p packet_format.Packet, c chan<- packet_format.Packet
 
 func (m Mix) SendLoopMessage() {
 	fmt.Println("> Sending loop message")
+	// TO DO
 }
 
 func NewMix(id string, pubKey, prvKey int ) Mix{
