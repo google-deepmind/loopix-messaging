@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"github.com/jmoiron/sqlx"
 )
 
 
-func CreateAndOpenDatabase(dbName, dataSourceName, dbDriver string) *sql.DB{
+func CreateAndOpenDatabase(dbName, dataSourceName, dbDriver string) *sqlx.DB{
 
-	db, err := sql.Open(dbDriver, dataSourceName)
+	// db, err := sqlx.Open(dbDriver, dataSourceName)
+	var db *sqlx.DB
+	db, err := sqlx.Connect(dbDriver, dataSourceName)
 
 	if err != nil {
 		panic(err)
@@ -21,7 +24,7 @@ func CreateAndOpenDatabase(dbName, dataSourceName, dbDriver string) *sql.DB{
 }
 
 
-func CreateTable(db *sql.DB, tableName string, params map[string]string) {
+func CreateTable(db *sqlx.DB, tableName string, params map[string]string) {
 	paramsAndTypes := make([]string, 0, len(params))
 
 	for  key := range params {
@@ -37,7 +40,7 @@ func CreateTable(db *sql.DB, tableName string, params map[string]string) {
 }
 
 
-func InsertToTable(db *sql.DB, tableName string, data map[string]interface{}) {
+func InsertToTable(db *sqlx.DB, tableName string, data map[string]interface{}) {
 	columns := make([]string, 0, len(data))
 	values := make([]interface{}, 0, len(data))
 
@@ -55,18 +58,23 @@ func InsertToTable(db *sql.DB, tableName string, data map[string]interface{}) {
 	stmt.Exec(values...)
 }
 
-func QueryDatabase(db *sql.DB, tableName string) *sql.Rows{
+func QueryDatabase(db *sqlx.DB, tableName string) *sqlx.Rows{
 	query := fmt.Sprintf("SELECT * FROM %s", tableName)
-	stmt, errP := db.Prepare(query)
+	//stmt, errP := db.Prepare(query)
+	//
+	//if errP != nil {
+	//	panic(errP)
+	//}
 
-	if errP != nil {
-		panic(errP)
-	}
+	//rows, errQ := stmt.Query()
+	//
+	//if errQ != nil {
+	//	panic(errQ)
+	//}
+	rows, err := db.Queryx(query)
 
-	rows, errQ := stmt.Query()
-
-	if errQ != nil {
-		panic(errQ)
+	if err != nil {
+		panic(err)
 	}
 
 	return rows

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net"
 	"os"
-	packet_format "anonymous-messaging/packet_format"
+	"anonymous-messaging/packet_format"
 	"anonymous-messaging/pki"
-	"database/sql"
+	"github.com/jmoiron/sqlx"
 )
 
 type MixServer struct {
@@ -63,7 +63,7 @@ func (m MixServer) Start() {
 
 }
 
-func (m MixServer) ConnectToPKI() *sql.DB{
+func (m MixServer) ConnectToPKI() *sqlx.DB{
 	db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
 	params := make(map[string]string)
 	params["MixId"] = "TEXT"

@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"time"
 	"anonymous-messaging/publics"
+	"anonymous-messaging/pki"
+	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -119,7 +121,15 @@ func (c Client) ProcessPacket(packet packet_format.Packet) string{
 	return packet.Message
 }
 
+func (c Client) Start() {
+
+	defer c.Run()
+
+	c.ReadInMixnetPKI()
+}
+
 func (c Client) Run() {
+	fmt.Println("> Client is running")
 	defer c.listener.Close()
 	finish := make(chan bool)
 
@@ -128,8 +138,36 @@ func (c Client) Run() {
 		c.listenForConnections()
 	}()
 
-	c.SendMessage("Hello world", "localhost", "3330")
+	//c.SendMessage("Hello world", "localhost", "3330")
 	<-finish
+}
+
+func (c Client) ReadInMixnetPKI() {
+	fmt.Println("Reading network")
+	db := c.ConnectToPKI()
+	records := pki.QueryDatabase(db,"Mixes")
+
+	for records.Next() {
+		results := make(map[string]interface{})
+		err := records.MapScan(results)
+		if err != nil {
+			panic(err)
+		}
+		id := string(results["MixId"].([]byte))
+		host := string(results["Host"].([]byte))
+		port := string(results["Port"].([]byte))
+		pubK := results["PubKey"].(int64)
+		pubs := publics.NewMixPubs(id, host, port, pubK)
+		c.ActiveMixes = append(c.ActiveMixes, pubs)
+	}
+	fmt.Println("> The mix network data is uploaded.")
+	fmt.Println(c.ActiveMixes)
+
+}
+
+func (c Client) ConnectToPKI() *sqlx.DB{
+	db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+	return db
 }
 
 func NewClient(id, host, port string, pubKey, prvKey int) Client{
