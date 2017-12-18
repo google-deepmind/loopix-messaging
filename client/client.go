@@ -24,6 +24,7 @@ type Client struct {
 	PubKey int
 	PrvKey int
 	ActiveMixes []publics.MixPubs
+	OtherClients []publics.ClientPubs
 
 	listener *net.TCPListener
 }
@@ -34,15 +35,15 @@ type ClientOperations interface {
 	DecodeMessage(message string) string
 }
 
-func (c Client) EncodeMessage(message string, path []publics.MixPubs, delays []float64) packet_format.Packet {
+func (c *Client) EncodeMessage(message string, path []publics.MixPubs, delays []float64) packet_format.Packet {
 	return packet_format.Encode(message, path, delays)
 }
 
-func (c Client) DecodeMessage(packet packet_format.Packet) packet_format.Packet {
+func (c *Client) DecodeMessage(packet packet_format.Packet) packet_format.Packet {
 	return packet_format.Decode(packet)
 }
 
-func (c Client) SendMessage(message string, recipientHost string, recipientPort string) {
+func (c *Client) SendMessage(message string, recipientHost string, recipientPort string) {
 	path := c.GetRandomMixSequence(c.ActiveMixes, pathLength)
 	path = append(path, publics.MixPubs{Id:c.Id, Host:c.Host, Port:c.Port, PubKey:0})
 	delays := c.GenerateDelaySequence(desiredRateParameter, pathLength)
@@ -50,7 +51,7 @@ func (c Client) SendMessage(message string, recipientHost string, recipientPort 
 	c.Send(packet_format.ToString(packet), recipientHost, recipientPort)
 }
 
-func (c Client) GenerateDelaySequence(desiredRateParameter float64, length int) []float64{
+func (c *Client) GenerateDelaySequence(desiredRateParameter float64, length int) []float64{
 	rand.Seed(time.Now().UTC().UnixNano())
 	var delays []float64
 	for i := 0; i < length; i++{
@@ -60,7 +61,7 @@ func (c Client) GenerateDelaySequence(desiredRateParameter float64, length int) 
 	return delays
 }
 
-func (c Client) GetRandomMixSequence(data []publics.MixPubs, length int) []publics.MixPubs {
+func (c *Client) GetRandomMixSequence(data []publics.MixPubs, length int) []publics.MixPubs {
 	rand.Seed(time.Now().UTC().UnixNano())
 	permutedData := make([]publics.MixPubs, len(data))
 	permutation := rand.Perm(len(data))
@@ -70,7 +71,7 @@ func (c Client) GetRandomMixSequence(data []publics.MixPubs, length int) []publi
 	return permutedData[:length]
 }
 
-func (c Client) Send(packet string, host string, port string) {
+func (c *Client) Send(packet string, host string, port string) {
 	conn, err := net.Dial("tcp", host + ":" + port)
 	defer conn.Close()
 
@@ -88,7 +89,7 @@ func (c Client) Send(packet string, host string, port string) {
 
 
 
-func (c Client) listenForConnections() {
+func (c *Client) listenForConnections() {
 	for {
 		conn, err := c.listener.Accept()
 
@@ -102,7 +103,7 @@ func (c Client) listenForConnections() {
 	}
 }
 
-func (c Client) handleConnection(conn net.Conn) {
+func (c *Client) handleConnection(conn net.Conn) {
 	fmt.Println("> Handle Connection")
 
 	buff := make([]byte, 1024)
@@ -116,21 +117,24 @@ func (c Client) handleConnection(conn net.Conn) {
 	conn.Close()
 }
 
-func (c Client) ProcessPacket(packet packet_format.Packet) string{
+func (c *Client) ProcessPacket(packet packet_format.Packet) string{
 	fmt.Println("Processing packet")
 	return packet.Message
 }
 
-func (c Client) Start() {
+func (c *Client) Start() {
 
 	defer c.Run()
 
 	c.SaveInPKI()
+	c.ReadInClientsPKI()
 	c.ReadInMixnetPKI()
+
 }
 
-func (c Client) Run() {
+func (c *Client) Run() {
 	fmt.Println("> Client is running")
+
 	defer c.listener.Close()
 	finish := make(chan bool)
 
@@ -139,11 +143,10 @@ func (c Client) Run() {
 		c.listenForConnections()
 	}()
 
-	//c.SendMessage("Hello world", "localhost", "3330")
 	<-finish
 }
 
-func (c Client) ReadInMixnetPKI() {
+func (c *Client) ReadInMixnetPKI() {
 	fmt.Println("Reading network")
 
 	db := c.ConnectToPKI()
@@ -167,23 +170,49 @@ func (c Client) ReadInMixnetPKI() {
 }
 
 
-func (c Client) SaveInPKI() {
+func (c *Client) ReadInClientsPKI() {
+	fmt.Println("Reading public information about clients")
+
+	db := c.ConnectToPKI()
+	records := pki.QueryDatabase(db,"Clients")
+
+	for records.Next() {
+		results := make(map[string]interface{})
+		err := records.MapScan(results)
+
+		if err != nil {
+			panic(err)
+
+		}
+		pubs := publics.NewClientPubs(string(results["ClientId"].([]byte)), string(results["Host"].([]byte)),
+			string(results["Port"].([]byte)), results["PubKey"].(int64))
+		c.OtherClients = append(c.OtherClients, pubs)
+	}
+	fmt.Println("> The clients data is uploaded.")
+}
+
+
+func (c *Client) SaveInPKI() {
 	fmt.Println("> Saving Client Public Info into Database")
 
 	db := c.ConnectToPKI()
+	c.CreateTable(db)
 
 	pubInfo := make(map[string]interface{})
-	pubInfo["MixId"] = c.Id
+	pubInfo["ClientId"] = c.Id
 	pubInfo["Host"] = c.Host
 	pubInfo["Port"] = c.Port
 	pubInfo["PubKey"] = c.PubKey
 	pki.InsertToTable(db, "Clients", pubInfo)
 
-	fmt.Println("> Public info of the mixserver saved in database")
+	fmt.Println("> Public info of the client saved in database")
 }
 
-func (c Client) ConnectToPKI() *sqlx.DB{
-	db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+func (c *Client) ConnectToPKI() *sqlx.DB{
+	return pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+}
+
+func (c *Client) CreateTable(db *sqlx.DB) {
 
 	params := make(map[string]string)
 	params["ClientId"] = "TEXT"
@@ -191,8 +220,6 @@ func (c Client) ConnectToPKI() *sqlx.DB{
 	params["Port"] = "TEXT"
 	params["PubKey"] = "NUM"
 	pki.CreateTable(db, "Clients", params)
-
-	return db
 }
 
 func NewClient(id, host, port string, pubKey, prvKey int) Client{
