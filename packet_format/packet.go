@@ -15,6 +15,7 @@ type MetaData struct {
 	NextHopId string
 	NextHopHost string
 	NextHopPort string
+	StoreFlag bool
 	FinalFlag bool
 }
 
@@ -35,11 +36,11 @@ func Encode(message string, path []publics.MixPubs, delays []float64) Packet{
 	//finalIdx := len(path) - 1
 	for i:=0; i < len(path)-1; i++ {
 		if i + 1 >= len(path){
-			mdata := MetaData{NextHopId:"", NextHopHost:"", NextHopPort:"", FinalFlag:false}
+			mdata := MetaData{NextHopId:"", NextHopHost:"", NextHopPort:"", StoreFlag:false, FinalFlag:false}
 			header := Header{mdata, delays[i]}
 			steps[path[i].Id] = header
 		} else {
-			mdata := MetaData{NextHopId:path[i+1].Id, NextHopHost:path[i+1].Host, NextHopPort:path[i+1].Port, FinalFlag:true}
+			mdata := MetaData{NextHopId:path[i+1].Id, NextHopHost:path[i+1].Host, NextHopPort:path[i+1].Port, StoreFlag:false, FinalFlag:true}
 			header := Header{mdata, delays[i]}
 			steps[path[i].Id] = header
 		}

@@ -7,7 +7,6 @@ import (
 	"os"
 	"anonymous-messaging/packet_format"
 	"anonymous-messaging/pki"
-	"github.com/jmoiron/sqlx"
 )
 
 type MixServer struct {
@@ -18,6 +17,7 @@ type MixServer struct {
 	mixWorker node.Mix
 
 	listener *net.TCPListener
+
 }
 
 func (m *MixServer) ReceivedPacket(packet packet_format.Packet) {
@@ -28,7 +28,8 @@ func (m *MixServer) ReceivedPacket(packet packet_format.Packet) {
 	dePacket := <- c
 
 	fmt.Println("> Decoded packet: ", dePacket)
-	if dePacket.Steps[m.Id].Meta.FinalFlag{
+
+	if dePacket.Steps[m.Id].Meta.FinalFlag == false{
 		m.ForwardPacket(dePacket)
 	}
 }
@@ -56,40 +57,12 @@ func (m *MixServer) SendPacket(packet packet_format.Packet, host, port string){
 }
 
 func (m *MixServer) Start() {
-
 	defer m.Run()
 
-	m.PublishPublicInfo()
+	// m.PublishPublicInfo()
 
 }
 
-func (m *MixServer) ConnectToPKI() *sqlx.DB{
-	db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
-	params := make(map[string]string)
-	params["MixId"] = "TEXT"
-	params["Host"] = "TEXT"
-	params["Port"] = "TEXT"
-	params["PubKey"] = "NUM"
-	pki.CreateTable(db, "Mixes", params)
-
-
-	return db
-}
-
-func (m *MixServer) PublishPublicInfo() {
-	fmt.Println("> Saving into Database")
-
-	db := m.ConnectToPKI()
-
-	pubInfo := make(map[string]interface{})
-	pubInfo["MixId"] = m.Id
-	pubInfo["Host"] = m.Host
-	pubInfo["Port"] = m.Port
-	pubInfo["PubKey"] = m.mixWorker.PubKey
-	pki.InsertToTable(db, "Mixes", pubInfo)
-
-	fmt.Println("> Public info of the mixserver saved in database")
-}
 
 func (m *MixServer) Run() {
 
@@ -101,9 +74,6 @@ func (m *MixServer) Run() {
 	go func() {
 		fmt.Println("Listening on " + m.Host + ":" + m.Port)
 		m.listenForIncomingConnections()
-	}()
-	go func() {
-		// Other operations performed here as non-blocking
 	}()
 
 	<-finish
@@ -136,12 +106,36 @@ func (m *MixServer) handleConnection(conn net.Conn) {
 	conn.Close()
 }
 
+func SaveInPKI(m *MixServer) {
+	fmt.Println("> Saving into Database")
+
+	db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+
+	params := make(map[string]string)
+	params["MixId"] = "TEXT"
+	params["Host"] = "TEXT"
+	params["Port"] = "TEXT"
+	params["PubKey"] = "NUM"
+	pki.CreateTable(db, "Mixes", params)
+
+	pubInfo := make(map[string]interface{})
+	pubInfo["MixId"] = m.Id
+	pubInfo["Host"] = m.Host
+	pubInfo["Port"] = m.Port
+	pubInfo["PubKey"] = m.mixWorker.PubKey
+	pki.InsertToTable(db, "Mixes", pubInfo)
+
+	fmt.Println("> Public info of the mixserver saved in database")
+}
+
 func NewMixServer(id, host, port string, pubKey, prvKey int) MixServer {
 	mixServer := MixServer{}
 	mixServer.Id = id
 	mixServer.Host = host
 	mixServer.Port = port
 	mixServer.mixWorker = node.NewMix(id, pubKey, prvKey)
+
+	SaveInPKI(&mixServer)
 
 	addr, err := net.ResolveTCPAddr("tcp", mixServer.Host + ":" + mixServer.Port)
 	mixServer.listener, err = net.ListenTCP("tcp", addr)
