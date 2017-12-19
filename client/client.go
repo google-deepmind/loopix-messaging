@@ -153,7 +153,6 @@ func (c *Client) Start() {
 
 	defer c.Run()
 
-	c.SaveInPKI()
 	c.ReadInClientsPKI()
 	c.ReadInMixnetPKI()
 
@@ -222,12 +221,21 @@ func (c *Client) ReadInClientsPKI() {
 	fmt.Println("> The clients data is uploaded.")
 }
 
+func (c *Client) ConnectToPKI() *sqlx.DB{
+	return pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+}
 
-func (c *Client) SaveInPKI() {
+func SaveInPKI(c *Client) {
 	fmt.Println("> Saving Client Public Info into Database")
 
-	db := c.ConnectToPKI()
-	c.CreateTable(db)
+	db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+
+	params := make(map[string]string)
+	params["ClientId"] = "TEXT"
+	params["Host"] = "TEXT"
+	params["Port"] = "TEXT"
+	params["PubKey"] = "NUM"
+	pki.CreateTable(db, "Clients", params)
 
 	pubInfo := make(map[string]interface{})
 	pubInfo["ClientId"] = c.Id
@@ -239,25 +247,13 @@ func (c *Client) SaveInPKI() {
 	fmt.Println("> Public info of the client saved in database")
 }
 
-func (c *Client) ConnectToPKI() *sqlx.DB{
-	return pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
-}
-
-func (c *Client) CreateTable(db *sqlx.DB) {
-
-	params := make(map[string]string)
-	params["ClientId"] = "TEXT"
-	params["Host"] = "TEXT"
-	params["Port"] = "TEXT"
-	params["PubKey"] = "NUM"
-	pki.CreateTable(db, "Clients", params)
-}
 
 func NewClient(id, host, port string, pubKey, prvKey int) Client{
 	c := Client{Id:id, Host:host, Port:port, PubKey:pubKey, PrvKey:prvKey}
 
-	addr, err := net.ResolveTCPAddr("tcp", c.Host + ":" + c.Port)
+	SaveInPKI(&c)
 
+	addr, err := net.ResolveTCPAddr("tcp", c.Host + ":" + c.Port)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)

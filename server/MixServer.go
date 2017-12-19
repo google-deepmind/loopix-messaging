@@ -29,7 +29,7 @@ func (m *MixServer) ReceivedPacket(packet packet_format.Packet) {
 
 	fmt.Println("> Decoded packet: ", dePacket)
 
-	if dePacket.Steps[m.Id].Meta.FinalFlag == false{
+	if dePacket.Steps[m.Id].Meta.FinalFlag{
 		m.ForwardPacket(dePacket)
 	}
 }
