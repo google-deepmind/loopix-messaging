@@ -225,10 +225,10 @@ func (c *Client) ConnectToPKI() *sqlx.DB{
 	return pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
 }
 
-func SaveInPKI(c *Client) {
+func SaveInPKI(c *Client, pkiDir string) {
 	fmt.Println("> Saving Client Public Info into Database")
 
-	db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+	db := pki.CreateAndOpenDatabase(pkiDir, pkiDir, "sqlite3")
 
 	params := make(map[string]string)
 	params["ClientId"] = "TEXT"
@@ -245,13 +245,14 @@ func SaveInPKI(c *Client) {
 	pki.InsertToTable(db, "Clients", pubInfo)
 
 	fmt.Println("> Public info of the client saved in database")
+	db.Close()
 }
 
 
-func NewClient(id, host, port string, pubKey, prvKey int) Client{
+func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) Client{
 	c := Client{Id:id, Host:host, Port:port, PubKey:pubKey, PrvKey:prvKey}
 
-	SaveInPKI(&c)
+	SaveInPKI(&c, pkiDir)
 
 	addr, err := net.ResolveTCPAddr("tcp", c.Host + ":" + c.Port)
 	if err != nil {

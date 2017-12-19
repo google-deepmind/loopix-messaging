@@ -126,6 +126,8 @@ func SaveInPKI(m *MixServer) {
 	pki.InsertToTable(db, "Mixes", pubInfo)
 
 	fmt.Println("> Public info of the mixserver saved in database")
+
+	db.Close()
 }
 
 func NewMixServer(id, host, port string, pubKey, prvKey int) MixServer {
