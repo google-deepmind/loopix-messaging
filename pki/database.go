@@ -1,10 +1,8 @@
 package pki
 
 import (
-	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 	"fmt"
-	"strconv"
 	"strings"
 	"github.com/jmoiron/sqlx"
 )
@@ -70,21 +68,3 @@ func QueryDatabase(db *sqlx.DB, tableName string) *sqlx.Rows{
 	}
 	return rows
 }
-
-func CloseDatabase(db *sql.DB) {
-	defer db.Close()
-}
-
-func CheckRows(rows *sql.Rows) {
-	var id int
-	var mixId string
-	var host string
-	var port string
-	var pubK int
-	for rows.Next() {
-		rows.Scan(&id, &mixId, &host, &port, &pubK)
-		fmt.Println(strconv.Itoa(id) + ": " + mixId + " " + host + " " + port + " " + strconv.Itoa(pubK))
-	}
-}
-
-
