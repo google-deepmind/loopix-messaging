@@ -1,4 +1,4 @@
-package tests
+package anonymous_messaging
 
 import (
 	"testing"

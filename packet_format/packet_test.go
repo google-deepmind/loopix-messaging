@@ -1,4 +1,4 @@
-package tests
+package packet_format
 
 import (
 	"testing"
