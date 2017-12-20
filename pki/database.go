@@ -12,7 +12,6 @@ import (
 
 func CreateAndOpenDatabase(dbName, dataSourceName, dbDriver string) *sqlx.DB{
 
-	// db, err := sqlx.Open(dbDriver, dataSourceName)
 	var db *sqlx.DB
 	db, err := sqlx.Connect(dbDriver, dataSourceName)
 
@@ -53,7 +52,11 @@ func InsertToTable(db *sqlx.DB, tableName string, data map[string]interface{}) {
 	valuesText := "?" + strings.Repeat(", ?", len(data)-1)
 
 	query := "INSERT INTO " + tableName + " ( " + columnsText + " ) VALUES ( " +  valuesText + " )"
-	stmt, _ := db.Prepare(query)
+	stmt, err := db.Prepare(query)
+
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	stmt.Exec(values...)
 }
