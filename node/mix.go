@@ -13,7 +13,7 @@ type Mix struct {
 }
 
 
-func (m Mix) ProcessPacket(p packet_format.Packet, c chan<- packet_format.Packet){
+func (m *Mix) ProcessPacket(p packet_format.Packet, c chan<- packet_format.Packet){
 	fmt.Println("> Processing packet")
 
 	dePacket:= packet_format.Decode(p)
@@ -30,11 +30,11 @@ func (m Mix) ProcessPacket(p packet_format.Packet, c chan<- packet_format.Packet
 	c <- <- timeoutCh
 }
 
-func (m Mix) SendLoopMessage() {
+func (m *Mix) SendLoopMessage() {
 	fmt.Println("> Sending loop message")
 	// TO DO
 }
 
-func NewMix(id string, pubKey, prvKey int ) Mix{
-	return Mix{Id:id, PubKey:pubKey, PrvKey:prvKey}
+func NewMix(id string, pubKey, prvKey int ) *Mix{
+	return &Mix{Id:id, PubKey:pubKey, PrvKey:prvKey}
 }

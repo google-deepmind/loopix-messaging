@@ -11,12 +11,18 @@ import (
 	"anonymous-messaging/pki"
 	"github.com/jmoiron/sqlx"
 	"reflect"
+	"anonymous-messaging/networker"
 )
 
 const (
 	desiredRateParameter = 5
 	pathLength = 2
 )
+
+type MixClient interface {
+	anonymous_messaging.NetworkClient
+	anonymous_messaging.NetworkServer
+}
 
 type Client struct {
 	Id string
@@ -108,15 +114,11 @@ func (c *Client) Send(packet string, host string, port string) {
 	}
 
 	conn.Write([]byte(packet))
-
-	//buff := make([]byte, 1024)
-	//n, _ := conn.Read(buff)
-	//fmt.Println("Received answer: ", string(buff[:n]))
 }
 
 
 
-func (c *Client) listenForConnections() {
+func (c *Client) ListenForConnections() {
 	for {
 		conn, err := c.listener.Accept()
 
@@ -126,11 +128,11 @@ func (c *Client) listenForConnections() {
 		}
 		fmt.Println(conn)
 		//fmt.Println("Received connection from : ", conn.RemoteAddr())
-		go c.handleConnection(conn)
+		go c.HandleConnection(conn)
 	}
 }
 
-func (c *Client) handleConnection(conn net.Conn) {
+func (c *Client) HandleConnection(conn net.Conn) {
 	fmt.Println("> Handle Connection")
 
 	buff := make([]byte, 1024)
@@ -166,7 +168,7 @@ func (c *Client) Run() {
 
 	go func() {
 		fmt.Println("Listening on " + c.Host + ":" + c.Port)
-		c.listenForConnections()
+		c.ListenForConnections()
 	}()
 
 	go func() {
@@ -249,7 +251,7 @@ func SaveInPKI(c *Client, pkiDir string) {
 }
 
 
-func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) Client{
+func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) *Client{
 	c := Client{Id:id, Host:host, Port:port, PubKey:pubKey, PrvKey:prvKey}
 
 	SaveInPKI(&c, pkiDir)
@@ -260,5 +262,5 @@ func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) Client{
 		os.Exit(1)
 	}
 	c.listener, err = net.ListenTCP("tcp", addr)
-	return c
+	return &c
 }

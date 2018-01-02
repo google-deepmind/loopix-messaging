@@ -13,7 +13,7 @@ var packet packet_format.Packet
 var mixPubs []publics.MixPubs
 
 func TestMain(m *testing.M) {
-	mixWorker = NewMix("MixWorker", 0, 0)
+	mixWorker = *NewMix("MixWorker", 0, 0)
 	m1 := publics.MixPubs{"Mix1", "localhost", "3330", 0}
 	m2 := publics.MixPubs{"Mix2", "localhost", "3331", 0}
 

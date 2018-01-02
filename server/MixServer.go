@@ -7,14 +7,20 @@ import (
 	"os"
 	"anonymous-messaging/packet_format"
 	"anonymous-messaging/pki"
+	"anonymous-messaging/networker"
 )
+
+type MixServerIt interface {
+	anonymous_messaging.NetworkServer
+	anonymous_messaging.NetworkClient
+}
 
 type MixServer struct {
 	Id string
 	Host string
 	Port string
 
-	mixWorker node.Mix
+	node.Mix
 
 	listener *net.TCPListener
 
@@ -24,7 +30,7 @@ func (m *MixServer) ReceivedPacket(packet packet_format.Packet) {
 	fmt.Println("> Received packet")
 
 	c := make(chan packet_format.Packet)
-	go m.mixWorker.ProcessPacket(packet, c)
+	go m.ProcessPacket(packet, c)
 	dePacket := <- c
 
 	fmt.Println("> Decoded packet: ", dePacket)
@@ -58,9 +64,6 @@ func (m *MixServer) SendPacket(packet packet_format.Packet, host, port string){
 
 func (m *MixServer) Start() {
 	defer m.Run()
-
-	// m.PublishPublicInfo()
-
 }
 
 
@@ -73,13 +76,13 @@ func (m *MixServer) Run() {
 
 	go func() {
 		fmt.Println("Listening on " + m.Host + ":" + m.Port)
-		m.listenForIncomingConnections()
+		m.ListenForIncomingConnections()
 	}()
 
 	<-finish
 }
 
-func (m *MixServer) listenForIncomingConnections(){
+func (m *MixServer) ListenForIncomingConnections(){
 	for {
 		conn, err := m.listener.Accept()
 
@@ -88,11 +91,11 @@ func (m *MixServer) listenForIncomingConnections(){
 			os.Exit(1)
 		}
 		fmt.Println("Received connection from : ", conn.RemoteAddr())
-		go m.handleConnection(conn)
+		go m.HandleConnection(conn)
 	}
 }
 
-func (m *MixServer) handleConnection(conn net.Conn) {
+func (m *MixServer) HandleConnection(conn net.Conn) {
 	fmt.Println("> Handle Connection")
 
 	buff := make([]byte, 1024)
@@ -106,10 +109,11 @@ func (m *MixServer) handleConnection(conn net.Conn) {
 	conn.Close()
 }
 
-func SaveInPKI(m *MixServer) {
+func SaveInPKI(m *MixServer, pkiPath string) {
 	fmt.Println("> Saving into Database")
 
-	db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+	//db := pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+	db := pki.CreateAndOpenDatabase(pkiPath, pkiPath, "sqlite3")
 
 	params := make(map[string]string)
 	params["MixId"] = "TEXT"
@@ -122,7 +126,7 @@ func SaveInPKI(m *MixServer) {
 	pubInfo["MixId"] = m.Id
 	pubInfo["Host"] = m.Host
 	pubInfo["Port"] = m.Port
-	pubInfo["PubKey"] = m.mixWorker.PubKey
+	pubInfo["PubKey"] = m.PubKey
 	pki.InsertToTable(db, "Mixes", pubInfo)
 
 	fmt.Println("> Public info of the mixserver saved in database")
@@ -130,14 +134,11 @@ func SaveInPKI(m *MixServer) {
 	db.Close()
 }
 
-func NewMixServer(id, host, port string, pubKey, prvKey int) MixServer {
-	mixServer := MixServer{}
-	mixServer.Id = id
-	mixServer.Host = host
-	mixServer.Port = port
-	mixServer.mixWorker = node.NewMix(id, pubKey, prvKey)
+func NewMixServer(id, host, port string, pubKey, prvKey int, pkiPath string) *MixServer {
+	node := node.Mix{id, pubKey, prvKey}
+	mixServer := MixServer{id, host, port, node, nil}
+	SaveInPKI(&mixServer, pkiPath)
 
-	SaveInPKI(&mixServer)
 
 	addr, err := net.ResolveTCPAddr("tcp", mixServer.Host + ":" + mixServer.Port)
 	mixServer.listener, err = net.ListenTCP("tcp", addr)
@@ -147,5 +148,5 @@ func NewMixServer(id, host, port string, pubKey, prvKey int) MixServer {
 		os.Exit(1)
 	}
 
-	return mixServer
+	return &mixServer
 }
