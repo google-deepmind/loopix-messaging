@@ -5,6 +5,7 @@ import (
 	"anonymous-messaging/publics"
 	"os"
 	"github.com/stretchr/testify/assert"
+	"encoding/json"
 )
 
 var packet Packet
@@ -44,8 +45,21 @@ func TestPacketDecode(t *testing.T){
 	assert.Equal(t, decoded, expected, "The expected and decoded should be so far the same")
 }
 
-func TestPacketToFromString(t *testing.T){
+func TestPacketToString(t *testing.T){
 	s := ToString(packet)
-	expected := FromString(s)
-	assert.Equal(t, expected, packet, "Conversion to and from string should give the same result")
+	expected, err := json.Marshal(packet)
+	if err != nil {
+		panic(err)
+	}
+	assert.Equal(t, s, string(expected), "Conversion to string should give the same result")
+}
+
+func TestPacketFromString(t *testing.T){
+	asString, err := json.Marshal(packet)
+	if err != nil {
+		panic(err)
+	}
+	expected := packet
+	fromString := FromString(string(asString))
+	assert.Equal(t, fromString, expected, "Conversion from string should give the same result")
 }

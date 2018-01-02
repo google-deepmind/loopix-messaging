@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"math/rand"
-	"time"
 	"anonymous-messaging/publics"
 	"anonymous-messaging/pki"
 	"github.com/jmoiron/sqlx"
 	"reflect"
 	"anonymous-messaging/networker"
+	clientCore "anonymous-messaging/clientCore"
 )
 
 const (
@@ -19,7 +18,7 @@ const (
 	pathLength = 2
 )
 
-type MixClient interface {
+type ClientIt interface {
 	anonymous_messaging.NetworkClient
 	anonymous_messaging.NetworkServer
 }
@@ -28,27 +27,15 @@ type Client struct {
 	Id string
 	Host string
 	Port string
-	PubKey int
-	PrvKey int
+
+	clientCore.MixClient
+
 	ActiveMixes []publics.MixPubs
 	OtherClients []publics.MixPubs
 
 	listener *net.TCPListener
 }
 
-
-type ClientOperations interface {
-	EncodeMessage(message string) string
-	DecodeMessage(message string) string
-}
-
-func (c *Client) EncodeMessage(message string, path []publics.MixPubs, delays []float64) packet_format.Packet {
-	return packet_format.Encode(message, path, delays)
-}
-
-func (c *Client) DecodeMessage(packet packet_format.Packet) packet_format.Packet {
-	return packet_format.Decode(packet)
-}
 
 func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
 	mixSeq := c.GetRandomMixSequence(c.ActiveMixes, pathLength)
@@ -72,38 +59,6 @@ func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
 	c.Send(packet_format.ToString(packet), path[0].Host, path[0].Port)
 }
 
-func (c *Client) GenerateDelaySequence(desiredRateParameter float64, length int) []float64{
-	rand.Seed(time.Now().UTC().UnixNano())
-
-	var delays []float64
-	for i := 0; i < length; i++{
-		sample := rand.ExpFloat64() / desiredRateParameter
-		delays = append(delays, sample)
-	}
-	return delays
-}
-
-func (c *Client) GetRandomMixSequence(mixes []publics.MixPubs, length int) []publics.MixPubs {
-	rand.Seed(time.Now().UTC().UnixNano())
-
-	fmt.Println("Len: ", length)
-	fmt.Println("Len of mixes: ", len(mixes))
-	if length > len(mixes) {
-		return mixes
-	} else {
-		permutedData := make([]publics.MixPubs, len(mixes))
-		permutation := rand.Perm(len(mixes))
-
-		for i, v := range permutation {
-			permutedData[v] = mixes[i]
-		}
-		fmt.Println("Permuted: ", permutedData)
-
-		fmt.Println("Cut: ", permutedData[:length])
-		return permutedData[:length]
-	}
-}
-
 func (c *Client) Send(packet string, host string, port string) {
 	conn, err := net.Dial("tcp", host + ":" + port)
 	defer conn.Close()
@@ -116,8 +71,6 @@ func (c *Client) Send(packet string, host string, port string) {
 	conn.Write([]byte(packet))
 }
 
-
-
 func (c *Client) ListenForConnections() {
 	for {
 		conn, err := c.listener.Accept()
@@ -127,7 +80,6 @@ func (c *Client) ListenForConnections() {
 			os.Exit(1)
 		}
 		fmt.Println(conn)
-		//fmt.Println("Received connection from : ", conn.RemoteAddr())
 		go c.HandleConnection(conn)
 	}
 }
@@ -252,7 +204,8 @@ func SaveInPKI(c *Client, pkiDir string) {
 
 
 func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) *Client{
-	c := Client{Id:id, Host:host, Port:port, PubKey:pubKey, PrvKey:prvKey}
+	core := clientCore.MixClient{id, pubKey, prvKey}
+	c := Client{Id:id, Host:host, Port:port, MixClient:core}
 
 	SaveInPKI(&c, pkiDir)
 
