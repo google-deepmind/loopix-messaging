@@ -41,8 +41,6 @@ func TestMain(m *testing.M) {
 
 	Setup()
 	code := m.Run()
-	// make table for each test
-//	// make database with table with entries
 	Clean()
 	os.Exit(code)
 }

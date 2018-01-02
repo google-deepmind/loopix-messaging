@@ -2,23 +2,50 @@ package packet_format
 
 import (
 	"testing"
-	"anonymous-messaging/packet_format"
+	"anonymous-messaging/publics"
+	"os"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPacketToFromString(t *testing.T){
-	s := packet_format.ToString(packet)
-	expected := packet_format.FromString(s)
-	assert.Equal(t, expected, packet, "Conversion to and from string should give the same result")
+var packet Packet
+var mixPubs []publics.MixPubs
+var recipient publics.MixPubs
+
+
+func TestMain(m *testing.M) {
+	m1 := publics.MixPubs{"Mix1", "localhost", "3330", 0}
+	m2 := publics.MixPubs{"Mix2", "localhost", "3331", 0}
+	mixPubs = []publics.MixPubs{m1, m2}
+
+	recipient = publics.MixPubs{"Recipient", "127.0.0.1", "9999", 0}
+
+	mixPubs =[]publics.MixPubs{m1, m2}
+
+	code := m.Run()
+	os.Exit(code)
 }
 
+
 func TestPacketEncode(t *testing.T){
-	encoded := packet_format.Encode("Hello you", mixPubs, []float64{1.4, 2.5, 2.3})
-	assert.Equal(t, packet, encoded, "Expected to be the same")
+	path := append(mixPubs, recipient)
+	encoded := Encode("Hello you", path, []float64{1.4, 2.5, 2.3})
+
+	header1 := Header{MetaData{"Mix2", "localhost", "3331", false, true}, 1.4}
+	header2 := Header{MetaData{"Recipient", "127.0.0.1", "9999", false, true}, 2.5}
+	header3 := Header{MetaData{"", "", "", false, false}, 2.3}
+	expected := Packet{"Hello you", path, []float64{1.4, 2.5, 2.3}, map[string]Header{"Mix1" : header1, "Mix2" : header2, "Recipient" : header3}}
+
+	assert.Equal(t, expected, encoded, "Expected to be the same")
 }
 
 func TestPacketDecode(t *testing.T){
-	decoded := packet_format.Decode(packet)
+	decoded := Decode(packet)
 	expected := packet
-	assert.Equal(t, decoded, expected, "The expected and decoded should be the same")
+	assert.Equal(t, decoded, expected, "The expected and decoded should be so far the same")
+}
+
+func TestPacketToFromString(t *testing.T){
+	s := ToString(packet)
+	expected := FromString(s)
+	assert.Equal(t, expected, packet, "Conversion to and from string should give the same result")
 }

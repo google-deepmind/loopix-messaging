@@ -33,8 +33,7 @@ type Packer interface {
 
 func Encode(message string, path []publics.MixPubs, delays []float64) Packet{
 	steps := make(map[string]Header)
-	//finalIdx := len(path) - 1
-	for i:=0; i < len(path)-1; i++ {
+	for i:=0; i < len(path); i++ {
 		if i + 1 >= len(path){
 			mdata := MetaData{NextHopId:"", NextHopHost:"", NextHopPort:"", StoreFlag:false, FinalFlag:false}
 			header := Header{mdata, delays[i]}
