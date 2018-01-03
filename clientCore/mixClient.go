@@ -4,8 +4,6 @@ import (
 	"anonymous-messaging/publics"
 	"anonymous-messaging/packet_format"
 	"anonymous-messaging/helpers"
-	"time"
-	"math/rand"
 )
 
 type MixClientIt interface {
@@ -30,12 +28,9 @@ func (c *MixClient) DecodeMessage(packet packet_format.Packet) packet_format.Pac
 }
 
 func (c *MixClient) GenerateDelaySequence(desiredRateParameter float64, length int) []float64 {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	var delays []float64
 	for i := 0; i < length; i++{
-		sample := rand.ExpFloat64() / desiredRateParameter
-		delays = append(delays, sample)
+		delays = append(delays, helpers.RandomExponential(desiredRateParameter))
 	}
 	return delays
 }
