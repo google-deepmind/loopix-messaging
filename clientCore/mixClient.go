@@ -41,8 +41,6 @@ func (c *MixClient) GenerateDelaySequence(desiredRateParameter float64, length i
 }
 
 func (c *MixClient) GetRandomMixSequence(mixes []publics.MixPubs, length int) []publics.MixPubs {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	if length > len(mixes) {
 		return mixes
 	} else {
