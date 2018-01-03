@@ -1,4 +1,4 @@
-package anonymous_messaging
+package networker
 
 import "net"
 

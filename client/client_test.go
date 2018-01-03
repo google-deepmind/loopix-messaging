@@ -1,4 +1,4 @@
-package anonymous_messaging
+package client
 import (
 	"testing"
 	"github.com/stretchr/testify/assert"

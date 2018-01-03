@@ -1,7 +1,7 @@
-package anonymous_messaging
+package client
 
 import (
-	packet_format "anonymous-messaging/packet_format"
+	"anonymous-messaging/packet_format"
 	"fmt"
 	"net"
 	"os"
@@ -10,7 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"reflect"
 	"anonymous-messaging/networker"
-	clientCore "anonymous-messaging/clientCore"
+	"anonymous-messaging/clientCore"
 )
 
 const (
@@ -19,8 +19,8 @@ const (
 )
 
 type ClientIt interface {
-	anonymous_messaging.NetworkClient
-	anonymous_messaging.NetworkServer
+	networker.NetworkClient
+	networker.NetworkServer
 }
 
 type Client struct {

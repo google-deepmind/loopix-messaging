@@ -1,8 +1,8 @@
-package anonymous_messaging
+package node
 
 import (
 	"fmt"
-	packet_format "anonymous-messaging/packet_format"
+	"anonymous-messaging/packet_format"
 	"time"
 )
 

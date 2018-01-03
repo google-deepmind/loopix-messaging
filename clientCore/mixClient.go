@@ -1,4 +1,4 @@
-package anonymous_messaging
+package clientCore
 
 import (
 	"anonymous-messaging/publics"

@@ -1,10 +1,10 @@
-package anonymous_messaging
+package node
 
 import (
 	"testing"
 	"anonymous-messaging/packet_format"
 	"github.com/stretchr/testify/assert"
-	publics "anonymous-messaging/publics"
+	"anonymous-messaging/publics"
 	"os"
 )
 
