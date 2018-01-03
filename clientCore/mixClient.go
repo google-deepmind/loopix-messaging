@@ -3,9 +3,9 @@ package clientCore
 import (
 	"anonymous-messaging/publics"
 	"anonymous-messaging/packet_format"
+	"anonymous-messaging/helpers"
 	"time"
 	"math/rand"
-	"fmt"
 )
 
 type MixClientIt interface {
@@ -43,20 +43,15 @@ func (c *MixClient) GenerateDelaySequence(desiredRateParameter float64, length i
 func (c *MixClient) GetRandomMixSequence(mixes []publics.MixPubs, length int) []publics.MixPubs {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	fmt.Println("Len: ", length)
-	fmt.Println("Len of mixes: ", len(mixes))
 	if length > len(mixes) {
 		return mixes
 	} else {
-		permutedData := make([]publics.MixPubs, len(mixes))
-		permutation := rand.Perm(len(mixes))
-
-		for i, v := range permutation {
-			permutedData[v] = mixes[i]
-		}
-		fmt.Println("Permuted: ", permutedData)
-
-		fmt.Println("Cut: ", permutedData[:length])
-		return permutedData[:length]
+		randomSeq := helpers.RandomSample(mixes, length)
+		return randomSeq
 	}
+}
+
+func NewMixClient(id string, pubKey, prvKey int) *MixClient{
+	mixClient := MixClient{id, pubKey, prvKey}
+	return &mixClient
 }
