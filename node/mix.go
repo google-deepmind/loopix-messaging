@@ -1,3 +1,6 @@
+/*
+	Package node implements the core functions for a mix node, which allow to process the received cryptographic packets.
+ */
 package node
 
 import (

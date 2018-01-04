@@ -1,3 +1,6 @@
+/*
+	Package server implements the mix server.
+*/
 package server
 
 import (

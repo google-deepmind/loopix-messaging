@@ -1,3 +1,8 @@
+/*
+	Package pki implements basic functions for managing the pki
+	represented as a SQL database.
+*/
+
 package pki
 
 import (
