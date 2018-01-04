@@ -1,13 +1,13 @@
 package server
 
 import (
-	"anonymous-messaging/pki"
+	"anonymous-messaging/networker"
 	"anonymous-messaging/node"
 	"anonymous-messaging/packet_format"
+	"anonymous-messaging/pki"
 	"fmt"
 	"net"
 	"os"
-	"anonymous-messaging/networker"
 )
 
 type MixServerIt interface {
@@ -16,14 +16,13 @@ type MixServerIt interface {
 }
 
 type MixServer struct {
-	Id string
+	Id   string
 	Host string
 	Port string
 
 	node.Mix
 
 	listener *net.TCPListener
-
 }
 
 func (m *MixServer) ReceivedPacket(packet packet_format.Packet) {
@@ -31,11 +30,11 @@ func (m *MixServer) ReceivedPacket(packet packet_format.Packet) {
 
 	c := make(chan packet_format.Packet)
 	go m.ProcessPacket(packet, c)
-	dePacket := <- c
+	dePacket := <-c
 
 	fmt.Println("> Decoded packet: ", dePacket)
 
-	if dePacket.Steps[m.Id].Meta.FinalFlag{
+	if dePacket.Steps[m.Id].Meta.FinalFlag {
 		m.ForwardPacket(dePacket)
 	}
 }
@@ -47,9 +46,9 @@ func (m *MixServer) ForwardPacket(packet packet_format.Packet) {
 	m.SendPacket(packet, next.NextHopHost, next.NextHopPort)
 }
 
-func (m *MixServer) SendPacket(packet packet_format.Packet, host, port string){
+func (m *MixServer) SendPacket(packet packet_format.Packet, host, port string) {
 
-	conn, err := net.Dial("tcp", host + ":" + port)
+	conn, err := net.Dial("tcp", host+":"+port)
 	if err != nil {
 		fmt.Print("Error in Client connect", err.Error())
 		os.Exit(1)
@@ -62,7 +61,6 @@ func (m *MixServer) SendPacket(packet packet_format.Packet, host, port string){
 func (m *MixServer) Start() {
 	defer m.Run()
 }
-
 
 func (m *MixServer) Run() {
 
@@ -79,7 +77,7 @@ func (m *MixServer) Run() {
 	<-finish
 }
 
-func (m *MixServer) ListenForIncomingConnections(){
+func (m *MixServer) ListenForIncomingConnections() {
 	for {
 		conn, err := m.listener.Accept()
 
@@ -135,8 +133,7 @@ func NewMixServer(id, host, port string, pubKey, prvKey int, pkiPath string) *Mi
 	mixServer := MixServer{id, host, port, node, nil}
 	SaveInPKI(&mixServer, pkiPath)
 
-
-	addr, err := net.ResolveTCPAddr("tcp", mixServer.Host + ":" + mixServer.Port)
+	addr, err := net.ResolveTCPAddr("tcp", mixServer.Host+":"+mixServer.Port)
 	mixServer.listener, err = net.ListenTCP("tcp", addr)
 
 	if err != nil {
@@ -146,4 +143,3 @@ func NewMixServer(id, host, port string, pubKey, prvKey int, pkiPath string) *Mi
 
 	return &mixServer
 }
-

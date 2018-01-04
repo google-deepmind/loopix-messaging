@@ -2,11 +2,11 @@ package helpers
 
 import (
 	"anonymous-messaging/publics"
-	"time"
 	"math/rand"
+	"time"
 )
 
-func Permute(slice []publics.MixPubs) []publics.MixPubs{
+func Permute(slice []publics.MixPubs) []publics.MixPubs {
 	rand.Seed(time.Now().UTC().UnixNano())
 	permutedData := make([]publics.MixPubs, len(slice))
 	permutation := rand.Perm(len(slice))

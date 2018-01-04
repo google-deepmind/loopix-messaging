@@ -1,9 +1,9 @@
 package clientCore
 
 import (
-	"anonymous-messaging/publics"
-	"anonymous-messaging/packet_format"
 	"anonymous-messaging/helpers"
+	"anonymous-messaging/packet_format"
+	"anonymous-messaging/publics"
 )
 
 type MixClientIt interface {
@@ -14,7 +14,7 @@ type MixClientIt interface {
 }
 
 type MixClient struct {
-	Id string
+	Id     string
 	PubKey int
 	PrvKey int
 }
@@ -29,7 +29,7 @@ func (c *MixClient) DecodeMessage(packet packet_format.Packet) packet_format.Pac
 
 func (c *MixClient) GenerateDelaySequence(desiredRateParameter float64, length int) []float64 {
 	var delays []float64
-	for i := 0; i < length; i++{
+	for i := 0; i < length; i++ {
 		delays = append(delays, helpers.RandomExponential(desiredRateParameter))
 	}
 	return delays
@@ -44,7 +44,7 @@ func (c *MixClient) GetRandomMixSequence(mixes []publics.MixPubs, length int) []
 	}
 }
 
-func NewMixClient(id string, pubKey, prvKey int) *MixClient{
+func NewMixClient(id string, pubKey, prvKey int) *MixClient {
 	mixClient := MixClient{id, pubKey, prvKey}
 	return &mixClient
 }

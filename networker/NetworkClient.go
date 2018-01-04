@@ -1,5 +1,5 @@
 package networker
 
-type NetworkClient interface{
+type NetworkClient interface {
 	Send(packet string, host string, port string)
 }

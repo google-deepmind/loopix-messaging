@@ -1,21 +1,21 @@
 package client
 
 import (
+	"anonymous-messaging/clientCore"
+	"anonymous-messaging/networker"
 	"anonymous-messaging/packet_format"
+	"anonymous-messaging/pki"
+	"anonymous-messaging/publics"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"net"
 	"os"
-	"anonymous-messaging/publics"
-	"anonymous-messaging/pki"
-	"github.com/jmoiron/sqlx"
 	"reflect"
-	"anonymous-messaging/networker"
-	"anonymous-messaging/clientCore"
 )
 
 const (
 	desiredRateParameter = 5
-	pathLength = 2
+	pathLength           = 2
 )
 
 type ClientIt interface {
@@ -30,18 +30,17 @@ type ClientIt interface {
 }
 
 type Client struct {
-	Id string
+	Id   string
 	Host string
 	Port string
 
 	clientCore.MixClient
 
-	ActiveMixes []publics.MixPubs
+	ActiveMixes  []publics.MixPubs
 	OtherClients []publics.MixPubs
 
 	listener *net.TCPListener
 }
-
 
 func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
 	mixSeq := c.GetRandomMixSequence(c.ActiveMixes, pathLength)
@@ -60,13 +59,12 @@ func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
 	}
 	delays := c.GenerateDelaySequence(desiredRateParameter, pathLength)
 
-
 	packet := c.EncodeMessage(message, path, delays)
 	c.Send(packet_format.ToString(packet), path[0].Host, path[0].Port)
 }
 
 func (c *Client) Send(packet string, host string, port string) {
-	conn, err := net.Dial("tcp", host + ":" + port)
+	conn, err := net.Dial("tcp", host+":"+port)
 	defer conn.Close()
 
 	if err != nil {
@@ -104,7 +102,7 @@ func (c *Client) HandleConnection(conn net.Conn) {
 	conn.Close()
 }
 
-func (c *Client) ProcessPacket(packet packet_format.Packet) string{
+func (c *Client) ProcessPacket(packet packet_format.Packet) string {
 	fmt.Println("Processing packet: ", packet)
 	return packet.Message
 }
@@ -140,7 +138,7 @@ func (c *Client) ReadInMixnetPKI(pkiName string) {
 	fmt.Println("Reading network")
 
 	db := c.ConnectToPKI(pkiName)
-	records := pki.QueryDatabase(db,"Mixes")
+	records := pki.QueryDatabase(db, "Mixes")
 
 	for records.Next() {
 		results := make(map[string]interface{})
@@ -152,19 +150,18 @@ func (c *Client) ReadInMixnetPKI(pkiName string) {
 		}
 
 		pubs := publics.NewMixPubs(string(results["MixId"].([]byte)), string(results["Host"].([]byte)),
-									string(results["Port"].([]byte)), results["PubKey"].(int64))
+			string(results["Port"].([]byte)), results["PubKey"].(int64))
 
 		c.ActiveMixes = append(c.ActiveMixes, pubs)
 	}
 	fmt.Println("> The mix network data is uploaded.")
 }
 
-
 func (c *Client) ReadInClientsPKI(pkiName string) {
 	fmt.Println("Reading public information about clients")
 
 	db := c.ConnectToPKI(pkiName)
-	records := pki.QueryDatabase(db,"Clients")
+	records := pki.QueryDatabase(db, "Clients")
 
 	for records.Next() {
 		results := make(map[string]interface{})
@@ -181,7 +178,7 @@ func (c *Client) ReadInClientsPKI(pkiName string) {
 	fmt.Println("> The clients data is uploaded.")
 }
 
-func (c *Client) ConnectToPKI(dbName string) *sqlx.DB{
+func (c *Client) ConnectToPKI(dbName string) *sqlx.DB {
 	return pki.OpenDatabase(dbName, "sqlite3")
 }
 
@@ -208,14 +205,13 @@ func SaveInPKI(c Client, pkiDir string) {
 	db.Close()
 }
 
-
-func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) *Client{
+func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) *Client {
 	core := clientCore.MixClient{id, pubKey, prvKey}
-	c := Client{Id:id, Host:host, Port:port, MixClient:core}
+	c := Client{Id: id, Host: host, Port: port, MixClient: core}
 
 	SaveInPKI(c, pkiDir)
 
-	addr, err := net.ResolveTCPAddr("tcp", c.Host + ":" + c.Port)
+	addr, err := net.ResolveTCPAddr("tcp", c.Host+":"+c.Port)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)

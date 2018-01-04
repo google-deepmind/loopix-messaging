@@ -1,14 +1,14 @@
 package clientCore
 
 import (
-	"testing"
 	"anonymous-messaging/packet_format"
-	"github.com/stretchr/testify/assert"
 	"anonymous-messaging/publics"
-	"os"
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"os"
 	"reflect"
 	"strconv"
+	"testing"
 )
 
 var mixClient MixClient
@@ -59,16 +59,16 @@ func TestGenerateDelaySequence(t *testing.T) {
 func TestGetRandomMixSequence(t *testing.T) {
 	// test two cases: the one when len is smaller than all mixes and the one when length is larger / the same
 	var mixes []publics.MixPubs
-	for i:=0; i < 5; i++ {
+	for i := 0; i < 5; i++ {
 		mixes = append(mixes, publics.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), int64(i)))
 	}
 
 	var sequence []publics.MixPubs
 	sequence = mixClient.GetRandomMixSequence(mixes, 6)
-	assert.Equal(t, 5, len(sequence), "When the given length is larger than the number of active nodes, the path should be " +
+	assert.Equal(t, 5, len(sequence), "When the given length is larger than the number of active nodes, the path should be "+
 		"the sequence of all active mixes")
 
 	sequence = mixClient.GetRandomMixSequence(mixes, 3)
-	assert.Equal(t, 3, len(sequence), "When the given length is larger than the number of active nodes, the path should be " +
+	assert.Equal(t, 3, len(sequence), "When the given length is larger than the number of active nodes, the path should be "+
 		"the sequence of all active mixes")
 }

@@ -1,22 +1,21 @@
 package client
-import (
-	"testing"
-	"github.com/stretchr/testify/assert"
-	"anonymous-messaging/publics"
-	"anonymous-messaging/packet_format"
-	"os"
-	"net"
-	"github.com/jmoiron/sqlx"
-	"fmt"
-	"strconv"
-)
 
+import (
+	"anonymous-messaging/packet_format"
+	"anonymous-messaging/publics"
+	"fmt"
+	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/assert"
+	"net"
+	"os"
+	"strconv"
+	"testing"
+)
 
 var client Client
 var mixPubs []publics.MixPubs
 var clientPubs []publics.MixPubs
 var testPacket packet_format.Packet
-
 
 func makeTestInMemoryPKI() {
 	db, err := sqlx.Connect("sqlite3", "testDatabase.db")
@@ -36,10 +35,9 @@ func makeTestInMemoryPKI() {
 	}
 	statement.Exec()
 
-	for _, elem := range mixPubs{
+	for _, elem := range mixPubs {
 		db.Exec("INSERT INTO Mixes (MixId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey)
 	}
-
 
 	for i := 0; i < 10; i++ {
 		client := publics.NewMixPubs(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), 0)
@@ -52,22 +50,22 @@ func makeTestInMemoryPKI() {
 	}
 	statement.Exec()
 
-	for _, elem := range clientPubs{
+	for _, elem := range clientPubs {
 		db.Exec("INSERT INTO Clients (ClientId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey)
 	}
 
 	defer db.Close()
 }
 
-func clean(){
+func clean() {
 	err := os.Remove("testDatabase.db")
 	if err != nil {
 		panic(err)
 	}
 }
 
-func TestMain(m *testing.M){
-	client = *NewClient("Client", "localhost", "3332", "../pki/database.db", 0, 0 )
+func TestMain(m *testing.M) {
+	client = *NewClient("Client", "localhost", "3332", "../pki/database.db", 0, 0)
 	testPacket = packet_format.NewPacket("Message", nil, nil, nil)
 
 	makeTestInMemoryPKI()
@@ -106,7 +104,6 @@ func TestClientHandleConnection(t *testing.T) {
 
 	// How I should now check that HandleConnection performed what it was suppose to do? Should I mock?
 }
-
 
 func TestClientStart(t *testing.T) {
 	// TO DO
@@ -151,7 +148,7 @@ func TestClientSaveInPKI(t *testing.T) {
 	for rows.Next() {
 		results := make(map[string]interface{})
 		e := rows.MapScan(results)
-		if e != nil{
+		if e != nil {
 			t.Error(e)
 		}
 

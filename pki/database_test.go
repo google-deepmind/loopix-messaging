@@ -1,13 +1,12 @@
 package pki
 
-
 import (
-	"testing"
-	"os"
-	"github.com/stretchr/testify/assert"
 	"database/sql"
 	"fmt"
 	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/assert"
+	"os"
+	"testing"
 )
 
 func Setup() {
@@ -58,7 +57,7 @@ func TestCreateTable(t *testing.T) {
 		panic(err)
 	}
 
-	params := map[string]string{"Column1" : "TEXT", "Column2" : "NUM", "Column3" : "BIT", "Column4" : "BLOB"}
+	params := map[string]string{"Column1": "TEXT", "Column2": "NUM", "Column3": "BIT", "Column4": "BLOB"}
 	CreateTable(db, "TestTable", params)
 
 	var exists bool
@@ -76,8 +75,7 @@ func TestInsertToTable(t *testing.T) {
 		panic(e)
 	}
 
-
-	data := map[string]interface{}{"Column1" : "SpecialValue", "Column2" : 23, "Column3" : true, "Column4":"XYZ"}
+	data := map[string]interface{}{"Column1": "SpecialValue", "Column2": 23, "Column3": true, "Column4": "XYZ"}
 	InsertToTable(db, "TestTable", data)
 
 	var exists bool
@@ -89,11 +87,11 @@ func TestInsertToTable(t *testing.T) {
 }
 
 func TestQueryDatabase(t *testing.T) {
-	db := OpenDatabase(  "./testDatabase2.db", "sqlite3")
+	db := OpenDatabase("./testDatabase2.db", "sqlite3")
 
 	rows := QueryDatabase(db, "TestTable")
 
- 	for rows.Next() {
+	for rows.Next() {
 		results := make(map[string]interface{})
 		err := rows.MapScan(results)
 
