@@ -43,11 +43,8 @@ func (m *MixServer) ReceivedPacket(packet packet_format.Packet) {
 func (m *MixServer) ForwardPacket(packet packet_format.Packet) {
 	fmt.Println("> Forwarding packet", packet)
 	next := packet.Steps[m.Id].Meta
-	fmt.Println(next)
-	nextHost := next.NextHopHost
-	nextPort := next.NextHopPort
-	fmt.Println("NEXT PORT: ", nextPort)
-	m.SendPacket(packet, nextHost, nextPort)
+
+	m.SendPacket(packet, next.NextHopHost, next.NextHopPort)
 }
 
 func (m *MixServer) SendPacket(packet packet_format.Packet, host, port string){
@@ -102,7 +99,7 @@ func (m *MixServer) HandleConnection(conn net.Conn) {
 	reqLen, err := conn.Read(buff)
 
 	if err != nil {
-		fmt.Println()
+		fmt.Println("Connection Handle failed")
 	}
 
 	m.ReceivedPacket(packet_format.FromString(string(buff[:reqLen])))
@@ -112,7 +109,7 @@ func (m *MixServer) HandleConnection(conn net.Conn) {
 func SaveInPKI(m *MixServer, pkiPath string) {
 	fmt.Println("> Saving into Database")
 
-	db := pki.CreateAndOpenDatabase(pkiPath, pkiPath, "sqlite3")
+	db := pki.OpenDatabase(pkiPath, pkiPath, "sqlite3")
 
 	params := make(map[string]string)
 	params["MixId"] = "TEXT"

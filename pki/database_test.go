@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCreateDatabase(t *testing.T) {
-	CreateAndOpenDatabase("./testDatabase.db",  "./testDatabase.db", "sqlite3")
+	OpenDatabase("./testDatabase.db",  "./testDatabase.db", "sqlite3")
 	_, err := os.Stat("testDatabase.db")
 	assert.False(t, os.IsNotExist(err), "The database file does not exist")
 }
@@ -89,7 +89,7 @@ func TestInsertToTable(t *testing.T) {
 }
 
 func TestQueryDatabase(t *testing.T) {
-	db := CreateAndOpenDatabase("./testDatabase2.db",  "./testDatabase2.db", "sqlite3")
+	db := OpenDatabase("./testDatabase2.db",  "./testDatabase2.db", "sqlite3")
 
 	rows := QueryDatabase(db, "TestTable")
 

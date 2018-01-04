@@ -21,6 +21,12 @@ const (
 type ClientIt interface {
 	networker.NetworkClient
 	networker.NetworkServer
+	SendMessage(message string, recipient publics.MixPubs)
+	ProcessPacket(packet packet_format.Packet)
+	Start()
+	ReadInMixnetPKI()
+	ReadInClientsPKI()
+	ConnectToPKI(dbName string) *sqlx.DB
 }
 
 type Client struct {
@@ -71,7 +77,7 @@ func (c *Client) Send(packet string, host string, port string) {
 	conn.Write([]byte(packet))
 }
 
-func (c *Client) ListenForConnections() {
+func (c *Client) ListenForIncomingConnections() {
 	for {
 		conn, err := c.listener.Accept()
 
@@ -79,7 +85,6 @@ func (c *Client) ListenForConnections() {
 			fmt.Println("Error in connection accepting:", err.Error())
 			os.Exit(1)
 		}
-		fmt.Println(conn)
 		go c.HandleConnection(conn)
 	}
 }
@@ -88,8 +93,9 @@ func (c *Client) HandleConnection(conn net.Conn) {
 	fmt.Println("> Handle Connection")
 
 	buff := make([]byte, 1024)
-	reqLen, err := conn.Read(buff)
 
+	reqLen, err := conn.Read(buff)
+	fmt.Println(reqLen)
 	if err != nil {
 		fmt.Println()
 	}
@@ -107,8 +113,8 @@ func (c *Client) Start() {
 
 	defer c.Run()
 
-	c.ReadInClientsPKI()
-	c.ReadInMixnetPKI()
+	c.ReadInClientsPKI("./pki/database.db")
+	c.ReadInMixnetPKI("./pki/database.db")
 
 }
 
@@ -120,7 +126,7 @@ func (c *Client) Run() {
 
 	go func() {
 		fmt.Println("Listening on " + c.Host + ":" + c.Port)
-		c.ListenForConnections()
+		c.ListenForIncomingConnections()
 	}()
 
 	go func() {
@@ -130,10 +136,10 @@ func (c *Client) Run() {
 	<-finish
 }
 
-func (c *Client) ReadInMixnetPKI() {
+func (c *Client) ReadInMixnetPKI(pkiName string) {
 	fmt.Println("Reading network")
 
-	db := c.ConnectToPKI()
+	db := c.ConnectToPKI(pkiName)
 	records := pki.QueryDatabase(db,"Mixes")
 
 	for records.Next() {
@@ -154,10 +160,10 @@ func (c *Client) ReadInMixnetPKI() {
 }
 
 
-func (c *Client) ReadInClientsPKI() {
+func (c *Client) ReadInClientsPKI(pkiName string) {
 	fmt.Println("Reading public information about clients")
 
-	db := c.ConnectToPKI()
+	db := c.ConnectToPKI(pkiName)
 	records := pki.QueryDatabase(db,"Clients")
 
 	for records.Next() {
@@ -175,14 +181,14 @@ func (c *Client) ReadInClientsPKI() {
 	fmt.Println("> The clients data is uploaded.")
 }
 
-func (c *Client) ConnectToPKI() *sqlx.DB{
-	return pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
+func (c *Client) ConnectToPKI(dbName string) *sqlx.DB{
+	return pki.OpenDatabase(dbName, "sqlite3")
 }
 
-func SaveInPKI(c *Client, pkiDir string) {
+func SaveInPKI(c Client, pkiDir string) {
 	fmt.Println("> Saving Client Public Info into Database")
 
-	db := pki.CreateAndOpenDatabase(pkiDir, pkiDir, "sqlite3")
+	db := pki.OpenDatabase(pkiDir, "sqlite3")
 
 	params := make(map[string]string)
 	params["ClientId"] = "TEXT"
@@ -207,7 +213,7 @@ func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) *Client{
 	core := clientCore.MixClient{id, pubKey, prvKey}
 	c := Client{Id:id, Host:host, Port:port, MixClient:core}
 
-	SaveInPKI(&c, pkiDir)
+	SaveInPKI(c, pkiDir)
 
 	addr, err := net.ResolveTCPAddr("tcp", c.Host + ":" + c.Port)
 	if err != nil {

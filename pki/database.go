@@ -8,7 +8,7 @@ import (
 )
 
 
-func CreateAndOpenDatabase(dbName, dataSourceName, dbDriver string) *sqlx.DB{
+func OpenDatabase(dataSourceName, dbDriver string) *sqlx.DB{
 
 	var db *sqlx.DB
 	db, err := sqlx.Connect(dbDriver, dataSourceName)
