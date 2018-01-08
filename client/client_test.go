@@ -1,16 +1,16 @@
 package client
 
 import (
-	"anonymous-messaging/packet_format"
-	"anonymous-messaging/publics"
-	"github.com/jmoiron/sqlx"
-	"github.com/stretchr/testify/assert"
-
 	"fmt"
 	"net"
 	"os"
 	"strconv"
 	"testing"
+
+	"anonymous-messaging/packet_format"
+	"anonymous-messaging/publics"
+	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/assert"
 )
 
 var client Client

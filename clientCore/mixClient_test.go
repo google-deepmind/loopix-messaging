@@ -1,15 +1,15 @@
 package clientCore
 
 import (
-	"anonymous-messaging/packet_format"
-	"anonymous-messaging/publics"
-	"github.com/stretchr/testify/assert"
-
 	"fmt"
 	"os"
 	"reflect"
 	"strconv"
 	"testing"
+
+	"anonymous-messaging/packet_format"
+	"anonymous-messaging/publics"
+	"github.com/stretchr/testify/assert"
 )
 
 var cryptoClient CryptoClient

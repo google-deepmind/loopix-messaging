@@ -1,12 +1,12 @@
 package node
 
 import (
-	"anonymous-messaging/packet_format"
-	"anonymous-messaging/publics"
-
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"anonymous-messaging/packet_format"
+	"anonymous-messaging/publics"
+	"github.com/stretchr/testify/assert"
 )
 
 var mixWorker Mix

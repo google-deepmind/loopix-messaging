@@ -1,12 +1,11 @@
 package pki
 
 import (
+	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-
-	"fmt"
-	"strings"
 )
 
 func OpenDatabase(dataSourceName, dbDriver string) *sqlx.DB {

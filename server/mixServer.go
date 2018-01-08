@@ -1,13 +1,14 @@
 package server
 
 import (
+	"fmt"
+	"net"
+	"os"
+
 	"anonymous-messaging/networker"
 	"anonymous-messaging/node"
 	"anonymous-messaging/packet_format"
 	"anonymous-messaging/pki"
-	"fmt"
-	"net"
-	"os"
 )
 
 type MixServerIt interface {

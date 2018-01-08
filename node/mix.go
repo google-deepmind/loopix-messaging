@@ -1,9 +1,10 @@
 package node
 
 import (
-	"anonymous-messaging/packet_format"
 	"fmt"
 	"time"
+
+	"anonymous-messaging/packet_format"
 )
 
 type Mix struct {

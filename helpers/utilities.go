@@ -1,9 +1,10 @@
 package helpers
 
 import (
-	"anonymous-messaging/publics"
 	"math/rand"
 	"time"
+
+	"anonymous-messaging/publics"
 )
 
 func Permute(slice []publics.MixPubs) []publics.MixPubs {

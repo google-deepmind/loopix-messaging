@@ -1,9 +1,10 @@
 package packet_format
 
 import (
-	"anonymous-messaging/publics"
 	"encoding/json"
 	"fmt"
+
+	"anonymous-messaging/publics"
 )
 
 type Header struct {

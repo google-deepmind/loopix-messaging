@@ -3,10 +3,11 @@ package pki
 import (
 	"database/sql"
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/assert"
 )
 
 func Setup() {

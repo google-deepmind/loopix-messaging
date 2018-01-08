@@ -1,12 +1,12 @@
 package packet_format
 
 import (
-	"anonymous-messaging/publics"
-	"github.com/stretchr/testify/assert"
-
 	"encoding/json"
 	"os"
 	"testing"
+
+	"anonymous-messaging/publics"
+	"github.com/stretchr/testify/assert"
 )
 
 var packet Packet
