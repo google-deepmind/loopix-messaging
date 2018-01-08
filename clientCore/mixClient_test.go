@@ -12,11 +12,11 @@ import (
 	"testing"
 )
 
-var mixClient MixClient
+var cryptoClient CryptoClient
 var mixPubs []publics.MixPubs
 
 func TestMain(m *testing.M) {
-	mixClient = *NewMixClient("MixClient", 1, 0)
+	cryptoClient = CryptoClient{Id: "MixClient", PubKey: 1, PrvKey: 0}
 
 	m1 := publics.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: 0}
 	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: 0}
@@ -31,7 +31,7 @@ func TestMixClientEncode(t *testing.T) {
 	path := mixPubs
 	delays := []float64{1.4, 2.5, 2.3}
 
-	encoded := mixClient.EncodeMessage(message, path, delays)
+	encoded := cryptoClient.EncodeMessage(message, path, delays)
 	expected := packet_format.Encode(message, path, delays)
 	assert.Equal(t, encoded, expected, "The packets should be the same")
 }
@@ -40,14 +40,14 @@ func TestMixClientDecode(t *testing.T) {
 
 	packet := packet_format.NewPacket("Message", []float64{0.1, 0.2, 0.3}, mixPubs, nil)
 
-	decoded := mixClient.DecodeMessage(packet)
+	decoded := cryptoClient.DecodeMessage(packet)
 	expected := packet_format.Decode(packet)
 
 	assert.Equal(t, decoded, expected, "The packets should be the same")
 }
 
 func TestGenerateDelaySequence(t *testing.T) {
-	delays := mixClient.GenerateDelaySequence(100, 5)
+	delays := cryptoClient.GenerateDelaySequence(100, 5)
 	if len(delays) != 5 {
 		t.Error("Wrong length")
 	}
@@ -64,11 +64,11 @@ func TestGetRandomMixSequence(t *testing.T) {
 	}
 
 	var sequence []publics.MixPubs
-	sequence = mixClient.GetRandomMixSequence(mixes, 6)
+	sequence = cryptoClient.GetRandomMixSequence(mixes, 6)
 	assert.Equal(t, 5, len(sequence), "When the given length is larger than the number of active nodes, the path should be "+
 		"the sequence of all active mixes")
 
-	sequence = mixClient.GetRandomMixSequence(mixes, 3)
+	sequence = cryptoClient.GetRandomMixSequence(mixes, 3)
 	assert.Equal(t, 3, len(sequence), "When the given length is larger than the number of active nodes, the path should be "+
 		"the sequence of all active mixes")
 }

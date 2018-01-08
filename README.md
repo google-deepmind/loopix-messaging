@@ -1,14 +1,19 @@
-# Using the Code
+#Anonymous messaging using mix networks
+## Using the Code
 To build and test the code you need:
 
     *   Go 1.9 or later
 
 Before running or testing the code run 
     
-    *   govendor install +local
-    *   govendor test +local
+    ```shell
+        govendor install +local
+        govendor test +local
+    ```
     
 To perform the unit tests run 
 
-    * go test ./...
+    ```shell
+        go test ./...
+    ```
     

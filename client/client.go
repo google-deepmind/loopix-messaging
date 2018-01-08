@@ -31,11 +31,10 @@ type ClientIt interface {
 }
 
 type Client struct {
-	Id   string
 	Host string
 	Port string
 
-	clientCore.MixClient
+	clientCore.CryptoClient
 
 	ActiveMixes  []publics.MixPubs
 	OtherClients []publics.MixPubs
@@ -207,8 +206,8 @@ func SaveInPKI(c Client, pkiDir string) {
 }
 
 func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) *Client {
-	core := clientCore.MixClient{Id: id, PubKey: pubKey, PrvKey: prvKey}
-	c := Client{Id: id, Host: host, Port: port, MixClient: core}
+	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey}
+	c := Client{Host: host, Port: port, CryptoClient: core}
 
 	SaveInPKI(c, pkiDir)
 

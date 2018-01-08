@@ -6,28 +6,21 @@ import (
 	"anonymous-messaging/publics"
 )
 
-type MixClientIt interface {
-	EncodeMessage(message string, path []publics.MixPubs, delays []float64) packet_format.Packet
-	DecodeMessage(packet packet_format.Packet) packet_format.Packet
-	GenerateDelaySequence(desiredRateParameter float64, length int) []float64
-	GetRandomMixSequence(mixes []publics.MixPubs, length int) []publics.MixPubs
-}
-
-type MixClient struct {
+type CryptoClient struct {
 	Id     string
 	PubKey int
 	PrvKey int
 }
 
-func (c *MixClient) EncodeMessage(message string, path []publics.MixPubs, delays []float64) packet_format.Packet {
+func (c *CryptoClient) EncodeMessage(message string, path []publics.MixPubs, delays []float64) packet_format.Packet {
 	return packet_format.Encode(message, path, delays)
 }
 
-func (c *MixClient) DecodeMessage(packet packet_format.Packet) packet_format.Packet {
+func (c *CryptoClient) DecodeMessage(packet packet_format.Packet) packet_format.Packet {
 	return packet_format.Decode(packet)
 }
 
-func (c *MixClient) GenerateDelaySequence(desiredRateParameter float64, length int) []float64 {
+func (c *CryptoClient) GenerateDelaySequence(desiredRateParameter float64, length int) []float64 {
 	var delays []float64
 	for i := 0; i < length; i++ {
 		delays = append(delays, helpers.RandomExponential(desiredRateParameter))
@@ -35,16 +28,11 @@ func (c *MixClient) GenerateDelaySequence(desiredRateParameter float64, length i
 	return delays
 }
 
-func (c *MixClient) GetRandomMixSequence(mixes []publics.MixPubs, length int) []publics.MixPubs {
+func (c *CryptoClient) GetRandomMixSequence(mixes []publics.MixPubs, length int) []publics.MixPubs {
 	if length > len(mixes) {
 		return mixes
 	} else {
 		randomSeq := helpers.RandomSample(mixes, length)
 		return randomSeq
 	}
-}
-
-func NewMixClient(id string, pubKey, prvKey int) *MixClient {
-	mixClient := MixClient{Id: id, PubKey: pubKey, PrvKey: prvKey}
-	return &mixClient
 }
