@@ -3,9 +3,10 @@ package client
 import (
 	"anonymous-messaging/packet_format"
 	"anonymous-messaging/publics"
-	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
+
+	"fmt"
 	"net"
 	"os"
 	"strconv"

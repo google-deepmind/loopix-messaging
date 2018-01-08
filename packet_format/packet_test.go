@@ -2,8 +2,9 @@ package packet_format
 
 import (
 	"anonymous-messaging/publics"
-	"encoding/json"
 	"github.com/stretchr/testify/assert"
+
+	"encoding/json"
 	"os"
 	"testing"
 )
@@ -21,8 +22,7 @@ func TestMain(m *testing.M) {
 
 	mixPubs = []publics.MixPubs{m1, m2}
 
-	code := m.Run()
-	os.Exit(code)
+	os.Exit(m.Run())
 }
 
 func TestPacketEncode(t *testing.T) {

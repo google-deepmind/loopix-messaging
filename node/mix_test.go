@@ -3,6 +3,7 @@ package node
 import (
 	"anonymous-messaging/packet_format"
 	"anonymous-messaging/publics"
+
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
@@ -25,8 +26,7 @@ func TestMain(m *testing.M) {
 	meta1 := packet_format.MetaData{NextHopId: "Mix2", NextHopHost: "localhost", NextHopPort: "3331", FinalFlag: true}
 	steps["Mix1"] = packet_format.Header{Meta: meta1, Delay: 1.4}
 	packet = packet_format.NewPacket("Hello you", delays, path, steps)
-	code := m.Run()
-	os.Exit(code)
+	os.Exit(m.Run())
 }
 
 func TestMixProcessPacket(t *testing.T) {

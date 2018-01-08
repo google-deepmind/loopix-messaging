@@ -1,9 +1,11 @@
 package pki
 
 import (
-	"fmt"
+
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+
+	"fmt"
 	"strings"
 )
 

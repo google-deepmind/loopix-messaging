@@ -3,8 +3,9 @@ package clientCore
 import (
 	"anonymous-messaging/packet_format"
 	"anonymous-messaging/publics"
-	"fmt"
 	"github.com/stretchr/testify/assert"
+
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -21,8 +22,7 @@ func TestMain(m *testing.M) {
 	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: 0}
 	mixPubs = []publics.MixPubs{m1, m2}
 
-	code := m.Run()
-	os.Exit(code)
+	os.Exit(m.Run())
 }
 
 func TestMixClientEncode(t *testing.T) {
