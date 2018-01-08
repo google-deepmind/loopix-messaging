@@ -8,6 +8,6 @@ type MixPubs struct {
 }
 
 func NewMixPubs(mixId, host, port string, pubKey int64) MixPubs {
-	mixPubs := MixPubs{mixId, host, port, pubKey}
+	mixPubs := MixPubs{Id: mixId, Host: host, Port: port, PubKey: pubKey}
 	return mixPubs
 }

@@ -45,6 +45,6 @@ func (c *MixClient) GetRandomMixSequence(mixes []publics.MixPubs, length int) []
 }
 
 func NewMixClient(id string, pubKey, prvKey int) *MixClient {
-	mixClient := MixClient{id, pubKey, prvKey}
+	mixClient := MixClient{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	return &mixClient
 }

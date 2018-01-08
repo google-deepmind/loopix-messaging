@@ -129,8 +129,8 @@ func SaveInPKI(m *MixServer, pkiPath string) {
 }
 
 func NewMixServer(id, host, port string, pubKey, prvKey int, pkiPath string) *MixServer {
-	node := node.Mix{id, pubKey, prvKey}
-	mixServer := MixServer{id, host, port, node, nil}
+	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
+	mixServer := MixServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
 	SaveInPKI(&mixServer, pkiPath)
 
 	addr, err := net.ResolveTCPAddr("tcp", mixServer.Host+":"+mixServer.Port)

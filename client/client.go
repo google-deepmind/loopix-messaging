@@ -6,8 +6,9 @@ import (
 	"anonymous-messaging/packet_format"
 	"anonymous-messaging/pki"
 	"anonymous-messaging/publics"
-	"fmt"
 	"github.com/jmoiron/sqlx"
+
+	"fmt"
 	"net"
 	"os"
 	"reflect"
@@ -206,7 +207,7 @@ func SaveInPKI(c Client, pkiDir string) {
 }
 
 func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) *Client {
-	core := clientCore.MixClient{id, pubKey, prvKey}
+	core := clientCore.MixClient{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	c := Client{Id: id, Host: host, Port: port, MixClient: core}
 
 	SaveInPKI(c, pkiDir)
