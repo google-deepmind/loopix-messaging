@@ -133,7 +133,7 @@ func computeMixHeaders(destination, initial string, tuples []HeaderInitials, fil
 	beta = xorTwoStrings(beta, string(sHash)) + fillers[len(fillers) - 1]
 	fmt.Println(beta)
 
-	
+
 
 
 }
@@ -142,9 +142,8 @@ func computeMixHeaders(destination, initial string, tuples []HeaderInitials, fil
 func computeBlindingFactor(key []byte) *big.Int{
 	iv := []byte("initialvector000")
 	blinderBytes := computeSharedSecretHash(key, iv)
-	blinder := bytesToBigNum(blinderBytes)
 
-	return blinder
+	return bytesToBigNum(blinderBytes)
 }
 
 func computeSharedSecretHash(key []byte, iv []byte) []byte{
@@ -170,8 +169,7 @@ func expo(base PublicKey, exp []big.Int) *PublicKey{
 	}
 	curve := base.Curve
 	resultX, resultY := curve.Params().ScalarMult(base.X, base.Y, x.Bytes())
-	result := PublicKey{curve, resultX, resultY}
-	return &result
+	return &PublicKey{curve, resultX, resultY}
 }
 
 func expo_base(curve elliptic.Curve, exp []big.Int) *PublicKey{
