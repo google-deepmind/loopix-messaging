@@ -7,7 +7,6 @@ import (
 	"os"
 	"crypto/rand"
 	"github.com/stretchr/testify/assert"
-	"fmt"
 )
 
 var curve elliptic.Curve
@@ -121,7 +120,7 @@ func TestComputeBlindingFactor(t *testing.T){
 
 func TestCreateHeader(t *testing.T){
 
-	pubs := []PublicKey{}
+	var pubs []PublicKey
 
 	for i := 1; i <=3; i++ {
 		pointX, pointY := curve.ScalarBaseMult(big.NewInt(6).Bytes())
@@ -129,17 +128,10 @@ func TestCreateHeader(t *testing.T){
 		pubs = append(pubs, *point)
 	}
 
-	for _, p := range pubs {
-		fmt.Println("X: ", p.X)
-		fmt.Println( "Y: ", p.Y)
-		fmt.Println("-----")
-	}
-
 	x := big.NewInt(100)
 
 
 	result := computeSharedSecrets(curve, pubs, *x)
-	fmt.Println(result)
 
 	var expected []HeaderInitials
 	blindFactors := []big.Int{*x}
@@ -177,4 +169,28 @@ func TestCreateHeader(t *testing.T){
 	assert.Equal(t, expected, result)
 
 
+}
+
+
+func TestComputeFillers(t *testing.T){
+
+	g := PublicKey{Curve: curve, X: curve.Params().Gx, Y : curve.Params().Gy}
+	h1 := HeaderInitials{Alpha: PublicKey{}, Secret: g, Blinder: big.Int{}}
+	h2 := HeaderInitials{Alpha: PublicKey{}, Secret: g, Blinder: big.Int{}}
+	h3 := HeaderInitials{Alpha: PublicKey{}, Secret: g, Blinder: big.Int{}}
+	tuples := []HeaderInitials{h1, h2, h3}
+
+	fillers := computeFillers(tuples)
+
+	computeMixHeaders("Destination", "InitialVector11111", tuples, fillers)
+}
+
+func TestXorTwoStringsPass(t *testing.T){
+	result := xorTwoStrings("00101", "10110")
+	assert.Equal(t, "10011", result)
+}
+
+func TestXorTwoStringsFail(t *testing.T){
+	result := xorTwoStrings("00101", "10110")
+	assert.NotEqual(t, "00000", result)
 }

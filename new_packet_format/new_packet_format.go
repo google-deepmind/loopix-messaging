@@ -9,7 +9,12 @@ import (
 	"crypto/cipher"
 	"encoding/json"
 	"crypto/sha256"
+	"strings"
 )
+
+
+var K = 16
+var R = 5
 
 type NewPacketFormat struct {
 
@@ -30,13 +35,58 @@ type HeaderInitials struct {
 	Blinder big.Int
 }
 
+type Header struct {
+	Alpha PublicKey
+	Beta string
+	Mac string
+}
+
+func createForwardMessage(curve elliptic.Curve, pubs []PublicKey, message string) {
+	createHeader(curve, pubs)
+}
+
+
 func createHeader(curve elliptic.Curve, pubs []PublicKey) {
 
 	x := randomBigInt(curve.Params())
 
-	computeSharedSecrets(curve, pubs, x)
+	tuples := computeSharedSecrets(curve, pubs, x)
+
+	fillers := computeFillers(tuples)
+
+	computeMixHeaders("Destination", "Initial", tuples, fillers)
 
 }
+
+
+func computeFillers(tuples []HeaderInitials) []string{
+
+	fillers := []string{""}
+	secrets := extractSecrets(tuples)
+
+	for i := 1; i < len(secrets); i++ {
+		f := fillers[i-1] + strings.Repeat("0", 2*K)
+		fmt.Println("FILLER LENGTH: ", len(f))
+		fillers = append(fillers, f)
+
+		sHash := getAESkey(secrets[i-1])
+		fmt.Println("HASH LENGTH: ", len(sHash))
+	}
+
+	return fillers
+
+}
+
+func extractSecrets(tuples []HeaderInitials) []PublicKey{
+
+	var secrets []PublicKey
+	for _, v := range tuples {
+		secrets = append(secrets, v.Secret)
+	}
+	return secrets
+}
+
+
 
 func computeSharedSecrets(curve elliptic.Curve, pubs []PublicKey, initialVal big.Int) []HeaderInitials{
 
@@ -47,7 +97,6 @@ func computeSharedSecrets(curve elliptic.Curve, pubs []PublicKey, initialVal big
 	for _, mix := range pubs {
 
 		alpha := expo_base(curve, blindFactors)
-		Nothing(alpha, &mix)
 
 		s := expo(mix, blindFactors)
 		aes_s := getAESkey(*s)
@@ -57,15 +106,38 @@ func computeSharedSecrets(curve elliptic.Curve, pubs []PublicKey, initialVal big
 
 		hi := HeaderInitials{Alpha:*alpha, Secret: *s, Blinder: *blinder}
 		tuples = append(tuples, hi)
+
+		// TO DO ADD XORING
 	}
 
 	return tuples
 
 }
 
-func Nothing(p *PublicKey, key *PublicKey) {
+
+func computeMixHeaders(destination, initial string, tuples []HeaderInitials, fillers []string){
+	var headers []Header
+	fmt.Println(headers)
+
+	secrets := extractSecrets(tuples)
+
+	beta := destination + initial + strings.Repeat("0", len(secrets))
+	fmt.Println(len(beta))
+
+	sHash := getAESkey(secrets[len(secrets) - 1])
+	fmt.Println(sHash)
+	fmt.Println(len(sHash))
+
+	// TAKE CARE OF THAT v := (2*(R-len(secrets)) + 3)*K -1
+
+	beta = xorTwoStrings(beta, string(sHash)) + fillers[len(fillers) - 1]
+	fmt.Println(beta)
+
+	
+
 
 }
+
 
 func computeBlindingFactor(key []byte) *big.Int{
 	iv := []byte("initialvector000")
@@ -159,4 +231,25 @@ func randomBigInt(curve *elliptic.CurveParams) big.Int{
 		panic(err)
 	}
 	return *nBig
+}
+
+func xorTwoStrings(s1, s2 string) string {
+
+	if len(s1) != len(s2){
+		panic("String cannot be xored if their length is different")
+	}
+	b1 := []byte(s1)
+	b2 := []byte(s2)
+
+	b := make([]byte, len(s1))
+	for i, _ := range b {
+		b[i] = b1[i] ^ b2[i]
+	}
+
+	result := ""
+	for _, v := range b{
+		s := fmt.Sprintf("%v", v)
+		result = result + s
+	}
+	return result
 }
