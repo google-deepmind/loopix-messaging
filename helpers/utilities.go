@@ -1,3 +1,7 @@
+/*
+	Package helpers implements all useful functions which are used in the code of anonymous messaging system.
+*/
+
 package helpers
 
 import (

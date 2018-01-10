@@ -1,3 +1,8 @@
+/*
+	Package public implements struct for easy processing and storing of all public information
+	of the network participants.
+ */
+
 package publics
 
 type MixPubs struct {

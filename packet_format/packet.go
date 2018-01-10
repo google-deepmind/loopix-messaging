@@ -1,3 +1,8 @@
+/*
+	Package packet_format implements a library with the cryptographic packet format which can be used
+	for example in mix networks. The design is based on the Sphinx packet format.
+*/
+
 package packet_format
 
 import (

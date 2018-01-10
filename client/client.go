@@ -1,3 +1,7 @@
+/*
+	Package client implements the class of a network client which can interact with a mix network.
+*/
+
 package client
 
 import (

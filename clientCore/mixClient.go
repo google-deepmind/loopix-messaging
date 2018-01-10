@@ -1,3 +1,8 @@
+/*
+	Package clientCore implements all the necessary functions for the mix client, i.e., the core of the client
+	which allows to process the received cryptographic packets.
+ */
+
 package clientCore
 
 import (
