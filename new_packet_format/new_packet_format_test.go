@@ -197,21 +197,6 @@ func TestComputeFillers(t *testing.T){
 	fillers := computeFillers([]publics.PublicKey{p1,p2,p3}, tuples)
 	fmt.Println("FILLER: ", fillers)
 
-	// computeMixHeaders("Destination", "InitialVector11111", tuples, fillers)
-}
-
-func TestCreateHeader(t *testing.T) {
-
-	pub1X, pub1Y :=  curve.Params().ScalarBaseMult(big.NewInt(3).Bytes())
-	pub2X, pub2Y :=  curve.Params().ScalarBaseMult(big.NewInt(5).Bytes())
-	pub3X, pub3Y :=  curve.Params().ScalarBaseMult(big.NewInt(7).Bytes())
-
-
-	p1 := publics.PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
-	p2 := publics.PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
-	p3 := publics.PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
-
-	createHeader(curve, []publics.PublicKey{p1, p2, p3}, "destination")
 }
 
 func TestXorBytesPass(t *testing.T){
@@ -224,7 +209,7 @@ func TestXorBytesFail(t *testing.T){
 	assert.NotEqual(t, []byte("00000"), result)
 }
 
-func TestCompute_beta_gamma(t *testing.T){
+func TestEncapsulateHeader(t *testing.T){
 
 	pub1X, pub1Y :=  curve.Params().ScalarBaseMult(big.NewInt(3).Bytes())
 	pub2X, pub2Y :=  curve.Params().ScalarBaseMult(big.NewInt(5).Bytes())
@@ -253,19 +238,69 @@ func TestCompute_beta_gamma(t *testing.T){
 
 	routing1 := RoutingInfo{NextHop: Hop{"DestinationId", "DestinationAddress", publics.PublicKey{}}, RoutingCommands: c3,
 							NextHopMetaData: nil, Mac: []byte{}}
-	mac1 := compute_mac(KDF(sharedSecrets[2].SecretHash) , routing1.Bytes())
+	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash) , routing1.Bytes())
 
 	routing2 := RoutingInfo{NextHop: Hop{"Node3", "localhost:3333", p3}, RoutingCommands : c2,
 							NextHopMetaData: &routing1, Mac: mac1}
-	mac2 := compute_mac(KDF(sharedSecrets[1].SecretHash) , routing2.Bytes())
+	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash) , routing2.Bytes())
 
 	expectedRouting = RoutingInfo{NextHop: Hop{"Node2", "localhost:3332", p2}, RoutingCommands: c1,
 									NextHopMetaData: &routing2, Mac: mac2}
-	mac3 := compute_mac(KDF(sharedSecrets[0].SecretHash) , expectedRouting.Bytes())
+	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash) , expectedRouting.Bytes())
 
 	expectedHeader = Header{sharedSecrets[0].Alpha, expectedRouting, mac3}
 
 	assert.Equal(t, expectedHeader, actualHeader)
 
 
+}
+
+func TestProcessSphinxPacket(t *testing.T) {
+
+	pub1X, pub1Y :=  curve.Params().ScalarBaseMult(big.NewInt(3).Bytes())
+	pub2X, pub2Y :=  curve.Params().ScalarBaseMult(big.NewInt(5).Bytes())
+	pub3X, pub3Y :=  curve.Params().ScalarBaseMult(big.NewInt(7).Bytes())
+
+	p1 := publics.PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
+	p2 := publics.PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
+	p3 := publics.PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
+
+	c1 := Commands{Delay: 0.34, Flag: "0"}
+	c2 := Commands{Delay: 0.25, Flag: "1"}
+	c3 := Commands{Delay: 1.10, Flag: "1"}
+	commands := []Commands{c1, c2, c3}
+
+	x := big.NewInt(100)
+	sharedSecrets := getSharedSecrets(curve, []publics.PublicKey{p1, p2, p3}, *x)
+
+	nodesPubs := []publics.MixPubs{publics.NewMixPubs("Node1", "localhost", "3331", 0),
+		publics.NewMixPubs("Node2", "localhost", "3332", 0),
+		publics.NewMixPubs("Node3", "localhost", "3333", 0)}
+
+	header := encapsulateHeader(sharedSecrets, nodesPubs, []publics.PublicKey{p1, p2, p3}, commands, []string{"DestinationId", "DestinationAddress", "DestKey"})
+
+
+	_, privKey := generateKeyPair()
+	fmt.Println(privKey)
+	processSphinxPacket(header, privKey)
+	//pub1X, pub1Y :=  curve.Params().ScalarBaseMult(big.NewInt(3).Bytes())
+	//pub2X, pub2Y :=  curve.Params().ScalarBaseMult(big.NewInt(5).Bytes())
+	//pub3X, pub3Y :=  curve.Params().ScalarBaseMult(big.NewInt(7).Bytes())
+	//
+	//p1 := publics.PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
+	//p2 := publics.PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
+	//p3 := publics.PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
+	//
+	//c1 := Commands{Delay: 0.34, Flag: "0"}
+	//c2 := Commands{Delay: 0.25, Flag: "1"}
+	//c3 := Commands{Delay: 1.10, Flag: "1"}
+	//commands := []Commands{c1, c2, c3}
+	//
+	//nodesPubs := []publics.MixPubs{publics.NewMixPubs("Node1", "localhost", "3331", 0),
+	//	publics.NewMixPubs("Node2", "localhost", "3332", 0),
+	//	publics.NewMixPubs("Node3", "localhost", "3333", 0)}
+	//
+	//dest := []string{"DestinationId", "DestinationAddress", "DestKey"}
+	//
+	//header := createHeader(curve, nodesPubs, []publics.PublicKey{p1, p2, p3}, commands, dest)
 }

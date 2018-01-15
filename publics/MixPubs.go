@@ -27,11 +27,10 @@ type PublicKey struct {
 	X, Y *big.Int
 }
 
-
 func (p *PublicKey) Bytes() []byte{
 	return elliptic.Marshal(p.Curve, p.X, p.Y)
 }
 
 type PrivateKey struct {
-	privk []byte
+	Value []byte
 }
