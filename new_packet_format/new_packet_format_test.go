@@ -27,13 +27,13 @@ func TestExpoSingleValue(t *testing.T) {
 		t.Error(err)
 	}
 
-	randomPoint := &PublicKey{Curve : curve, X : x, Y : y}
+	randomPoint := &publics.PublicKey{Curve : curve, X : x, Y : y}
 	nBig := *big.NewInt(2)
 	exp := []big.Int{nBig}
 
 	result := expo(*randomPoint, exp)
 	expectedX, expectedY := curve.ScalarMult(randomPoint.X, randomPoint.Y, nBig.Bytes())
-	assert.Equal(t, PublicKey{Curve: curve, X: expectedX, Y: expectedY}, result)
+	assert.Equal(t, publics.PublicKey{Curve: curve, X: expectedX, Y: expectedY}, result)
 
 }
 
@@ -43,7 +43,7 @@ func TestExpoMultipleValue(t *testing.T) {
 	if err != nil{
 		t.Error(err)
 	}
-	randomPoint := &PublicKey{Curve : curve, X : x, Y : y}
+	randomPoint := &publics.PublicKey{Curve : curve, X : x, Y : y}
 
 	var exp []big.Int
 	for i := 1; i <= 5; i++ {
@@ -52,7 +52,7 @@ func TestExpoMultipleValue(t *testing.T) {
 
 	result := expo(*randomPoint, exp)
 	expectedX, expectedY := curve.ScalarMult(randomPoint.X, randomPoint.Y, big.NewInt(120).Bytes())
-	assert.Equal(t, PublicKey{Curve: curve, X: expectedX, Y: expectedY}, result)
+	assert.Equal(t, publics.PublicKey{Curve: curve, X: expectedX, Y: expectedY}, result)
 }
 
 func TestExpoBaseSingleValue(t *testing.T) {
@@ -62,7 +62,7 @@ func TestExpoBaseSingleValue(t *testing.T) {
 	result := expo_group_base(curve, exp)
 	expectedX, expectedY := curve.ScalarBaseMult(nBig.Bytes())
 
-	assert.Equal(t, PublicKey{Curve: curve, X: expectedX, Y: expectedY}, result)
+	assert.Equal(t, publics.PublicKey{Curve: curve, X: expectedX, Y: expectedY}, result)
 }
 
 func TestExpoBaseMultipleValue(t *testing.T){
@@ -72,7 +72,7 @@ func TestExpoBaseMultipleValue(t *testing.T){
 	}
 	result := expo_group_base(curve, exp)
 	expectedX, expectedY := curve.ScalarBaseMult(big.NewInt(6).Bytes())
-	assert.Equal(t, PublicKey{Curve: curve, X: expectedX, Y: expectedY}, result)
+	assert.Equal(t, publics.PublicKey{Curve: curve, X: expectedX, Y: expectedY}, result)
 
 }
 
@@ -83,7 +83,7 @@ func TestHash(t *testing.T){
 		t.Error(err)
 	}
 
-	randomPoint := &PublicKey{Curve : curve, X : x, Y : y}
+	randomPoint := &publics.PublicKey{Curve : curve, X : x, Y : y}
 	hVal := hash(randomPoint.Bytes())
 
 	assert.Equal(t, 32, len(hVal))
@@ -103,14 +103,14 @@ func TestGetAESKey(t *testing.T) {
 		t.Error(err)
 	}
 
-	randomPoint := &PublicKey{Curve : curve, X : x, Y : y}
+	randomPoint := &publics.PublicKey{Curve : curve, X : x, Y : y}
 	aesKey := KDF(randomPoint.Bytes())
 	assert.Equal(t, aes.BlockSize, len(aesKey))
 
 }
 
 func TestComputeBlindingFactor(t *testing.T){
-	generator := PublicKey{Curve : curve, X : curve.Params().Gx, Y : curve.Params().Gy}
+	generator := publics.PublicKey{Curve : curve, X : curve.Params().Gx, Y : curve.Params().Gy}
 
 	key := hash(generator.Bytes())
 	b := computeBlindingFactor(curve, key)
@@ -123,11 +123,11 @@ func TestComputeBlindingFactor(t *testing.T){
 
 func TestGetSharedSecrets(t *testing.T){
 
-	var pubs []PublicKey
+	var pubs []publics.PublicKey
 
 	for i := 1; i <=3; i++ {
 		pointX, pointY := curve.ScalarBaseMult(big.NewInt(6).Bytes())
-		point := &PublicKey{Curve : curve, X : pointX, Y : pointY}
+		point := &publics.PublicKey{Curve : curve, X : pointX, Y : pointY}
 		pubs = append(pubs, *point)
 	}
 
@@ -138,11 +138,11 @@ func TestGetSharedSecrets(t *testing.T){
 
 	var expected []HeaderInitials
 	blindFactors := []big.Int{*x}
-	g := PublicKey{Curve: curve, X: curve.Params().Gx, Y : curve.Params().Gy}
+	g := publics.PublicKey{Curve: curve, X: curve.Params().Gx, Y : curve.Params().Gy}
 
 	v := x
 	alpha0X, alpha0Y := curve.Params().ScalarMult(g.X, g.Y, v.Bytes())
-	alpha0 := PublicKey{Curve: curve, X: alpha0X, Y : alpha0Y}
+	alpha0 := publics.PublicKey{Curve: curve, X: alpha0X, Y : alpha0Y}
 	s0 := expo(pubs[0], blindFactors)
 	aesS0 := KDF(s0.Bytes())
 	b0:= computeBlindingFactor(curve, aesS0)
@@ -153,7 +153,7 @@ func TestGetSharedSecrets(t *testing.T){
 
 	v = big.NewInt(0).Mul(v, b0)
 	alpha1X, alpha1Y := curve.Params().ScalarMult(g.X, g.Y, v.Bytes())
-	alpha1 := PublicKey{Curve: curve, X: alpha1X, Y : alpha1Y}
+	alpha1 := publics.PublicKey{Curve: curve, X: alpha1X, Y : alpha1Y}
 	s1 := expo(pubs[1], blindFactors)
 	aesS1 := KDF(s1.Bytes())
 	b1:= computeBlindingFactor(curve, aesS1)
@@ -164,7 +164,7 @@ func TestGetSharedSecrets(t *testing.T){
 
 	v = big.NewInt(0).Mul(v, b1)
 	alpha2X, alpha2Y := curve.Params().ScalarMult(g.X, g.Y, v.Bytes())
-	alpha2 := PublicKey{Curve: curve, X: alpha2X, Y : alpha2Y}
+	alpha2 := publics.PublicKey{Curve: curve, X: alpha2X, Y : alpha2Y}
 	s2 := expo(pubs[2], blindFactors)
 	aesS2 := KDF(s2.Bytes())
 	b2:= computeBlindingFactor(curve, aesS2)
@@ -178,10 +178,10 @@ func TestGetSharedSecrets(t *testing.T){
 
 func TestComputeFillers(t *testing.T){
 
-	g := PublicKey{Curve: curve, X: curve.Params().Gx, Y : curve.Params().Gy}
-	h1 := HeaderInitials{Alpha: PublicKey{}, Secret: g, Blinder: big.Int{}, SecretHash: []byte("1111111111111111")}
-	h2 := HeaderInitials{Alpha: PublicKey{}, Secret: g, Blinder: big.Int{}, SecretHash: []byte("1111111111111111")}
-	h3 := HeaderInitials{Alpha: PublicKey{}, Secret: g, Blinder: big.Int{}, SecretHash: []byte("1111111111111111")}
+	g := publics.PublicKey{Curve: curve, X: curve.Params().Gx, Y : curve.Params().Gy}
+	h1 := HeaderInitials{Alpha: publics.PublicKey{}, Secret: g, Blinder: big.Int{}, SecretHash: []byte("1111111111111111")}
+	h2 := HeaderInitials{Alpha: publics.PublicKey{}, Secret: g, Blinder: big.Int{}, SecretHash: []byte("1111111111111111")}
+	h3 := HeaderInitials{Alpha: publics.PublicKey{}, Secret: g, Blinder: big.Int{}, SecretHash: []byte("1111111111111111")}
 	tuples := []HeaderInitials{h1, h2, h3}
 
 
@@ -190,11 +190,11 @@ func TestComputeFillers(t *testing.T){
 	pub3X, pub3Y :=  curve.Params().ScalarBaseMult(big.NewInt(7).Bytes())
 
 
-	p1 := PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
-	p2 := PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
-	p3 := PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
+	p1 := publics.PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
+	p2 := publics.PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
+	p3 := publics.PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
 
-	fillers := computeFillers([]PublicKey{p1,p2,p3}, tuples)
+	fillers := computeFillers([]publics.PublicKey{p1,p2,p3}, tuples)
 	fmt.Println("FILLER: ", fillers)
 
 	// computeMixHeaders("Destination", "InitialVector11111", tuples, fillers)
@@ -207,11 +207,11 @@ func TestCreateHeader(t *testing.T) {
 	pub3X, pub3Y :=  curve.Params().ScalarBaseMult(big.NewInt(7).Bytes())
 
 
-	p1 := PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
-	p2 := PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
-	p3 := PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
+	p1 := publics.PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
+	p2 := publics.PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
+	p3 := publics.PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
 
-	createHeader(curve, []PublicKey{p1, p2, p3}, "destination")
+	createHeader(curve, []publics.PublicKey{p1, p2, p3}, "destination")
 }
 
 func TestXorBytesPass(t *testing.T){
@@ -230,9 +230,9 @@ func TestCompute_beta_gamma(t *testing.T){
 	pub2X, pub2Y :=  curve.Params().ScalarBaseMult(big.NewInt(5).Bytes())
 	pub3X, pub3Y :=  curve.Params().ScalarBaseMult(big.NewInt(7).Bytes())
 
-	p1 := PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
-	p2 := PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
-	p3 := PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
+	p1 := publics.PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
+	p2 := publics.PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
+	p3 := publics.PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
 
 	c1 := Commands{Delay: 0.34, Flag: "0"}
 	c2 := Commands{Delay: 0.25, Flag: "1"}
@@ -240,18 +240,18 @@ func TestCompute_beta_gamma(t *testing.T){
 	commands := []Commands{c1, c2, c3}
 
 	x := big.NewInt(100)
-	sharedSecrets := getSharedSecrets(curve, []PublicKey{p1, p2, p3}, *x)
+	sharedSecrets := getSharedSecrets(curve, []publics.PublicKey{p1, p2, p3}, *x)
 
 	nodesPubs := []publics.MixPubs{publics.NewMixPubs("Node1", "localhost", "3331", 0),
 									publics.NewMixPubs("Node2", "localhost", "3332", 0),
 									publics.NewMixPubs("Node3", "localhost", "3333", 0)}
 
-	actualHeader := encapsulateHeader(sharedSecrets, nodesPubs, []PublicKey{p1, p2, p3}, commands, []string{"DestinationId", "DestinationAddress", "DestKey"})
+	actualHeader := encapsulateHeader(sharedSecrets, nodesPubs, []publics.PublicKey{p1, p2, p3}, commands, []string{"DestinationId", "DestinationAddress", "DestKey"})
 
 	var expectedRouting RoutingInfo
 	var expectedHeader Header
 
-	routing1 := RoutingInfo{NextHop: Hop{"DestinationId", "DestinationAddress", PublicKey{}}, RoutingCommands: c3,
+	routing1 := RoutingInfo{NextHop: Hop{"DestinationId", "DestinationAddress", publics.PublicKey{}}, RoutingCommands: c3,
 							NextHopMetaData: nil, Mac: []byte{}}
 	mac1 := compute_mac(KDF(sharedSecrets[2].SecretHash) , routing1.Bytes())
 

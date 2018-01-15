@@ -22,14 +22,14 @@ const (
 
 
 type HeaderInitials struct {
-	Alpha PublicKey
-	Secret PublicKey
+	Alpha publics.PublicKey
+	Secret publics.PublicKey
 	Blinder big.Int
 	SecretHash []byte
 }
 
 type Header struct {
-	Alpha PublicKey
+	Alpha publics.PublicKey
 	Beta RoutingInfo
 	Mac []byte
 }
@@ -38,7 +38,7 @@ type Header struct {
 type Hop struct {
 	Id string
 	Address string
-	PubKey PublicKey
+	PubKey publics.PublicKey
 
 }
 
@@ -65,7 +65,7 @@ type Commands struct {
 }
 
 
-func createHeader(curve elliptic.Curve, pubs []PublicKey, dest string) []HeaderInitials{
+func createHeader(curve elliptic.Curve, pubs []publics.PublicKey, dest string) []HeaderInitials{
 
 	x := randomBigInt(curve.Params())
 	asb := getSharedSecrets(curve, pubs, x)
@@ -79,9 +79,9 @@ func createHeader(curve elliptic.Curve, pubs []PublicKey, dest string) []HeaderI
 //Port   string
 //PubKey int64
 
-func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []PublicKey, commands []Commands, destination []string) Header{
+func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, destination []string) Header{
 
-	finalHop := RoutingInfo{Hop{destination[0], destination[1], PublicKey{}}, commands[len(commands) - 1], nil, []byte{}}
+	finalHop := RoutingInfo{Hop{destination[0], destination[1], publics.PublicKey{}}, commands[len(commands) - 1], nil, []byte{}}
 	mac := compute_mac(KDF(asb[len(asb)-1].SecretHash) , finalHop.Bytes())
 
 	routingCommands := []RoutingInfo{finalHop}
@@ -101,7 +101,7 @@ func compute_mac(key, data []byte) []byte{
 	return Hmac(key, data)
 }
 
-func getSharedSecrets(curve elliptic.Curve, pubs []PublicKey, initialVal big.Int) []HeaderInitials{
+func getSharedSecrets(curve elliptic.Curve, pubs []publics.PublicKey, initialVal big.Int) []HeaderInitials{
 
 	blindFactors := []big.Int{initialVal}
 	var tuples []HeaderInitials
@@ -123,7 +123,7 @@ func getSharedSecrets(curve elliptic.Curve, pubs []PublicKey, initialVal big.Int
 }
 
 
-func computeFillers(pubs []PublicKey, tuples []HeaderInitials) string{
+func computeFillers(pubs []publics.PublicKey, tuples []HeaderInitials) string{
 
 	filler := ""
 	minLen := HEADERLENGTH - 32
@@ -145,9 +145,9 @@ func computeFillers(pubs []PublicKey, tuples []HeaderInitials) string{
 }
 
 
-func extractSecrets(tuples []HeaderInitials) []PublicKey{
+func extractSecrets(tuples []HeaderInitials) []publics.PublicKey{
 
-	var secrets []PublicKey
+	var secrets []publics.PublicKey
 	for _, v := range tuples {
 		secrets = append(secrets, v.Secret)
 	}
@@ -202,17 +202,17 @@ func randomBigInt(curve *elliptic.CurveParams) big.Int{
 	return *nBig
 }
 
-func expo(base PublicKey, exp []big.Int) PublicKey{
+func expo(base publics.PublicKey, exp []big.Int) publics.PublicKey{
 	x := exp[0]
 	for _, val := range exp[1:] {
 		x = *big.NewInt(0).Mul(&x, &val)
 	}
 	curve := base.Curve
 	resultX, resultY := curve.Params().ScalarMult(base.X, base.Y, x.Bytes())
-	return PublicKey{curve, resultX, resultY}
+	return publics.PublicKey{curve, resultX, resultY}
 }
 
-func expo_group_base(curve elliptic.Curve, exp []big.Int) PublicKey{
+func expo_group_base(curve elliptic.Curve, exp []big.Int) publics.PublicKey{
 	x := exp[0]
 
 	for _, val := range exp[1:] {
@@ -220,6 +220,6 @@ func expo_group_base(curve elliptic.Curve, exp []big.Int) PublicKey{
 	}
 
 	resultX, resultY := curve.Params().ScalarBaseMult(x.Bytes())
-	return PublicKey{Curve: curve, X: resultX, Y: resultY}
+	return publics.PublicKey{Curve: curve, X: resultX, Y: resultY}
 
 }
