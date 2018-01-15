@@ -7,75 +7,143 @@ import (
 	"fmt"
 	"crypto/aes"
 	"crypto/cipher"
-	"encoding/json"
-	"crypto/sha256"
 	"strings"
+	"encoding/json"
+	"anonymous-messaging/publics"
 )
 
+const (
+	K = 16
+	R = 5
+	HEADERLENGTH = 192
+)
 
-var K = 16
-var R = 5
+// KDF, Path Hop, Node metadata, blind, routingInfo, hdr
 
-type NewPacketFormat struct {
-
-}
-
-type PublicKey struct {
-	elliptic.Curve
-	X, Y *big.Int
-}
-
-type PrivateKey struct {
-	privk []byte
-}
 
 type HeaderInitials struct {
 	Alpha PublicKey
 	Secret PublicKey
 	Blinder big.Int
+	SecretHash []byte
 }
 
 type Header struct {
 	Alpha PublicKey
-	Beta string
-	Mac string
-}
-
-func createForwardMessage(curve elliptic.Curve, pubs []PublicKey, message string) {
-	createHeader(curve, pubs)
+	Beta RoutingInfo
+	Mac []byte
 }
 
 
-func createHeader(curve elliptic.Curve, pubs []PublicKey) {
+type Hop struct {
+	Id string
+	Address string
+	PubKey PublicKey
+
+}
+
+
+type RoutingInfo struct {
+	NextHop Hop
+	RoutingCommands Commands
+	NextHopMetaData *RoutingInfo
+	Mac []byte
+}
+
+func (r *RoutingInfo) Bytes() []byte{
+	b, err := json.Marshal(r)
+	if err != nil{
+		fmt.Printf("Error during converting struct to bytes: %s", err)
+	}
+	return b
+
+}
+
+type Commands struct {
+	Delay float64
+	Flag string
+}
+
+
+func createHeader(curve elliptic.Curve, pubs []PublicKey, dest string) []HeaderInitials{
 
 	x := randomBigInt(curve.Params())
+	asb := getSharedSecrets(curve, pubs, x)
+	computeFillers(pubs, asb)
+	return asb
 
-	tuples := computeSharedSecrets(curve, pubs, x)
+}
 
-	fillers := computeFillers(tuples)
+//Id     string
+//Host   string
+//Port   string
+//PubKey int64
 
-	computeMixHeaders("Destination", "Initial", tuples, fillers)
+func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []PublicKey, commands []Commands, destination []string) Header{
+
+	finalHop := RoutingInfo{Hop{destination[0], destination[1], PublicKey{}}, commands[len(commands) - 1], nil, []byte{}}
+	mac := compute_mac(KDF(asb[len(asb)-1].SecretHash) , finalHop.Bytes())
+
+	routingCommands := []RoutingInfo{finalHop}
+
+	var routing RoutingInfo
+	for i := len(pubs)-2; i >= 0; i-- {
+		nextNode := nodes[i+1]
+		routing = RoutingInfo{NextHop: Hop{Id: nextNode.Id, Address: nextNode.Host+":"+nextNode.Port, PubKey: pubs[i+1]}, RoutingCommands: commands[i], NextHopMetaData: &routingCommands[len(routingCommands)-1], Mac: mac}
+		routingCommands = append(routingCommands, routing)
+		mac = compute_mac(KDF(asb[i].SecretHash) , routing.Bytes())
+	}
+	return Header{Alpha: asb[0].Alpha, Beta: routing, Mac : mac}
+
+}
+
+func compute_mac(key, data []byte) []byte{
+	return Hmac(key, data)
+}
+
+func getSharedSecrets(curve elliptic.Curve, pubs []PublicKey, initialVal big.Int) []HeaderInitials{
+
+	blindFactors := []big.Int{initialVal}
+	var tuples []HeaderInitials
+
+	for _, key := range pubs {
+
+		alpha := expo_group_base(curve, blindFactors)
+
+		s := expo(key, blindFactors)
+		aes_s := KDF(s.Bytes())
+
+		blinder := computeBlindingFactor(curve, aes_s)
+		blindFactors = append(blindFactors, *blinder)
+
+		tuples = append(tuples, HeaderInitials{Alpha:alpha, Secret: s, Blinder: *blinder, SecretHash: aes_s})
+	}
+	return tuples
 
 }
 
 
-func computeFillers(tuples []HeaderInitials) []string{
+func computeFillers(pubs []PublicKey, tuples []HeaderInitials) string{
 
-	fillers := []string{""}
-	secrets := extractSecrets(tuples)
+	filler := ""
+	minLen := HEADERLENGTH - 32
+	for i := 1; i < len(pubs); i++ {
+		base := filler + strings.Repeat("\x00", K)
+		kx := computeSharedSecretHash(tuples[i-1].SecretHash, []byte("hrhohrhohrhohrho"))
+		mx := strings.Repeat("\x00", minLen) + base
 
-	for i := 1; i < len(secrets); i++ {
-		f := fillers[i-1] + strings.Repeat("0", 2*K)
-		fmt.Println("FILLER LENGTH: ", len(f))
-		fillers = append(fillers, f)
+		filler = BytesToString(AES_CTR([]byte(kx), []byte(mx)))
+		filler = filler[minLen:]
 
-		sHash := getAESkey(secrets[i-1])
-		fmt.Println("HASH LENGTH: ", len(sHash))
+		minLen = minLen - K
 	}
 
-	return fillers
+	fmt.Println("Filler len: ", len(filler))
+
+	return filler
 
 }
+
 
 func extractSecrets(tuples []HeaderInitials) []PublicKey{
 
@@ -87,63 +155,11 @@ func extractSecrets(tuples []HeaderInitials) []PublicKey{
 }
 
 
-
-func computeSharedSecrets(curve elliptic.Curve, pubs []PublicKey, initialVal big.Int) []HeaderInitials{
-
-	blindFactors := []big.Int{initialVal}
-
-	var tuples []HeaderInitials
-
-	for _, mix := range pubs {
-
-		alpha := expo_base(curve, blindFactors)
-
-		s := expo(mix, blindFactors)
-		aes_s := getAESkey(*s)
-
-		blinder := computeBlindingFactor(aes_s)
-		blindFactors = append(blindFactors, *blinder)
-
-		hi := HeaderInitials{Alpha:*alpha, Secret: *s, Blinder: *blinder}
-		tuples = append(tuples, hi)
-
-		// TO DO ADD XORING
-	}
-
-	return tuples
-
-}
-
-
-func computeMixHeaders(destination, initial string, tuples []HeaderInitials, fillers []string){
-	var headers []Header
-	fmt.Println(headers)
-
-	secrets := extractSecrets(tuples)
-
-	beta := destination + initial + strings.Repeat("0", len(secrets))
-	fmt.Println(len(beta))
-
-	sHash := getAESkey(secrets[len(secrets) - 1])
-	fmt.Println(sHash)
-	fmt.Println(len(sHash))
-
-	// TAKE CARE OF THAT v := (2*(R-len(secrets)) + 3)*K -1
-
-	beta = xorTwoStrings(beta, string(sHash)) + fillers[len(fillers) - 1]
-	fmt.Println(beta)
-
-
-
-
-}
-
-
-func computeBlindingFactor(key []byte) *big.Int{
+func computeBlindingFactor(curve elliptic.Curve, key []byte) *big.Int{
 	iv := []byte("initialvector000")
 	blinderBytes := computeSharedSecretHash(key, iv)
 
-	return bytesToBigNum(blinderBytes)
+	return bytesToBigNum(curve, blinderBytes)
 }
 
 func computeSharedSecretHash(key []byte, iv []byte) []byte{
@@ -153,72 +169,27 @@ func computeSharedSecretHash(key []byte, iv []byte) []byte{
 		panic(err)
 	}
 
-	cbc := cipher.NewCBCEncrypter(aesCipher, iv)
+	stream := cipher.NewCTR(aesCipher, iv)
 	plaintext := []byte("0000000000000000")
 
 	ciphertext := make([]byte, len(plaintext))
-	cbc.CryptBlocks(ciphertext, plaintext)
+	stream.XORKeyStream(ciphertext, plaintext)
 
 	return ciphertext
 }
 
-func expo(base PublicKey, exp []big.Int) *PublicKey{
-	x := exp[0]
-	for _, val := range exp[1:] {
-		x = *big.NewInt(0).Mul(&x, &val)
-	}
-	curve := base.Curve
-	resultX, resultY := curve.Params().ScalarMult(base.X, base.Y, x.Bytes())
-	return &PublicKey{curve, resultX, resultY}
-}
-
-func expo_base(curve elliptic.Curve, exp []big.Int) *PublicKey{
-	x := exp[0]
-
-	for _, val := range exp[1:] {
-		x = *big.NewInt(0).Mul(&x, &val)
-	}
-
-	resultX, resultY := curve.Params().ScalarBaseMult(x.Bytes())
-	return &PublicKey{Curve: curve, X: resultX, Y: resultY}
-
-}
-
-func getAESkey(p PublicKey) []byte{
-	return hash(p)
-}
-
-func hash(k PublicKey) []byte{
-
-	structAsString, err := json.Marshal(&k)
-
-	if err != nil{
-		panic(err)
-	}
-
-	bytes := []byte(structAsString)
-
-	h := sha256.New()
-	h.Write(bytes)
-
-	return h.Sum(nil)
+func KDF(key []byte) []byte{
+	return hash(key)[:K]
 }
 
 
-func bytesToBigNum(value []byte) *big.Int{
+func bytesToBigNum(curve elliptic.Curve, value []byte) *big.Int{
 	nBig := new(big.Int)
 	nBig.SetBytes(value)
 
-	return nBig
+	return new(big.Int).Mod(nBig, curve.Params().P)
 }
 
-func sumSlice(s []int) int{
-	sum := 0
-	for _, value := range s {
-		sum += value
-	}
-	return sum
-}
 
 func randomBigInt(curve *elliptic.CurveParams) big.Int{
 	order := curve.P
@@ -231,23 +202,24 @@ func randomBigInt(curve *elliptic.CurveParams) big.Int{
 	return *nBig
 }
 
-func xorTwoStrings(s1, s2 string) string {
-
-	if len(s1) != len(s2){
-		panic("String cannot be xored if their length is different")
+func expo(base PublicKey, exp []big.Int) PublicKey{
+	x := exp[0]
+	for _, val := range exp[1:] {
+		x = *big.NewInt(0).Mul(&x, &val)
 	}
-	b1 := []byte(s1)
-	b2 := []byte(s2)
+	curve := base.Curve
+	resultX, resultY := curve.Params().ScalarMult(base.X, base.Y, x.Bytes())
+	return PublicKey{curve, resultX, resultY}
+}
 
-	b := make([]byte, len(s1))
-	for i, _ := range b {
-		b[i] = b1[i] ^ b2[i]
+func expo_group_base(curve elliptic.Curve, exp []big.Int) PublicKey{
+	x := exp[0]
+
+	for _, val := range exp[1:] {
+		x = *big.NewInt(0).Mul(&x, &val)
 	}
 
-	result := ""
-	for _, v := range b{
-		s := fmt.Sprintf("%v", v)
-		result = result + s
-	}
-	return result
+	resultX, resultY := curve.Params().ScalarBaseMult(x.Bytes())
+	return PublicKey{Curve: curve, X: resultX, Y: resultY}
+
 }
