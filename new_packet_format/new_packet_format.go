@@ -89,6 +89,11 @@ func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []pub
 		// add encryption here
 
 		routing = RoutingInfo{NextHop: Hop{Id: nextNode.Id, Address: nextNode.Host+":"+nextNode.Port, PubKey: pubs[i+1]}, RoutingCommands: commands[i], NextHopMetaData: &routingCommands[len(routingCommands)-1], Mac: mac}
+
+		encKey := KDF(asb[i].SecretHash)
+		fmt.Println("KEY FOR ENC: ", encKey)
+		// encRouting := AES_CTR(encKey, routing.Bytes())
+
 		routingCommands = append(routingCommands, routing)
 		mac = computeMac(KDF(asb[i].SecretHash) , routing.Bytes())
 	}
@@ -222,18 +227,6 @@ func expo_group_base(curve elliptic.Curve, exp []big.Int) publics.PublicKey{
 }
 
 
-func generateKeyPair() (publics.PublicKey, publics.PrivateKey){
-	priv, x, y, err  := elliptic.GenerateKey(elliptic.P224(), rand.Reader)
-
-	if err != nil {
-		panic(err)
-	}
-
-	pubKey := publics.PublicKey{elliptic.P224(), x, y}
-	privKey := publics.PrivateKey{priv}
-	return pubKey, privKey
-}
-
 func processSphinxPacket(packet Header, privKey publics.PrivateKey) Header{
 
 	// make this function return an error when mac does not match
@@ -248,8 +241,8 @@ func processSphinxPacket(packet Header, privKey publics.PrivateKey) Header{
 
 
 	aes_s := KDF(sharedSecret.Bytes())
-	fmt.Println(aes_s)
-
+	encKey := KDF(aes_s)
+	fmt.Println("KEY FOR DEC: ", encKey)
 
 	// for new alpha
 	blinder := computeBlindingFactor(curve, aes_s)
@@ -258,8 +251,6 @@ func processSphinxPacket(packet Header, privKey publics.PrivateKey) Header{
 
 
 	recomputedMac := computeMac(aes_s, beta.Bytes())
-	fmt.Println("Recomputed MAC: ", recomputedMac)
-	fmt.Println("Original MAC: ", mac)
 
 	if bytes.Compare(recomputedMac, mac) != 0 {
 		fmt.Println("MAC's are not matching")
@@ -268,15 +259,10 @@ func processSphinxPacket(packet Header, privKey publics.PrivateKey) Header{
 
 	// add decryption
 
-	nextHop, commands, nextBeta, nextMac := readBeta(beta)
+	_, _, nextBeta, nextMac := readBeta(beta)
 
-	fmt.Println("Next Hop: ", nextHop)
-	fmt.Println("Commands: ", commands)
-	fmt.Println("Next Beta: ", nextBeta)
-	fmt.Println("Next Mac: ", nextMac)
 
 	newHeader := Header{Alpha: new_alpha, Beta: nextBeta, Mac: nextMac}
-	fmt.Println("New Header: ", newHeader)
 	return newHeader
 
 }

@@ -8,16 +8,17 @@ package publics
 import (
 	"crypto/elliptic"
 	"math/big"
+	"crypto/rand"
 )
 
 type MixPubs struct {
 	Id     string
 	Host   string
 	Port   string
-	PubKey int64
+	PubKey PublicKey
 }
 
-func NewMixPubs(mixId, host, port string, pubKey int64) MixPubs {
+func NewMixPubs(mixId, host, port string, pubKey PublicKey) MixPubs {
 	mixPubs := MixPubs{Id: mixId, Host: host, Port: port, PubKey: pubKey}
 	return mixPubs
 }
@@ -31,6 +32,23 @@ func (p *PublicKey) Bytes() []byte{
 	return elliptic.Marshal(p.Curve, p.X, p.Y)
 }
 
+func PubKeyFromBytes(curve elliptic.Curve, keyBytes []byte) PublicKey{
+	x, y := elliptic.Unmarshal(curve, keyBytes)
+	return PublicKey{Curve: curve, X: x, Y: y}
+}
+
 type PrivateKey struct {
 	Value []byte
+}
+
+func GenerateKeyPair() (PublicKey, PrivateKey){
+	priv, x, y, err  := elliptic.GenerateKey(elliptic.P224(), rand.Reader)
+
+	if err != nil {
+		panic(err)
+	}
+
+	pubKey := PublicKey{elliptic.P224(), x, y}
+	privKey := PrivateKey{priv}
+	return pubKey, privKey
 }

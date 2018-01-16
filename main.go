@@ -2,11 +2,13 @@ package main
 
 import (
 	"anonymous-messaging/server"
+	"anonymous-messaging/publics"
 )
 
 func main() {
 	// args := os.Args
 
-	mixServer := server.NewMixServer("Mix", "localhost", "9999", 0, 0, "./pki/database.db")
+	pubM, privM := publics.GenerateKeyPair()
+	mixServer := server.NewMixServer("Mix", "localhost", "9999", pubM, privM, "./pki/database.db")
 	mixServer.Start()
 }

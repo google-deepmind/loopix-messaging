@@ -11,6 +11,7 @@ import (
 	"anonymous-messaging/publics"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
+	"crypto/elliptic"
 )
 
 var client Client
@@ -18,7 +19,7 @@ var mixPubs []publics.MixPubs
 var clientPubs []publics.MixPubs
 var testPacket packet_format.Packet
 
-func makeTestInMemoryPKI() {
+func makeTestPKI() {
 	db, err := sqlx.Connect("sqlite3", "testDatabase.db")
 	defer db.Close()
 	if err != nil {
@@ -26,11 +27,12 @@ func makeTestInMemoryPKI() {
 	}
 
 	for i := 0; i < 10; i++ {
-		mix := publics.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), 0)
+		pub, _ := publics.GenerateKeyPair()
+		mix := publics.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub)
 		mixPubs = append(mixPubs, mix)
 	}
 
-	statement, e := db.Prepare("CREATE TABLE IF NOT EXISTS Mixes ( id INTEGER PRIMARY KEY, MixId TEXT, Host TEXT, Port TEXT, PubKey NUM)")
+	statement, e := db.Prepare("CREATE TABLE IF NOT EXISTS Mixes ( id INTEGER PRIMARY KEY, MixId TEXT, Host TEXT, Port TEXT, PubKey BLOB)")
 	if e != nil {
 		panic(e)
 	}
@@ -41,11 +43,12 @@ func makeTestInMemoryPKI() {
 	}
 
 	for i := 0; i < 10; i++ {
-		client := publics.NewMixPubs(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), 0)
+		pub, _ := publics.GenerateKeyPair()
+		client := publics.NewMixPubs(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), pub)
 		clientPubs = append(clientPubs, client)
 	}
 
-	statement, e = db.Prepare("CREATE TABLE IF NOT EXISTS Clients ( id INTEGER PRIMARY KEY, ClientId TEXT, Host TEXT, Port TEXT, PubKey NUM)")
+	statement, e = db.Prepare("CREATE TABLE IF NOT EXISTS Clients ( id INTEGER PRIMARY KEY, ClientId TEXT, Host TEXT, Port TEXT, PubKey BLOB)")
 	if e != nil {
 		panic(e)
 	}
@@ -66,10 +69,11 @@ func clean() {
 }
 
 func TestMain(m *testing.M) {
-	client = *NewClient("Client", "localhost", "3332", "../pki/database.db", 0, 0)
-	testPacket = packet_format.NewPacket("Message", nil, nil, nil)
+	makeTestPKI()
 
-	makeTestInMemoryPKI()
+	pubC, privC := publics.GenerateKeyPair()
+	client = *NewClient("Client", "localhost", "3332", "testDatabase.db", pubC, privC)
+	testPacket = packet_format.NewPacket("Message", nil, nil, nil)
 
 	code := m.Run()
 
@@ -116,6 +120,7 @@ func TestClientRun(t *testing.T) {
 
 func TestClientReadInMixnetPKI(t *testing.T) {
 	client.ReadInMixnetPKI("testDatabase.db")
+
 	if len(mixPubs) == len(client.ActiveMixes) {
 
 	} else {
@@ -125,6 +130,7 @@ func TestClientReadInMixnetPKI(t *testing.T) {
 
 func TestClientReadInClientsPKI(t *testing.T) {
 	client.ReadInClientsPKI("testDatabase.db")
+
 	if len(clientPubs) == len(client.OtherClients) {
 
 	} else {
@@ -133,6 +139,8 @@ func TestClientReadInClientsPKI(t *testing.T) {
 }
 
 func TestClientSaveInPKI(t *testing.T) {
+
+	clean()
 	SaveInPKI(client, "testDatabase.db")
 
 	db, err := sqlx.Connect("sqlite3", "testDatabase.db")
@@ -156,6 +164,6 @@ func TestClientSaveInPKI(t *testing.T) {
 		assert.Equal(t, "Client", string(results["ClientId"].([]byte)), "The client id does not match")
 		assert.Equal(t, "localhost", string(results["Host"].([]byte)), "The host does not match")
 		assert.Equal(t, "3332", string(results["Port"].([]byte)), "The port does not match")
-		assert.Equal(t, int64(0), results["PubKey"].(int64), "The public key does not match")
+		assert.Equal(t, client.PubKey, publics.PubKeyFromBytes(elliptic.P224() ,results["PubKey"].([]byte)), "The public key does not match")
 	}
 }

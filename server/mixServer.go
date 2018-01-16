@@ -12,6 +12,7 @@ import (
 	"anonymous-messaging/node"
 	"anonymous-messaging/packet_format"
 	"anonymous-messaging/pki"
+	"anonymous-messaging/publics"
 )
 
 type MixServerIt interface {
@@ -117,14 +118,14 @@ func SaveInPKI(m *MixServer, pkiPath string) {
 	params["MixId"] = "TEXT"
 	params["Host"] = "TEXT"
 	params["Port"] = "TEXT"
-	params["PubKey"] = "NUM"
+	params["PubKey"] = "BLOB"
 	pki.CreateTable(db, "Mixes", params)
 
 	pubInfo := make(map[string]interface{})
 	pubInfo["MixId"] = m.Id
 	pubInfo["Host"] = m.Host
 	pubInfo["Port"] = m.Port
-	pubInfo["PubKey"] = m.PubKey
+	pubInfo["PubKey"] = m.PubKey.Bytes()
 	pki.InsertToTable(db, "Mixes", pubInfo)
 
 	fmt.Println("> Public info of the mixserver saved in database")
@@ -132,7 +133,7 @@ func SaveInPKI(m *MixServer, pkiPath string) {
 	db.Close()
 }
 
-func NewMixServer(id, host, port string, pubKey, prvKey int, pkiPath string) *MixServer {
+func NewMixServer(id, host, port string, pubKey publics.PublicKey, prvKey publics.PrivateKey, pkiPath string) *MixServer {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	mixServer := MixServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
 	SaveInPKI(&mixServer, pkiPath)

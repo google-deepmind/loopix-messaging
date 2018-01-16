@@ -14,9 +14,15 @@ var packet packet_format.Packet
 var mixPubs []publics.MixPubs
 
 func TestMain(m *testing.M) {
-	mixWorker = *NewMix("MixWorker", 0, 0)
-	m1 := publics.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: 0}
-	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: 0}
+	pubM, privM := publics.GenerateKeyPair()
+
+	mixWorker = *NewMix("MixWorker", pubM, privM)
+
+	pub1, _ := publics.GenerateKeyPair()
+	pub2, _ := publics.GenerateKeyPair()
+
+	m1 := publics.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
+	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
 
 	mixPubs = []publics.MixPubs{m1, m2}
 	delays := []float64{1.4, 2.5, 2.3}

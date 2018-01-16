@@ -123,13 +123,10 @@ func TestComputeBlindingFactor(t *testing.T){
 
 func TestGetSharedSecrets(t *testing.T){
 
-	var pubs []publics.PublicKey
-
-	for i := 1; i <=3; i++ {
-		pointX, pointY := curve.ScalarBaseMult(big.NewInt(6).Bytes())
-		point := &publics.PublicKey{Curve : curve, X : pointX, Y : pointY}
-		pubs = append(pubs, *point)
-	}
+	pub1, _ := publics.GenerateKeyPair()
+	pub2, _ := publics.GenerateKeyPair()
+	pub3, _ := publics.GenerateKeyPair()
+	pubs := []publics.PublicKey{pub1, pub2, pub3}
 
 	x := big.NewInt(100)
 
@@ -184,17 +181,11 @@ func TestComputeFillers(t *testing.T){
 	h3 := HeaderInitials{Alpha: publics.PublicKey{}, Secret: g, Blinder: big.Int{}, SecretHash: []byte("1111111111111111")}
 	tuples := []HeaderInitials{h1, h2, h3}
 
+	pub1, _ := publics.GenerateKeyPair()
+	pub2, _ := publics.GenerateKeyPair()
+	pub3, _ := publics.GenerateKeyPair()
 
-	pub1X, pub1Y :=  curve.Params().ScalarBaseMult(big.NewInt(3).Bytes())
-	pub2X, pub2Y :=  curve.Params().ScalarBaseMult(big.NewInt(5).Bytes())
-	pub3X, pub3Y :=  curve.Params().ScalarBaseMult(big.NewInt(7).Bytes())
-
-
-	p1 := publics.PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
-	p2 := publics.PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
-	p3 := publics.PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
-
-	fillers := computeFillers([]publics.PublicKey{p1,p2,p3}, tuples)
+	fillers := computeFillers([]publics.PublicKey{pub1,pub2,pub3}, tuples)
 	fmt.Println("FILLER: ", fillers)
 
 }
@@ -211,13 +202,9 @@ func TestXorBytesFail(t *testing.T){
 
 func TestEncapsulateHeader(t *testing.T){
 
-	pub1X, pub1Y :=  curve.Params().ScalarBaseMult(big.NewInt(3).Bytes())
-	pub2X, pub2Y :=  curve.Params().ScalarBaseMult(big.NewInt(5).Bytes())
-	pub3X, pub3Y :=  curve.Params().ScalarBaseMult(big.NewInt(7).Bytes())
-
-	p1 := publics.PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
-	p2 := publics.PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
-	p3 := publics.PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
+	pub1, _ := publics.GenerateKeyPair()
+	pub2, _ := publics.GenerateKeyPair()
+	pub3, _ := publics.GenerateKeyPair()
 
 	c1 := Commands{Delay: 0.34, Flag: "0"}
 	c2 := Commands{Delay: 0.25, Flag: "1"}
@@ -225,13 +212,13 @@ func TestEncapsulateHeader(t *testing.T){
 	commands := []Commands{c1, c2, c3}
 
 	x := big.NewInt(100)
-	sharedSecrets := getSharedSecrets(curve, []publics.PublicKey{p1, p2, p3}, *x)
+	sharedSecrets := getSharedSecrets(curve, []publics.PublicKey{pub1, pub2, pub3}, *x)
 
-	nodesPubs := []publics.MixPubs{publics.NewMixPubs("Node1", "localhost", "3331", 0),
-									publics.NewMixPubs("Node2", "localhost", "3332", 0),
-									publics.NewMixPubs("Node3", "localhost", "3333", 0)}
+	nodesPubs := []publics.MixPubs{publics.NewMixPubs("Node1", "localhost", "3331", pub1),
+									publics.NewMixPubs("Node2", "localhost", "3332", pub2),
+									publics.NewMixPubs("Node3", "localhost", "3333", pub3)}
 
-	actualHeader := encapsulateHeader(sharedSecrets, nodesPubs, []publics.PublicKey{p1, p2, p3}, commands, []string{"DestinationId", "DestinationAddress", "DestKey"})
+	actualHeader := encapsulateHeader(sharedSecrets, nodesPubs, []publics.PublicKey{pub1, pub2, pub3}, commands, []string{"DestinationId", "DestinationAddress", "DestKey"})
 
 	var expectedRouting RoutingInfo
 	var expectedHeader Header
@@ -240,11 +227,11 @@ func TestEncapsulateHeader(t *testing.T){
 							NextHopMetaData: nil, Mac: []byte{}}
 	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash) , routing1.Bytes())
 
-	routing2 := RoutingInfo{NextHop: Hop{"Node3", "localhost:3333", p3}, RoutingCommands : c2,
+	routing2 := RoutingInfo{NextHop: Hop{"Node3", "localhost:3333", pub3}, RoutingCommands : c2,
 							NextHopMetaData: &routing1, Mac: mac1}
 	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash) , routing2.Bytes())
 
-	expectedRouting = RoutingInfo{NextHop: Hop{"Node2", "localhost:3332", p2}, RoutingCommands: c1,
+	expectedRouting = RoutingInfo{NextHop: Hop{"Node2", "localhost:3332", pub2}, RoutingCommands: c1,
 									NextHopMetaData: &routing2, Mac: mac2}
 	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash) , expectedRouting.Bytes())
 
@@ -257,13 +244,9 @@ func TestEncapsulateHeader(t *testing.T){
 
 func TestProcessSphinxPacket(t *testing.T) {
 
-	pub1X, pub1Y :=  curve.Params().ScalarBaseMult(big.NewInt(3).Bytes())
-	pub2X, pub2Y :=  curve.Params().ScalarBaseMult(big.NewInt(5).Bytes())
-	pub3X, pub3Y :=  curve.Params().ScalarBaseMult(big.NewInt(7).Bytes())
-
-	p1 := publics.PublicKey{Curve: curve, X : pub1X, Y : pub1Y}
-	p2 := publics.PublicKey{Curve: curve, X : pub2X, Y : pub2Y}
-	p3 := publics.PublicKey{Curve: curve, X : pub3X, Y : pub3Y}
+	pub1, _ := publics.GenerateKeyPair()
+	pub2, _ := publics.GenerateKeyPair()
+	pub3, _ := publics.GenerateKeyPair()
 
 	c1 := Commands{Delay: 0.34, Flag: "0"}
 	c2 := Commands{Delay: 0.25, Flag: "1"}
@@ -271,17 +254,16 @@ func TestProcessSphinxPacket(t *testing.T) {
 	commands := []Commands{c1, c2, c3}
 
 	x := big.NewInt(100)
-	sharedSecrets := getSharedSecrets(curve, []publics.PublicKey{p1, p2, p3}, *x)
+	sharedSecrets := getSharedSecrets(curve, []publics.PublicKey{pub1, pub2, pub3}, *x)
 
-	nodesPubs := []publics.MixPubs{publics.NewMixPubs("Node1", "localhost", "3331", 0),
-		publics.NewMixPubs("Node2", "localhost", "3332", 0),
-		publics.NewMixPubs("Node3", "localhost", "3333", 0)}
+	nodesPubs := []publics.MixPubs{publics.NewMixPubs("Node1", "localhost", "3331", pub1),
+		publics.NewMixPubs("Node2", "localhost", "3332", pub2),
+		publics.NewMixPubs("Node3", "localhost", "3333", pub3)}
 
-	header := encapsulateHeader(sharedSecrets, nodesPubs, []publics.PublicKey{p1, p2, p3}, commands, []string{"DestinationId", "DestinationAddress", "DestKey"})
+	header := encapsulateHeader(sharedSecrets, nodesPubs, []publics.PublicKey{pub1, pub2, pub3}, commands, []string{"DestinationId", "DestinationAddress", "DestKey"})
 
 
-	_, privKey := generateKeyPair()
-	fmt.Println(privKey)
+	_, privKey := publics.GenerateKeyPair()
 	processSphinxPacket(header, privKey)
 	//pub1X, pub1Y :=  curve.Params().ScalarBaseMult(big.NewInt(3).Bytes())
 	//pub2X, pub2Y :=  curve.Params().ScalarBaseMult(big.NewInt(5).Bytes())

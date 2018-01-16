@@ -14,11 +14,15 @@ var mixPubs []publics.MixPubs
 var recipient publics.MixPubs
 
 func TestMain(m *testing.M) {
-	m1 := publics.MixPubs{Id:"Mix1", Host: "localhost", Port: "3330", PubKey: 0}
-	m2 := publics.MixPubs{Id:"Mix2", Host: "localhost", Port: "3331", PubKey: 0}
+	pub1, _ := publics.GenerateKeyPair()
+	pub2, _ := publics.GenerateKeyPair()
+
+	m1 := publics.MixPubs{Id:"Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
+	m2 := publics.MixPubs{Id:"Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
 	mixPubs = []publics.MixPubs{m1, m2}
 
-	recipient = publics.MixPubs{Id: "Recipient", Host: "127.0.0.1", Port: "9999", PubKey: 0}
+	pubR, _ := publics.GenerateKeyPair()
+	recipient = publics.MixPubs{Id: "Recipient", Host: "127.0.0.1", Port: "9999", PubKey: pubR}
 
 	mixPubs = []publics.MixPubs{m1, m2}
 

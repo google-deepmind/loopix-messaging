@@ -13,8 +13,8 @@ import (
 
 type CryptoClient struct {
 	Id     string
-	PubKey int
-	PrvKey int
+	PubKey publics.PublicKey
+	PrvKey publics.PrivateKey
 }
 
 func (c *CryptoClient) EncodeMessage(message string, path []publics.MixPubs, delays []float64) packet_format.Packet {

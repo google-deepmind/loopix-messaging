@@ -16,10 +16,14 @@ var cryptoClient CryptoClient
 var mixPubs []publics.MixPubs
 
 func TestMain(m *testing.M) {
-	cryptoClient = CryptoClient{Id: "MixClient", PubKey: 1, PrvKey: 0}
+	pubC, privC := publics.GenerateKeyPair()
+	pub1, _ := publics.GenerateKeyPair()
+	pub2, _ := publics.GenerateKeyPair()
 
-	m1 := publics.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: 0}
-	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: 0}
+	cryptoClient = CryptoClient{Id: "MixClient", PubKey: pubC, PrvKey: privC}
+
+	m1 := publics.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
+	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
 	mixPubs = []publics.MixPubs{m1, m2}
 
 	os.Exit(m.Run())
@@ -60,7 +64,8 @@ func TestGetRandomMixSequence(t *testing.T) {
 	// test two cases: the one when len is smaller than all mixes and the one when length is larger / the same
 	var mixes []publics.MixPubs
 	for i := 0; i < 5; i++ {
-		mixes = append(mixes, publics.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), int64(i)))
+		pub, _ := publics.GenerateKeyPair()
+		mixes = append(mixes, publics.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub))
 	}
 
 	var sequence []publics.MixPubs

@@ -16,6 +16,7 @@ import (
 	"anonymous-messaging/pki"
 	"anonymous-messaging/publics"
 	"github.com/jmoiron/sqlx"
+	"crypto/elliptic"
 )
 
 const (
@@ -44,6 +45,8 @@ type Client struct {
 	OtherClients []publics.MixPubs
 
 	listener *net.TCPListener
+
+	pkiDir string
 }
 
 func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
@@ -115,8 +118,8 @@ func (c *Client) Start() {
 
 	defer c.Run()
 
-	c.ReadInClientsPKI("./pki/database.db")
-	c.ReadInMixnetPKI("./pki/database.db")
+	c.ReadInClientsPKI(c.pkiDir)
+	c.ReadInMixnetPKI(c.pkiDir)
 
 }
 
@@ -145,6 +148,7 @@ func (c *Client) ReadInMixnetPKI(pkiName string) {
 	records := pki.QueryDatabase(db, "Mixes")
 
 	for records.Next() {
+		fmt.Println("Reading records")
 		results := make(map[string]interface{})
 		err := records.MapScan(results)
 
@@ -153,8 +157,10 @@ func (c *Client) ReadInMixnetPKI(pkiName string) {
 
 		}
 
+		fmt.Println("Pub: ")
 		pubs := publics.NewMixPubs(string(results["MixId"].([]byte)), string(results["Host"].([]byte)),
-			string(results["Port"].([]byte)), results["PubKey"].(int64))
+			string(results["Port"].([]byte)), publics.PubKeyFromBytes(elliptic.P224() ,results["PubKey"].([]byte)))
+		fmt.Println(pubs)
 
 		c.ActiveMixes = append(c.ActiveMixes, pubs)
 	}
@@ -176,7 +182,7 @@ func (c *Client) ReadInClientsPKI(pkiName string) {
 
 		}
 		pubs := publics.NewMixPubs(string(results["ClientId"].([]byte)), string(results["Host"].([]byte)),
-			string(results["Port"].([]byte)), results["PubKey"].(int64))
+			string(results["Port"].([]byte)), publics.PubKeyFromBytes(elliptic.P224() ,results["PubKey"].([]byte)))
 		c.OtherClients = append(c.OtherClients, pubs)
 	}
 	fmt.Println("> The clients data is uploaded.")
@@ -195,21 +201,21 @@ func SaveInPKI(c Client, pkiDir string) {
 	params["ClientId"] = "TEXT"
 	params["Host"] = "TEXT"
 	params["Port"] = "TEXT"
-	params["PubKey"] = "NUM"
+	params["PubKey"] = "BLOB"
 	pki.CreateTable(db, "Clients", params)
 
 	pubInfo := make(map[string]interface{})
 	pubInfo["ClientId"] = c.Id
 	pubInfo["Host"] = c.Host
 	pubInfo["Port"] = c.Port
-	pubInfo["PubKey"] = c.PubKey
+	pubInfo["PubKey"] = c.PubKey.Bytes()
 	pki.InsertToTable(db, "Clients", pubInfo)
 
 	fmt.Println("> Public info of the client saved in database")
 	db.Close()
 }
 
-func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) *Client {
+func NewClient(id, host, port, pkiDir string, pubKey publics.PublicKey, prvKey publics.PrivateKey) *Client {
 	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	c := Client{Host: host, Port: port, CryptoClient: core}
 

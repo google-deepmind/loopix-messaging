@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"anonymous-messaging/packet_format"
+	"anonymous-messaging/publics"
 )
 
 type Mix struct {
 	Id     string
-	PubKey int
-	PrvKey int
+	PubKey publics.PublicKey
+	PrvKey publics.PrivateKey
 }
 
 func (m *Mix) ProcessPacket(p packet_format.Packet, c chan<- packet_format.Packet) {
@@ -38,6 +39,6 @@ func (m *Mix) SendLoopMessage() {
 	// TO DO
 }
 
-func NewMix(id string, pubKey, prvKey int) *Mix {
+func NewMix(id string, pubKey publics.PublicKey, prvKey publics.PrivateKey) *Mix {
 	return &Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 }
