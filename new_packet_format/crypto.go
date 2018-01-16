@@ -3,9 +3,7 @@ package new_packet_format
 import (
 	"crypto/sha256"
 	"crypto/aes"
-	"io"
 	"crypto/cipher"
-	crand "crypto/rand"
 	"crypto/hmac"
 )
 
@@ -14,9 +12,9 @@ func AES_CTR(key, plaintext []byte) []byte {
 	ciphertext := make([]byte, len(plaintext))
 
 	iv := []byte("0000000000000000")
-	if _, err := io.ReadFull(crand.Reader, iv); err != nil {
-		panic(err)
-	}
+	//if _, err := io.ReadFull(crand.Reader, iv); err != nil {
+	//	panic(err)
+	//}
 
 	block, err := aes.NewCipher(key)
 	if err != nil {

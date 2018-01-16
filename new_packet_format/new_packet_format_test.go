@@ -224,20 +224,25 @@ func TestEncapsulateHeader(t *testing.T){
 	var expectedHeader Header
 
 	routing1 := RoutingInfo{NextHop: Hop{"DestinationId", "DestinationAddress", []byte{}}, RoutingCommands: c3,
-							NextHopMetaData: nil, Mac: []byte{}}
-	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash) , routing1.Bytes())
+							NextHopMetaData: []byte{}, Mac: []byte{}}
+
+	enc_routing1 := AES_CTR(KDF(sharedSecrets[2].SecretHash), routing1.Bytes())
+	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash) , enc_routing1)
 
 	routing2 := RoutingInfo{NextHop: Hop{"Node3", "localhost:3333", pub3.Bytes()}, RoutingCommands : c2,
-							NextHopMetaData: routing1.Bytes(), Mac: mac1}
+							NextHopMetaData: enc_routing1, Mac: mac1}
 
-	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash) , routing2.Bytes())
+	enc_routing2 := AES_CTR(KDF(sharedSecrets[1].SecretHash), routing2.Bytes())
+	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash) , enc_routing2)
 
 	expectedRouting = RoutingInfo{NextHop: Hop{"Node2", "localhost:3332", pub2.Bytes()}, RoutingCommands: c1,
-									NextHopMetaData: routing2.Bytes(), Mac: mac2}
-	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash) , expectedRouting.Bytes())
+									NextHopMetaData: enc_routing2, Mac: mac2}
 
-	expectedHeader = Header{sharedSecrets[0].Alpha, expectedRouting, mac3}
+	enc_expectedRouting := AES_CTR(KDF(sharedSecrets[0].SecretHash), expectedRouting.Bytes())
+	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash) , enc_expectedRouting)
 
+	expectedHeader = Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
+	
 	assert.Equal(t, expectedHeader, actualHeader)
 
 
