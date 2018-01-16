@@ -220,8 +220,8 @@ func TestEncapsulateHeader(t *testing.T){
 
 	actualHeader := encapsulateHeader(sharedSecrets, nodesPubs, []publics.PublicKey{pub1, pub2, pub3}, commands, []string{"DestinationId", "DestinationAddress", "DestKey"})
 
-	var expectedRouting RoutingInfo
-	var expectedHeader Header
+	//var expectedRouting RoutingInfo
+	//var expectedHeader Header
 
 	routing1 := RoutingInfo{NextHop: Hop{"DestinationId", "DestinationAddress", []byte{}}, RoutingCommands: c3,
 							NextHopMetaData: []byte{}, Mac: []byte{}}
@@ -235,13 +235,13 @@ func TestEncapsulateHeader(t *testing.T){
 	enc_routing2 := AES_CTR(KDF(sharedSecrets[1].SecretHash), routing2.Bytes())
 	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash) , enc_routing2)
 
-	expectedRouting = RoutingInfo{NextHop: Hop{"Node2", "localhost:3332", pub2.Bytes()}, RoutingCommands: c1,
+	expectedRouting := RoutingInfo{NextHop: Hop{"Node2", "localhost:3332", pub2.Bytes()}, RoutingCommands: c1,
 									NextHopMetaData: enc_routing2, Mac: mac2}
 
 	enc_expectedRouting := AES_CTR(KDF(sharedSecrets[0].SecretHash), expectedRouting.Bytes())
 	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash) , enc_expectedRouting)
 
-	expectedHeader = Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
+	expectedHeader := Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
 
 	assert.Equal(t, expectedHeader, actualHeader)
 
@@ -257,25 +257,32 @@ func TestProcessSphinxPacket(t *testing.T) {
 	c1 := Commands{Delay: 0.34, Flag: "0"}
 	c2 := Commands{Delay: 0.25, Flag: "1"}
 	c3 := Commands{Delay: 1.10, Flag: "1"}
-	commands := []Commands{c1, c2, c3}
 
 	x := big.NewInt(100)
 	sharedSecrets := getSharedSecrets(curve, []publics.PublicKey{pub1, pub2, pub3}, *x)
 
-	nodesPubs := []publics.MixPubs{publics.NewMixPubs("Node1", "localhost", "3331", pub1),
-		publics.NewMixPubs("Node2", "localhost", "3332", pub2),
-		publics.NewMixPubs("Node3", "localhost", "3333", pub3)}
+	// Intermediate steps, which are needed to check whether the processing of the header was correct
+	routing1 := RoutingInfo{NextHop: Hop{"DestinationId", "DestinationAddress", []byte{}}, RoutingCommands: c3,
+		NextHopMetaData: []byte{}, Mac: []byte{}}
+	enc_routing1 := AES_CTR(KDF(sharedSecrets[2].SecretHash), routing1.Bytes())
+	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash) , enc_routing1)
 
-	header := encapsulateHeader(sharedSecrets, nodesPubs, []publics.PublicKey{pub1, pub2, pub3}, commands, []string{"DestinationId", "DestinationAddress", "DestKey"})
+	routing2 := RoutingInfo{NextHop: Hop{"Node3", "localhost:3333", pub3.Bytes()}, RoutingCommands : c2,
+		NextHopMetaData: enc_routing1, Mac: mac1}
+	enc_routing2 := AES_CTR(KDF(sharedSecrets[1].SecretHash), routing2.Bytes())
+	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash) , enc_routing2)
+
+	routing3 := RoutingInfo{NextHop: Hop{"Node2", "localhost:3332", pub2.Bytes()}, RoutingCommands: c1,
+		NextHopMetaData: enc_routing2, Mac: mac2}
+	enc_expectedRouting := AES_CTR(KDF(sharedSecrets[0].SecretHash), routing3.Bytes())
+	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash) , enc_expectedRouting)
+
+	header := Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
 
 	nextHop, newCommands, newHeader := processSphinxPacket(header, priv1)
 
-	fmt.Println(nextHop)
-	fmt.Println(newCommands)
-	fmt.Println(newHeader)
-
+	assert.Equal(t, nextHop, Hop{Id: "Node2", Address: "localhost:3332", PubKey: pub2.Bytes()})
 	assert.Equal(t, newCommands, c1)
-	assert.Equal(t, nextHop.Id, "Node2")
-	assert.Equal(t, nextHop.Address, "localhost:3332")
-	assert.Equal(t, nextHop.PubKey, pub2.Bytes())
+	assert.Equal(t, newHeader, Header{Alpha: sharedSecrets[1].Alpha, Beta: enc_routing2, Mac: mac2})
+
 }
