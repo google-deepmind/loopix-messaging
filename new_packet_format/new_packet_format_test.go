@@ -205,6 +205,7 @@ func TestEncapsulateHeader(t *testing.T){
 	pub1, _ := publics.GenerateKeyPair()
 	pub2, _ := publics.GenerateKeyPair()
 	pub3, _ := publics.GenerateKeyPair()
+	pubD, _ := publics.GenerateKeyPair()
 
 	c1 := Commands{Delay: 0.34, Flag: "0"}
 	c2 := Commands{Delay: 0.25, Flag: "1"}
@@ -218,12 +219,11 @@ func TestEncapsulateHeader(t *testing.T){
 									publics.NewMixPubs("Node2", "localhost", "3332", pub2),
 									publics.NewMixPubs("Node3", "localhost", "3333", pub3)}
 
-	actualHeader := encapsulateHeader(sharedSecrets, nodesPubs, []publics.PublicKey{pub1, pub2, pub3}, commands, []string{"DestinationId", "DestinationAddress", "DestKey"})
+	actualHeader := encapsulateHeader(sharedSecrets, nodesPubs, []publics.PublicKey{pub1, pub2, pub3}, commands,
+						publics.MixPubs{Id: "DestinationId", Host: "DestinationAddress", Port: "9998", PubKey: pubD})
 
-	//var expectedRouting RoutingInfo
-	//var expectedHeader Header
 
-	routing1 := RoutingInfo{NextHop: Hop{"DestinationId", "DestinationAddress", []byte{}}, RoutingCommands: c3,
+	routing1 := RoutingInfo{NextHop: Hop{"DestinationId", "DestinationAddress:9998", []byte{}}, RoutingCommands: c3,
 							NextHopMetaData: []byte{}, Mac: []byte{}}
 
 	enc_routing1 := AES_CTR(KDF(sharedSecrets[2].SecretHash), routing1.Bytes())
@@ -244,8 +244,6 @@ func TestEncapsulateHeader(t *testing.T){
 	expectedHeader := Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
 
 	assert.Equal(t, expectedHeader, actualHeader)
-
-
 }
 
 func TestProcessSphinxPacket(t *testing.T) {

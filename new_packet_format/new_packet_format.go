@@ -30,12 +30,16 @@ type HeaderInitials struct {
 	SecretHash []byte
 }
 
+type SphinxPacket struct {
+	Hdr Header
+	Pld string
+}
+
 type Header struct {
 	Alpha publics.PublicKey
 	Beta []byte
 	Mac []byte
 }
-
 
 type Hop struct {
 	Id string
@@ -57,8 +61,8 @@ func (r *RoutingInfo) Bytes() []byte{
 		fmt.Printf("Error during converting struct to bytes: %s", err)
 	}
 	return b
-
 }
+
 
 func RoutingInfoFromBytes(bytes []byte) RoutingInfo{
 
@@ -76,8 +80,12 @@ type Commands struct {
 	Flag string
 }
 
+func PackForwardMessage(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, dest publics.MixPubs, message string) SphinxPacket{
+	header := createHeader(curve, nodes, pubs, commands, dest)
+	return SphinxPacket{Hdr: header, Pld: message}
+}
 
-func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, dest []string) Header{
+func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, dest publics.MixPubs) Header{
 
 	x := randomBigInt(curve.Params())
 	asb := getSharedSecrets(curve, pubs, x)
@@ -87,9 +95,9 @@ func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.
 
 }
 
-func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, destination []string) Header{
+func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, destination publics.MixPubs) Header{
 
-	finalHop := RoutingInfo{NextHop: Hop{Id: destination[0], Address: destination[1], PubKey: []byte{}}, RoutingCommands: commands[len(commands) - 1], NextHopMetaData: []byte{}, Mac: []byte{}}
+	finalHop := RoutingInfo{NextHop: Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: commands[len(commands) - 1], NextHopMetaData: []byte{}, Mac: []byte{}}
 
 	encFinalHop := AES_CTR(KDF(asb[len(asb)-1].SecretHash), finalHop.Bytes())
 	mac := computeMac(KDF(asb[len(asb)-1].SecretHash) , encFinalHop)

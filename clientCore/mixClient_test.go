@@ -35,7 +35,7 @@ func TestMixClientEncode(t *testing.T) {
 	path := mixPubs
 	delays := []float64{1.4, 2.5, 2.3}
 
-	encoded := cryptoClient.EncodeMessage(message, path, delays)
+	encoded := cryptoClient.EncodeMessage(message, path, delays, publics.MixPubs{})
 	expected := packet_format.Encode(message, path, delays)
 	assert.Equal(t, encoded, expected, "The packets should be the same")
 }

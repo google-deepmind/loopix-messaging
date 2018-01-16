@@ -17,7 +17,7 @@ type CryptoClient struct {
 	PrvKey publics.PrivateKey
 }
 
-func (c *CryptoClient) EncodeMessage(message string, path []publics.MixPubs, delays []float64) packet_format.Packet {
+func (c *CryptoClient) EncodeMessage(message string, path []publics.MixPubs, delays []float64, recipient publics.MixPubs) packet_format.Packet {
 	return packet_format.Encode(message, path, delays)
 }
 

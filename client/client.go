@@ -66,7 +66,7 @@ func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
 	}
 	delays := c.GenerateDelaySequence(desiredRateParameter, pathLength)
 
-	packet := c.EncodeMessage(message, path, delays)
+	packet := c.EncodeMessage(message, path, delays, recipient)
 	c.Send(packet_format.ToString(packet), path[0].Host, path[0].Port)
 }
 
