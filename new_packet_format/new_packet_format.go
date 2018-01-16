@@ -39,14 +39,14 @@ type Header struct {
 type Hop struct {
 	Id string
 	Address string
-	PubKey publics.PublicKey
+	PubKey []byte
 
 }
 
 type RoutingInfo struct {
 	NextHop Hop
 	RoutingCommands Commands
-	NextHopMetaData *RoutingInfo
+	NextHopMetaData []byte
 	Mac []byte
 }
 
@@ -57,6 +57,17 @@ func (r *RoutingInfo) Bytes() []byte{
 	}
 	return b
 
+}
+
+func RoutingInfoFromBytes(bytes []byte) RoutingInfo{
+
+	var finalHopReconstruct RoutingInfo
+
+	err := json.Unmarshal(bytes, &finalHopReconstruct)
+	if err != nil {
+		panic(err)
+	}
+	return finalHopReconstruct
 }
 
 type Commands struct {
@@ -77,25 +88,22 @@ func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.
 
 func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, destination []string) Header{
 
-	finalHop := RoutingInfo{NextHop: Hop{Id: destination[0], Address: destination[1], PubKey: publics.PublicKey{}}, RoutingCommands: commands[len(commands) - 1], NextHopMetaData: nil, Mac: []byte{}}
+	finalHop := RoutingInfo{NextHop: Hop{Id: destination[0], Address: destination[1], PubKey: []byte{}}, RoutingCommands: commands[len(commands) - 1], NextHopMetaData: nil, Mac: []byte{}}
 	mac := computeMac(KDF(asb[len(asb)-1].SecretHash) , finalHop.Bytes())
 
-	routingCommands := []RoutingInfo{finalHop}
+	routingCommands := [][]byte{finalHop.Bytes()}
 
 	var routing RoutingInfo
 	for i := len(pubs)-2; i >= 0; i-- {
 		nextNode := nodes[i+1]
+		routing = RoutingInfo{NextHop: Hop{Id: nextNode.Id, Address: nextNode.Host+":"+nextNode.Port, PubKey: pubs[i+1].Bytes()}, RoutingCommands: commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
 
-		// add encryption here
+		//encKey := KDF(asb[i].SecretHash)
+		//encRouting := AES_CTR(encKey, routing.Bytes())
 
-		routing = RoutingInfo{NextHop: Hop{Id: nextNode.Id, Address: nextNode.Host+":"+nextNode.Port, PubKey: pubs[i+1]}, RoutingCommands: commands[i], NextHopMetaData: &routingCommands[len(routingCommands)-1], Mac: mac}
-
-		encKey := KDF(asb[i].SecretHash)
-		fmt.Println("KEY FOR ENC: ", encKey)
-		// encRouting := AES_CTR(encKey, routing.Bytes())
-
-		routingCommands = append(routingCommands, routing)
+		routingCommands = append(routingCommands, routing.Bytes())
 		mac = computeMac(KDF(asb[i].SecretHash) , routing.Bytes())
+		fmt.Println("Finished round : ", i)
 	}
 	return Header{Alpha: asb[0].Alpha, Beta: routing, Mac : mac}
 
@@ -270,8 +278,9 @@ func processSphinxPacket(packet Header, privKey publics.PrivateKey) Header{
 func readBeta(beta RoutingInfo) (Hop, Commands, RoutingInfo, []byte){
 	nextHop := beta.NextHop
 	commands := beta.RoutingCommands
-	nextBeta := beta.NextHopMetaData
+	nextBetaBytes := beta.NextHopMetaData
 	nextMac := beta.Mac
 
-	return nextHop, commands, *nextBeta, nextMac
+	nextBeta := RoutingInfoFromBytes(nextBetaBytes)
+	return nextHop, commands, nextBeta, nextMac
 }
