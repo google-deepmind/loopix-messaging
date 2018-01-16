@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"anonymous-messaging/publics"
 	"bytes"
+	"errors"
 )
 
 const (
@@ -237,9 +238,7 @@ func expo_group_base(curve elliptic.Curve, exp []big.Int) publics.PublicKey{
 }
 
 
-func processSphinxPacket(packet Header, privKey publics.PrivateKey) (Hop, Commands, Header) {
-
-	// make this function return an error when mac does not match
+func processSphinxPacket(packet Header, privKey publics.PrivateKey) (Hop, Commands, Header, error) {
 
 	alpha := packet.Alpha
 	beta := packet.Beta
@@ -253,23 +252,21 @@ func processSphinxPacket(packet Header, privKey publics.PrivateKey) (Hop, Comman
 	aes_s := KDF(sharedSecret.Bytes())
 	encKey := KDF(aes_s)
 
-	// for new alpha
+
+	recomputedMac := computeMac(KDF(aes_s) , beta)
+
+	if bytes.Compare(recomputedMac, mac) != 0 {
+		return Hop{}, Commands{}, Header{}, errors.New("packet processing error: MACs are not matching")
+	}
+
 	blinder := computeBlindingFactor(curve, aes_s)
 	newAlphaX, newAlphaY := curve.Params().ScalarMult(alpha.X, alpha.Y, blinder.Bytes())
 	newAlpha := publics.PublicKey{curve, newAlphaX, newAlphaY}
 
-	recomputedMac := computeMac(aes_s, beta)
-
-	if bytes.Compare(recomputedMac, mac) != 0 {
-		fmt.Println("MAC's are not matching")
-		// return an error here
-	}
-
 	decBeta := AES_CTR(encKey, beta)
 	nextHop, commands, nextBeta, nextMac := readBeta(RoutingInfoFromBytes(decBeta))
 
-	return nextHop, commands, Header{Alpha: newAlpha, Beta: nextBeta, Mac: nextMac}
-
+	return nextHop, commands, Header{Alpha: newAlpha, Beta: nextBeta, Mac: nextMac}, nil
 }
 
 func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte){

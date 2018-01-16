@@ -279,7 +279,11 @@ func TestProcessSphinxPacket(t *testing.T) {
 
 	header := Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
 
-	nextHop, newCommands, newHeader := processSphinxPacket(header, priv1)
+	nextHop, newCommands, newHeader, err := processSphinxPacket(header, priv1)
+
+	if err != nil{
+		t.Error(err)
+	}
 
 	assert.Equal(t, nextHop, Hop{Id: "Node2", Address: "localhost:3332", PubKey: pub2.Bytes()})
 	assert.Equal(t, newCommands, c1)
