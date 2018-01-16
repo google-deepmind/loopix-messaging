@@ -106,7 +106,6 @@ func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []pub
 		routingCommands = append(routingCommands, encRouting)
 		mac = computeMac(KDF(asb[i].SecretHash) , encRouting)
 
-
 	}
 	return Header{Alpha: asb[0].Alpha, Beta: encRouting, Mac : mac}
 
@@ -238,7 +237,7 @@ func expo_group_base(curve elliptic.Curve, exp []big.Int) publics.PublicKey{
 }
 
 
-func processSphinxPacket(packet Header, privKey publics.PrivateKey) Header{
+func processSphinxPacket(packet Header, privKey publics.PrivateKey) (Hop, Commands, Header) {
 
 	// make this function return an error when mac does not match
 
@@ -253,13 +252,11 @@ func processSphinxPacket(packet Header, privKey publics.PrivateKey) Header{
 
 	aes_s := KDF(sharedSecret.Bytes())
 	encKey := KDF(aes_s)
-	fmt.Println("KEY FOR DEC: ", encKey)
 
 	// for new alpha
 	blinder := computeBlindingFactor(curve, aes_s)
-	new_alphaX, new_alphaY := curve.Params().ScalarMult(alpha.X, alpha.Y, blinder.Bytes())
-	new_alpha := publics.PublicKey{curve, new_alphaX, new_alphaY}
-	fmt.Println(new_alpha)
+	newAlphaX, newAlphaY := curve.Params().ScalarMult(alpha.X, alpha.Y, blinder.Bytes())
+	newAlpha := publics.PublicKey{curve, newAlphaX, newAlphaY}
 
 	recomputedMac := computeMac(aes_s, beta)
 
@@ -268,23 +265,18 @@ func processSphinxPacket(packet Header, privKey publics.PrivateKey) Header{
 		// return an error here
 	}
 
-	// add decryption
+	decBeta := AES_CTR(encKey, beta)
+	nextHop, commands, nextBeta, nextMac := readBeta(RoutingInfoFromBytes(decBeta))
 
-	//_, _, nextBeta, nextMac := readBeta(beta)
-	//
-	//
-	//newHeader := Header{Alpha: new_alpha, Beta: nextBeta, Mac: nextMac}
-	//return newHeader
-	return Header{}
+	return nextHop, commands, Header{Alpha: newAlpha, Beta: nextBeta, Mac: nextMac}
 
 }
 
-func readBeta(beta RoutingInfo) (Hop, Commands, RoutingInfo, []byte){
+func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte){
 	nextHop := beta.NextHop
 	commands := beta.RoutingCommands
-	nextBetaBytes := beta.NextHopMetaData
+	nextBeta := beta.NextHopMetaData
 	nextMac := beta.Mac
 
-	nextBeta := RoutingInfoFromBytes(nextBetaBytes)
 	return nextHop, commands, nextBeta, nextMac
 }

@@ -242,7 +242,7 @@ func TestEncapsulateHeader(t *testing.T){
 	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash) , enc_expectedRouting)
 
 	expectedHeader = Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
-	
+
 	assert.Equal(t, expectedHeader, actualHeader)
 
 
@@ -268,6 +268,14 @@ func TestProcessSphinxPacket(t *testing.T) {
 
 	header := encapsulateHeader(sharedSecrets, nodesPubs, []publics.PublicKey{pub1, pub2, pub3}, commands, []string{"DestinationId", "DestinationAddress", "DestKey"})
 
+	nextHop, newCommands, newHeader := processSphinxPacket(header, priv1)
 
-	processSphinxPacket(header, priv1)
+	fmt.Println(nextHop)
+	fmt.Println(newCommands)
+	fmt.Println(newHeader)
+
+	assert.Equal(t, newCommands, c1)
+	assert.Equal(t, nextHop.Id, "Node2")
+	assert.Equal(t, nextHop.Address, "localhost:3332")
+	assert.Equal(t, nextHop.PubKey, pub2.Bytes())
 }
