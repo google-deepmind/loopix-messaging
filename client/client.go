@@ -16,8 +16,6 @@ import (
 	"anonymous-messaging/publics"
 	"github.com/jmoiron/sqlx"
 	"crypto/elliptic"
-	sphinx "anonymous-messaging/new_packet_format"
-	"anonymous-messaging/packet_format"
 )
 
 const (
@@ -29,7 +27,7 @@ type ClientIt interface {
 	networker.NetworkClient
 	networker.NetworkServer
 	SendMessage(message string, recipient publics.MixPubs)
-	ProcessPacket(packet sphinx.SphinxPacket)
+	ProcessPacket(packet []byte)
 	Start()
 	ReadInMixnetPKI()
 	ReadInClientsPKI()
@@ -106,13 +104,13 @@ func (c *Client) HandleConnection(conn net.Conn) {
 		fmt.Println()
 	}
 
-	c.ProcessPacket(packet_format.FromString(string(buff[:reqLen])))
+	c.ProcessPacket(buff[:reqLen])
 	conn.Close()
 }
 
-func (c *Client) ProcessPacket(packet sphinx.SphinxPacket) string {
+func (c *Client) ProcessPacket(packet []byte) []byte {
 	fmt.Println("Processing packet: ", packet)
-	return packet.Pld
+	return packet
 }
 
 func (c *Client) Start() {

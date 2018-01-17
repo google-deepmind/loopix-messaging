@@ -10,7 +10,7 @@ import (
 
 	"anonymous-messaging/networker"
 	"anonymous-messaging/node"
-	"anonymous-messaging/packet_format"
+	sphinx "anonymous-messaging/new_packet_format"
 	"anonymous-messaging/pki"
 	"anonymous-messaging/publics"
 )
@@ -30,36 +30,32 @@ type MixServer struct {
 	listener *net.TCPListener
 }
 
-func (m *MixServer) ReceivedPacket(packet packet_format.Packet) {
+func (m *MixServer) ReceivedPacket(packet sphinx.SphinxPacket) {
 	fmt.Println("> Received packet")
 
-	c := make(chan packet_format.Packet)
-	go m.ProcessPacket(packet, c)
+	c := make(chan sphinx.SphinxPacket)
+	cHop := make(chan sphinx.Hop)
+
+	go m.ProcessPacket(packet, c, cHop)
 	dePacket := <-c
+	nextHop := <- cHop
 
-	fmt.Println("> Decoded packet: ", dePacket)
-
-	if dePacket.Steps[m.Id].Meta.FinalFlag {
-		m.ForwardPacket(dePacket)
-	}
+	m.ForwardPacket(nextHop, dePacket)
 }
 
-func (m *MixServer) ForwardPacket(packet packet_format.Packet) {
-	fmt.Println("> Forwarding packet", packet)
-	next := packet.Steps[m.Id].Meta
-
-	m.SendPacket(packet, next.NextHopHost, next.NextHopPort)
+func (m *MixServer) ForwardPacket(nextHop sphinx.Hop, packet sphinx.SphinxPacket) {
+	m.SendPacket(packet, nextHop.Address)
 }
 
-func (m *MixServer) SendPacket(packet packet_format.Packet, host, port string) {
+func (m *MixServer) SendPacket(packet sphinx.SphinxPacket, address string) {
 
-	conn, err := net.Dial("tcp", host+":"+port)
+	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		fmt.Print("Error in Client connect", err.Error())
 		os.Exit(1)
 	}
 
-	conn.Write([]byte(packet_format.ToString(packet)))
+	conn.Write(packet.Bytes())
 	defer conn.Close()
 }
 
@@ -105,7 +101,7 @@ func (m *MixServer) HandleConnection(conn net.Conn) {
 		fmt.Println("Connection Handle failed")
 	}
 
-	m.ReceivedPacket(packet_format.FromString(string(buff[:reqLen])))
+	m.ReceivedPacket(sphinx.PacketFromBytes(buff[:reqLen]))
 	conn.Close()
 }
 

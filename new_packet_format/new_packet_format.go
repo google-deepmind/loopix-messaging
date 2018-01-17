@@ -20,8 +20,6 @@ const (
 	HEADERLENGTH = 192
 )
 
-// KDF, Path Hop, Node metadata, blind, routingInfo, hdr
-
 
 type HeaderInitials struct {
 	Alpha publics.PublicKey
@@ -29,6 +27,7 @@ type HeaderInitials struct {
 	Blinder big.Int
 	SecretHash []byte
 }
+
 
 type SphinxPacket struct {
 	Hdr Header
@@ -45,6 +44,13 @@ func (p *SphinxPacket) Bytes() []byte{
 	return b
 }
 
+func PacketFromBytes(bytes []byte) SphinxPacket {
+	var packet SphinxPacket
+	if err := json.Unmarshal(bytes, &packet); err != nil {
+		panic(err)
+	}
+	return packet
+}
 
 type Header struct {
 	Alpha publics.PublicKey
@@ -52,12 +58,13 @@ type Header struct {
 	Mac []byte
 }
 
+
 type Hop struct {
 	Id string
 	Address string
 	PubKey []byte
-
 }
+
 
 type RoutingInfo struct {
 	NextHop Hop
@@ -65,6 +72,7 @@ type RoutingInfo struct {
 	NextHopMetaData []byte
 	Mac []byte
 }
+
 
 func (r *RoutingInfo) Bytes() []byte{
 	b, err := json.Marshal(r)
@@ -98,6 +106,7 @@ func PackForwardMessage(curve elliptic.Curve, nodes []publics.MixPubs, pubs []pu
 	return SphinxPacket{Hdr: header, Pld: payload}
 }
 
+
 func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, dest publics.MixPubs) ([]HeaderInitials, Header){
 
 	x := randomBigInt(curve.Params())
@@ -107,6 +116,7 @@ func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.
 	return asb, header
 
 }
+
 
 func encapsulateContent(asb []HeaderInitials, message string) []byte{
 
@@ -118,6 +128,7 @@ func encapsulateContent(asb []HeaderInitials, message string) []byte{
 	}
 	return enc
 }
+
 
 func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, destination publics.MixPubs) Header{
 
@@ -144,9 +155,11 @@ func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []pub
 
 }
 
+
 func computeMac(key, data []byte) []byte{
 	return Hmac(key, data)
 }
+
 
 func getSharedSecrets(curve elliptic.Curve, pubs []publics.PublicKey, initialVal big.Int) []HeaderInitials{
 
@@ -168,6 +181,7 @@ func getSharedSecrets(curve elliptic.Curve, pubs []publics.PublicKey, initialVal
 	return tuples
 
 }
+
 
 func computeFillers(pubs []publics.PublicKey, tuples []HeaderInitials) string{
 
@@ -206,6 +220,7 @@ func computeBlindingFactor(curve elliptic.Curve, key []byte) *big.Int{
 	return bytesToBigNum(curve, blinderBytes)
 }
 
+
 func computeSharedSecretHash(key []byte, iv []byte) []byte{
 	aesCipher, err := aes.NewCipher(key)
 
@@ -221,6 +236,7 @@ func computeSharedSecretHash(key []byte, iv []byte) []byte{
 
 	return ciphertext
 }
+
 
 func KDF(key []byte) []byte{
 	return hash(key)[:K]
@@ -246,6 +262,7 @@ func randomBigInt(curve *elliptic.CurveParams) big.Int{
 	return *nBig
 }
 
+
 func expo(base publics.PublicKey, exp []big.Int) publics.PublicKey{
 	x := exp[0]
 	for _, val := range exp[1:] {
@@ -255,6 +272,7 @@ func expo(base publics.PublicKey, exp []big.Int) publics.PublicKey{
 	resultX, resultY := curve.Params().ScalarMult(base.X, base.Y, x.Bytes())
 	return publics.PublicKey{curve, resultX, resultY}
 }
+
 
 func expo_group_base(curve elliptic.Curve, exp []big.Int) publics.PublicKey{
 	x := exp[0]
@@ -267,6 +285,7 @@ func expo_group_base(curve elliptic.Curve, exp []big.Int) publics.PublicKey{
 	return publics.PublicKey{Curve: curve, X: resultX, Y: resultY}
 
 }
+
 
 func ProcessSphianxPacket(packet SphinxPacket, privKey publics.PrivateKey) (Hop, Commands, SphinxPacket, error) {
 
@@ -284,6 +303,7 @@ func ProcessSphianxPacket(packet SphinxPacket, privKey publics.PrivateKey) (Hop,
 
 	return hop, commands, SphinxPacket{Hdr: newHeader, Pld: newPayload}, nil
 }
+
 
 func ProcessSphinxHeader(packet Header, privKey publics.PrivateKey) (Hop, Commands, Header, error) {
 
@@ -316,6 +336,7 @@ func ProcessSphinxHeader(packet Header, privKey publics.PrivateKey) (Hop, Comman
 	return nextHop, commands, Header{Alpha: newAlpha, Beta: nextBeta, Mac: nextMac}, nil
 }
 
+
 func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte){
 	nextHop := beta.NextHop
 	commands := beta.RoutingCommands
@@ -324,6 +345,7 @@ func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte){
 
 	return nextHop, commands, nextBeta, nextMac
 }
+
 
 func ProcessSphinxPayload(alpha publics.PublicKey, payload []byte, privKey publics.PrivateKey) ([]byte, error) {
 

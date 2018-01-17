@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"testing"
 
-	"anonymous-messaging/packet_format"
 	"anonymous-messaging/publics"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +17,7 @@ import (
 var client Client
 var mixPubs []publics.MixPubs
 var clientPubs []publics.MixPubs
-var testPacket packet_format.Packet
+var testPacket sphinx.SphinxPacket
 
 func makeTestPKI() {
 	db, err := sqlx.Connect("sqlite3", "testDatabase.db")
@@ -74,7 +73,7 @@ func TestMain(m *testing.M) {
 
 	pubC, privC := publics.GenerateKeyPair()
 	client = *NewClient("Client", "localhost", "3332", "testDatabase.db", pubC, privC)
-	testPacket = packet_format.NewPacket("Message", nil, nil, nil)
+	testPacket = sphinx.SphinxPacket{}
 
 	code := m.Run()
 
@@ -88,8 +87,8 @@ func TestClientProcessPacket(t *testing.T) {
 
 	// TO DO UPDATE THIS NEW_PACKET TO CONTAIN SOMETHING VALID
 
-	m := client.ProcessPacket(new_packet)
-	assert.Equal(t, m, "Message", "The final message should be the same as the init one")
+	m := client.ProcessPacket(new_packet.Bytes())
+	assert.Equal(t, m, []byte("Message"), "The final message should be the same as the init one")
 }
 
 func TestClientSendMessage(t *testing.T) {
@@ -108,7 +107,7 @@ func TestClientHandleConnection(t *testing.T) {
 	serverConn, clientConn := net.Pipe()
 
 	go client.HandleConnection(clientConn)
-	serverConn.Write([]byte(packet_format.ToString(testPacket)))
+	serverConn.Write(testPacket.Bytes())
 
 	// How I should now check that HandleConnection performed what it was suppose to do? Should I mock?
 }
