@@ -7,9 +7,10 @@ import (
 	"strconv"
 	"testing"
 
-	"anonymous-messaging/packet_format"
 	"anonymous-messaging/publics"
 	"github.com/stretchr/testify/assert"
+	sphinx "anonymous-messaging/new_packet_format"
+	"crypto/elliptic"
 )
 
 var cryptoClient CryptoClient
@@ -20,7 +21,7 @@ func TestMain(m *testing.M) {
 	pub1, _ := publics.GenerateKeyPair()
 	pub2, _ := publics.GenerateKeyPair()
 
-	cryptoClient = CryptoClient{Id: "MixClient", PubKey: pubC, PrvKey: privC}
+	cryptoClient = CryptoClient{Id: "MixClient", PubKey: pubC, PrvKey: privC, Curve: elliptic.P224()}
 
 	m1 := publics.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
 	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
@@ -35,19 +36,33 @@ func TestMixClientEncode(t *testing.T) {
 	path := mixPubs
 	delays := []float64{1.4, 2.5, 2.3}
 
-	encoded := cryptoClient.EncodeMessage(message, path, delays, publics.MixPubs{})
-	expected := packet_format.Encode(message, path, delays)
-	assert.Equal(t, encoded, expected, "The packets should be the same")
+	pubD, _ := publics.GenerateKeyPair()
+	recipient := publics.MixPubs{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD}
+
+	var pubs []publics.PublicKey
+	var commands []sphinx.Commands
+
+	for _, v := range path {
+		pubs = append(pubs, v.PubKey)
+	}
+
+	for _, v := range delays {
+		c := sphinx.Commands{Delay: v, Flag: "Flag"}
+		commands = append(commands, c)
+	}
+	encoded := cryptoClient.EncodeMessage(message, path, delays, recipient)
+	fmt.Println(encoded)
+
 }
 
 func TestMixClientDecode(t *testing.T) {
+	packet := sphinx.SphinxPacket{Hdr: sphinx.Header{}, Pld: "Message"}
 
-	packet := packet_format.NewPacket("Message", []float64{0.1, 0.2, 0.3}, mixPubs, nil)
 
 	decoded := cryptoClient.DecodeMessage(packet)
-	expected := packet_format.Decode(packet)
+	expected := packet
 
-	assert.Equal(t, decoded, expected, "The packets should be the same")
+	assert.Equal(t,expected, decoded)
 }
 
 func TestGenerateDelaySequence(t *testing.T) {

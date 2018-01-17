@@ -246,7 +246,7 @@ func TestEncapsulateHeader(t *testing.T){
 	assert.Equal(t, expectedHeader, actualHeader)
 }
 
-func TestProcessSphinxPacket(t *testing.T) {
+func TestProcessSphinxHeader(t *testing.T) {
 
 	pub1, priv1 := publics.GenerateKeyPair()
 	pub2, _ := publics.GenerateKeyPair()
@@ -277,7 +277,7 @@ func TestProcessSphinxPacket(t *testing.T) {
 
 	header := Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
 
-	nextHop, newCommands, newHeader, err := processSphinxPacket(header, priv1)
+	nextHop, newCommands, newHeader, err := ProcessSphinxHeader(header, priv1)
 
 	if err != nil{
 		t.Error(err)
@@ -287,4 +287,30 @@ func TestProcessSphinxPacket(t *testing.T) {
 	assert.Equal(t, newCommands, c1)
 	assert.Equal(t, newHeader, Header{Alpha: sharedSecrets[1].Alpha, Beta: enc_routing2, Mac: mac2})
 
+}
+
+func TestProcessSphinxPayload(t *testing.T) {
+
+	message := "Plaintext message"
+
+	pub1, priv1 := publics.GenerateKeyPair()
+	pub2, priv2 := publics.GenerateKeyPair()
+	pub3, priv3 := publics.GenerateKeyPair()
+
+	x := big.NewInt(100)
+	asb := getSharedSecrets(curve, []publics.PublicKey{pub1, pub2, pub3}, *x)
+
+	encMsg := encapsulateContent(asb, message)
+
+	var decMsg []byte
+	var err error
+	decMsg = encMsg
+	privs := []publics.PrivateKey{priv1, priv2, priv3}
+	for i, v := range privs{
+		decMsg, err = ProcessSphinxPayload(asb[i].Alpha, decMsg, v)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	assert.Equal(t, []byte(message), decMsg)
 }

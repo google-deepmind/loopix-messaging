@@ -12,6 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"crypto/elliptic"
+	sphinx "anonymous-messaging/new_packet_format"
 )
 
 var client Client
@@ -83,9 +84,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestClientProcessPacket(t *testing.T) {
-	packet := packet_format.NewPacket("Message", []float64{0.1, 0.2, 0.3}, mixPubs, nil)
+	var new_packet sphinx.SphinxPacket
 
-	m := client.ProcessPacket(packet)
+	// TO DO UPDATE THIS NEW_PACKET TO CONTAIN SOMETHING VALID
+
+	m := client.ProcessPacket(new_packet)
 	assert.Equal(t, m, "Message", "The final message should be the same as the init one")
 }
 
@@ -108,14 +111,6 @@ func TestClientHandleConnection(t *testing.T) {
 	serverConn.Write([]byte(packet_format.ToString(testPacket)))
 
 	// How I should now check that HandleConnection performed what it was suppose to do? Should I mock?
-}
-
-func TestClientStart(t *testing.T) {
-	// TO DO
-}
-
-func TestClientRun(t *testing.T) {
-	// TO DO
 }
 
 func TestClientReadInMixnetPKI(t *testing.T) {

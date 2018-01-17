@@ -32,8 +32,19 @@ type HeaderInitials struct {
 
 type SphinxPacket struct {
 	Hdr Header
-	Pld string
+	Pld []byte
 }
+
+
+func (p *SphinxPacket) Bytes() []byte{
+	b, err := json.Marshal(p)
+
+	if err != nil {
+		fmt.Println("Error in converting Packet to bytes ", err)
+	}
+	return b
+}
+
 
 type Header struct {
 	Alpha publics.PublicKey
@@ -80,19 +91,32 @@ type Commands struct {
 	Flag string
 }
 
+
 func PackForwardMessage(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, dest publics.MixPubs, message string) SphinxPacket{
-	header := createHeader(curve, nodes, pubs, commands, dest)
-	return SphinxPacket{Hdr: header, Pld: message}
+	asb, header := createHeader(curve, nodes, pubs, commands, dest)
+	payload := encapsulateContent(asb, message)
+	return SphinxPacket{Hdr: header, Pld: payload}
 }
 
-func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, dest publics.MixPubs) Header{
+func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, dest publics.MixPubs) ([]HeaderInitials, Header){
 
 	x := randomBigInt(curve.Params())
 	asb := getSharedSecrets(curve, pubs, x)
 	computeFillers(pubs, asb)
 	header := encapsulateHeader(asb, nodes, pubs, commands, dest)
-	return header
+	return asb, header
 
+}
+
+func encapsulateContent(asb []HeaderInitials, message string) []byte{
+
+	var enc []byte
+	enc = []byte(message)
+	for i := len(asb) - 1; i >= 0; i-- {
+		sharedKey := KDF(asb[i].SecretHash)
+		enc = AES_CTR(sharedKey, enc)
+	}
+	return enc
 }
 
 func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, destination publics.MixPubs) Header{
@@ -159,7 +183,6 @@ func computeFillers(pubs []publics.PublicKey, tuples []HeaderInitials) string{
 
 		minLen = minLen - K
 	}
-
 	fmt.Println("Filler len: ", len(filler))
 
 	return filler
@@ -245,8 +268,24 @@ func expo_group_base(curve elliptic.Curve, exp []big.Int) publics.PublicKey{
 
 }
 
+func ProcessSphianxPacket(packet SphinxPacket, privKey publics.PrivateKey) (Hop, Commands, SphinxPacket, error) {
 
-func processSphinxPacket(packet Header, privKey publics.PrivateKey) (Hop, Commands, Header, error) {
+	hop, commands, newHeader, err := ProcessSphinxHeader(packet.Hdr, privKey)
+
+	if err != nil {
+		return Hop{}, Commands{}, SphinxPacket{}, err
+	}
+
+	newPayload, err := ProcessSphinxPayload(packet.Hdr.Alpha, packet.Pld, privKey)
+
+	if err != nil {
+		return Hop{}, Commands{}, SphinxPacket{}, err
+	}
+
+	return hop, commands, SphinxPacket{Hdr: newHeader, Pld: newPayload}, nil
+}
+
+func ProcessSphinxHeader(packet Header, privKey publics.PrivateKey) (Hop, Commands, Header, error) {
 
 	alpha := packet.Alpha
 	beta := packet.Beta
@@ -284,4 +323,18 @@ func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte){
 	nextMac := beta.Mac
 
 	return nextHop, commands, nextBeta, nextMac
+}
+
+func ProcessSphinxPayload(alpha publics.PublicKey, payload []byte, privKey publics.PrivateKey) ([]byte, error) {
+
+	curve := elliptic.P224()
+	sharedSecretX, sharedSecretY:= curve.Params().ScalarMult(alpha.X, alpha.Y, privKey.Value)
+	sharedSecret := publics.PublicKey{Curve: curve, X: sharedSecretX, Y: sharedSecretY}
+
+	aes_s := KDF(sharedSecret.Bytes())
+	decKey := KDF(aes_s)
+
+	decPayload := AES_CTR(decKey, payload)
+
+	return decPayload, nil
 }

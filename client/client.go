@@ -12,11 +12,12 @@ import (
 
 	"anonymous-messaging/clientCore"
 	"anonymous-messaging/networker"
-	"anonymous-messaging/packet_format"
 	"anonymous-messaging/pki"
 	"anonymous-messaging/publics"
 	"github.com/jmoiron/sqlx"
 	"crypto/elliptic"
+	sphinx "anonymous-messaging/new_packet_format"
+	"anonymous-messaging/packet_format"
 )
 
 const (
@@ -28,7 +29,7 @@ type ClientIt interface {
 	networker.NetworkClient
 	networker.NetworkServer
 	SendMessage(message string, recipient publics.MixPubs)
-	ProcessPacket(packet packet_format.Packet)
+	ProcessPacket(packet sphinx.SphinxPacket)
 	Start()
 	ReadInMixnetPKI()
 	ReadInClientsPKI()
@@ -67,10 +68,10 @@ func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
 	delays := c.GenerateDelaySequence(desiredRateParameter, pathLength)
 
 	packet := c.EncodeMessage(message, path, delays, recipient)
-	c.Send(packet_format.ToString(packet), path[0].Host, path[0].Port)
+	c.Send(packet.Bytes(), path[0].Host, path[0].Port)
 }
 
-func (c *Client) Send(packet string, host string, port string) {
+func (c *Client) Send(packet []byte, host string, port string) {
 	conn, err := net.Dial("tcp", host+":"+port)
 	defer conn.Close()
 
@@ -79,7 +80,7 @@ func (c *Client) Send(packet string, host string, port string) {
 		os.Exit(1)
 	}
 
-	conn.Write([]byte(packet))
+	conn.Write(packet)
 }
 
 func (c *Client) ListenForIncomingConnections() {
@@ -109,9 +110,9 @@ func (c *Client) HandleConnection(conn net.Conn) {
 	conn.Close()
 }
 
-func (c *Client) ProcessPacket(packet packet_format.Packet) string {
+func (c *Client) ProcessPacket(packet sphinx.SphinxPacket) string {
 	fmt.Println("Processing packet: ", packet)
-	return packet.Message
+	return packet.Pld
 }
 
 func (c *Client) Start() {
