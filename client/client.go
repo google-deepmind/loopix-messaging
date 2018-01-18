@@ -66,7 +66,7 @@ func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
 	delays := c.GenerateDelaySequence(desiredRateParameter, pathLength)
 
 	packet := c.EncodeMessage(message, path, delays, recipient)
-	c.Send(packet.Bytes(), path[0].Host, path[0].Port)
+	c.Send(packet, path[0].Host, path[0].Port)
 }
 
 func (c *Client) Send(packet []byte, host string, port string) {
@@ -141,13 +141,12 @@ func (c *Client) Run() {
 }
 
 func (c *Client) ReadInMixnetPKI(pkiName string) {
-	fmt.Println("Reading network")
+	fmt.Println("Reading network from pki:  ", pkiName)
 
 	db := c.ConnectToPKI(pkiName)
 	records := pki.QueryDatabase(db, "Mixes")
 
 	for records.Next() {
-		fmt.Println("Reading records")
 		results := make(map[string]interface{})
 		err := records.MapScan(results)
 
@@ -155,11 +154,8 @@ func (c *Client) ReadInMixnetPKI(pkiName string) {
 			panic(err)
 
 		}
-
-		fmt.Println("Pub: ")
 		pubs := publics.NewMixPubs(string(results["MixId"].([]byte)), string(results["Host"].([]byte)),
 			string(results["Port"].([]byte)), publics.PubKeyFromBytes(elliptic.P224() ,results["PubKey"].([]byte)))
-		fmt.Println(pubs)
 
 		c.ActiveMixes = append(c.ActiveMixes, pubs)
 	}

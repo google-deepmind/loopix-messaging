@@ -5,10 +5,10 @@ package node
 
 import (
 	"fmt"
-	"time"
 
 	sphinx "anonymous-messaging/new_packet_format"
 	"anonymous-messaging/publics"
+	"time"
 )
 
 type Mix struct {
@@ -17,23 +17,22 @@ type Mix struct {
 	PrvKey publics.PrivateKey
 }
 
-func (m *Mix) ProcessPacket(p sphinx.SphinxPacket, c chan<- sphinx.SphinxPacket, chop chan <- sphinx.Hop) {
-	fmt.Println("> Processing packet")
+func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, chop chan <- sphinx.Hop){
 
-	nextHop, commands, newPacket, err := sphinx.ProcessSphianxPacket(p, m.PrvKey)
+	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.PrvKey)
 
 	if err != nil {
-		panic(err) // probably this should be a returned error and panic or logging of error should be done on a higher level
+		panic(err)
 	}
 
 	delay := commands.Delay
+	fmt.Println(delay)
+	timeoutCh := make(chan []byte, 1)
 
-	timeoutCh := make(chan sphinx.SphinxPacket, 1)
-
-	go func(p sphinx.SphinxPacket, delay float64) {
+	go func(p []byte, delay float64) {
 		time.Sleep(time.Second * time.Duration(delay))
 		timeoutCh <- p
-	}(newPacket, delay)
+	}(newPacket.Bytes(), delay)
 
 	c <- <-timeoutCh
 	chop <- nextHop
@@ -41,7 +40,6 @@ func (m *Mix) ProcessPacket(p sphinx.SphinxPacket, c chan<- sphinx.SphinxPacket,
 
 func (m *Mix) SendLoopMessage() {
 	fmt.Println("> Sending loop message")
-	// TO DO
 }
 
 func NewMix(id string, pubKey publics.PublicKey, prvKey publics.PrivateKey) *Mix {

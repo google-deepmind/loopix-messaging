@@ -24,30 +24,28 @@ type MixServer struct {
 	Id   string
 	Host string
 	Port string
-
-	node.Mix
-
 	listener *net.TCPListener
+	node.Mix
 }
 
-func (m *MixServer) ReceivedPacket(packet sphinx.SphinxPacket) {
+func (m *MixServer) ReceivedPacket(packet []byte) {
 	fmt.Println("> Received packet")
 
-	c := make(chan sphinx.SphinxPacket)
+	c := make(chan []byte)
 	cHop := make(chan sphinx.Hop)
 
 	go m.ProcessPacket(packet, c, cHop)
 	dePacket := <-c
 	nextHop := <- cHop
 
-	m.ForwardPacket(nextHop, dePacket)
+	m.ForwardPacket(dePacket, nextHop)
 }
 
-func (m *MixServer) ForwardPacket(nextHop sphinx.Hop, packet sphinx.SphinxPacket) {
-	m.SendPacket(packet, nextHop.Address)
+func (m *MixServer) ForwardPacket(packet []byte, hop sphinx.Hop) {
+	m.SendPacket(packet, hop.Address)
 }
 
-func (m *MixServer) SendPacket(packet sphinx.SphinxPacket, address string) {
+func (m *MixServer) SendPacket(packet []byte, address string) {
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -55,7 +53,7 @@ func (m *MixServer) SendPacket(packet sphinx.SphinxPacket, address string) {
 		os.Exit(1)
 	}
 
-	conn.Write(packet.Bytes())
+	conn.Write(packet)
 	defer conn.Close()
 }
 
@@ -101,11 +99,11 @@ func (m *MixServer) HandleConnection(conn net.Conn) {
 		fmt.Println("Connection Handle failed")
 	}
 
-	m.ReceivedPacket(sphinx.PacketFromBytes(buff[:reqLen]))
+	m.ReceivedPacket(buff[:reqLen])
 	conn.Close()
 }
 
-func SaveInPKI(m *MixServer, pkiPath string) {
+func (m *MixServer) SaveInPKI(pkiPath string) {
 	fmt.Println("> Saving into Database")
 
 	db := pki.OpenDatabase(pkiPath, "sqlite3")
@@ -132,7 +130,7 @@ func SaveInPKI(m *MixServer, pkiPath string) {
 func NewMixServer(id, host, port string, pubKey publics.PublicKey, prvKey publics.PrivateKey, pkiPath string) *MixServer {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	mixServer := MixServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
-	SaveInPKI(&mixServer, pkiPath)
+	mixServer.SaveInPKI(pkiPath)
 
 	addr, err := net.ResolveTCPAddr("tcp", mixServer.Host+":"+mixServer.Port)
 	mixServer.listener, err = net.ListenTCP("tcp", addr)

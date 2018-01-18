@@ -287,8 +287,9 @@ func expo_group_base(curve elliptic.Curve, exp []big.Int) publics.PublicKey{
 }
 
 
-func ProcessSphianxPacket(packet SphinxPacket, privKey publics.PrivateKey) (Hop, Commands, SphinxPacket, error) {
+func ProcessSphinxPacket(packetBytes []byte, privKey publics.PrivateKey) (Hop, Commands, SphinxPacket, error) {
 
+	packet := PacketFromBytes(packetBytes)
 	hop, commands, newHeader, err := ProcessSphinxHeader(packet.Hdr, privKey)
 
 	if err != nil {

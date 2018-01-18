@@ -19,7 +19,7 @@ type CryptoClient struct {
 	Curve elliptic.Curve
 }
 
-func (c *CryptoClient) EncodeMessage(message string, path []publics.MixPubs, delays []float64, recipient publics.MixPubs) sphinx.SphinxPacket {
+func (c *CryptoClient) EncodeMessage(message string, path []publics.MixPubs, delays []float64, recipient publics.MixPubs) []byte {
 	var pubs []publics.PublicKey
 	var commands []sphinx.Commands
 
@@ -35,7 +35,7 @@ func (c *CryptoClient) EncodeMessage(message string, path []publics.MixPubs, del
 	var packet sphinx.SphinxPacket
 	packet = sphinx.PackForwardMessage(c.Curve, path, pubs, commands, recipient, message)
 
-	return packet
+	return packet.Bytes()
 }
 
 func (c *CryptoClient) DecodeMessage(packet sphinx.SphinxPacket) sphinx.SphinxPacket {

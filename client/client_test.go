@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"strconv"
 	"testing"
@@ -19,9 +18,34 @@ var mixPubs []publics.MixPubs
 var clientPubs []publics.MixPubs
 var testPacket sphinx.SphinxPacket
 
-func makeTestPKI() {
+
+func clean() {
+	err := os.Remove("testDatabase.db")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func TestMain(m *testing.M) {
+
+	pubC, privC := publics.GenerateKeyPair()
+	client = *NewClient("Client", "localhost", "3332", "testDatabase.db", pubC, privC)
+
+	code := m.Run()
+	os.Exit(code)
+	clean()
+
+}
+
+func TestClientProcessPacket(t *testing.T) {
+}
+
+
+func TestClientReadInMixnetPKI(t *testing.T) {
+
+	clean()
 	db, err := sqlx.Connect("sqlite3", "testDatabase.db")
-	defer db.Close()
+
 	if err != nil {
 		panic(err)
 	}
@@ -39,97 +63,52 @@ func makeTestPKI() {
 	statement.Exec()
 
 	for _, elem := range mixPubs {
-		db.Exec("INSERT INTO Mixes (MixId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey)
+		_, err := db.Exec("INSERT INTO Mixes (MixId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey.Bytes())
+		if err != nil{
+			panic(err)
+		}
+	}
+	defer db.Close()
+
+	client.ReadInMixnetPKI("testDatabase.db")
+
+	assert.Equal(t, len(mixPubs), len(client.ActiveMixes))
+	assert.Equal(t, mixPubs, client.ActiveMixes)
+
+}
+
+func TestClientReadInClientsPKI(t *testing.T) {
+
+	clean()
+	db, err := sqlx.Connect("sqlite3", "testDatabase.db")
+
+	if err != nil {
+		panic(err)
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
 		pub, _ := publics.GenerateKeyPair()
 		client := publics.NewMixPubs(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), pub)
 		clientPubs = append(clientPubs, client)
 	}
 
-	statement, e = db.Prepare("CREATE TABLE IF NOT EXISTS Clients ( id INTEGER PRIMARY KEY, ClientId TEXT, Host TEXT, Port TEXT, PubKey BLOB)")
+	statement, e := db.Prepare("CREATE TABLE IF NOT EXISTS Clients ( id INTEGER PRIMARY KEY, ClientId TEXT, Host TEXT, Port TEXT, PubKey BLOB)")
 	if e != nil {
 		panic(e)
 	}
 	statement.Exec()
 
 	for _, elem := range clientPubs {
-		db.Exec("INSERT INTO Clients (ClientId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey)
+		db.Exec("INSERT INTO Clients (ClientId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey.Bytes())
 	}
 
 	defer db.Close()
-}
 
-func clean() {
-	err := os.Remove("testDatabase.db")
-	if err != nil {
-		panic(err)
-	}
-}
 
-func TestMain(m *testing.M) {
-	makeTestPKI()
-
-	pubC, privC := publics.GenerateKeyPair()
-	client = *NewClient("Client", "localhost", "3332", "testDatabase.db", pubC, privC)
-	testPacket = sphinx.SphinxPacket{}
-
-	code := m.Run()
-
-	clean()
-	os.Exit(code)
-
-}
-
-func TestClientProcessPacket(t *testing.T) {
-	var new_packet sphinx.SphinxPacket
-
-	// TO DO UPDATE THIS NEW_PACKET TO CONTAIN SOMETHING VALID
-
-	m := client.ProcessPacket(new_packet.Bytes())
-	assert.Equal(t, m, []byte("Message"), "The final message should be the same as the init one")
-}
-
-func TestClientSendMessage(t *testing.T) {
-	// TO DO
-}
-
-func TestClientSend(t *testing.T) {
-	// TO DO
-}
-
-func TestClientListenForConnections(t *testing.T) {
-	// TO DO
-}
-
-func TestClientHandleConnection(t *testing.T) {
-	serverConn, clientConn := net.Pipe()
-
-	go client.HandleConnection(clientConn)
-	serverConn.Write(testPacket.Bytes())
-
-	// How I should now check that HandleConnection performed what it was suppose to do? Should I mock?
-}
-
-func TestClientReadInMixnetPKI(t *testing.T) {
-	client.ReadInMixnetPKI("testDatabase.db")
-
-	if len(mixPubs) == len(client.ActiveMixes) {
-
-	} else {
-		t.Error("Reading mixes incorrect")
-	}
-}
-
-func TestClientReadInClientsPKI(t *testing.T) {
 	client.ReadInClientsPKI("testDatabase.db")
 
-	if len(clientPubs) == len(client.OtherClients) {
-
-	} else {
-		t.Error("Reading mixes incorrect")
-	}
+	assert.Equal(t, len(clientPubs), len(client.OtherClients))
+	assert.Equal(t, clientPubs, client.OtherClients)
 }
 
 func TestClientSaveInPKI(t *testing.T) {

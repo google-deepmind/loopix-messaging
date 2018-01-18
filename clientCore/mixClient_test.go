@@ -33,50 +33,44 @@ func TestMain(m *testing.M) {
 func TestMixClientEncode(t *testing.T) {
 
 	message := "Hello world"
-	path := mixPubs
 	delays := []float64{1.4, 2.5, 2.3}
 
 	pubD, _ := publics.GenerateKeyPair()
 	recipient := publics.MixPubs{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD}
 
 	var pubs []publics.PublicKey
-	var commands []sphinx.Commands
-
-	for _, v := range path {
+	for _, v := range mixPubs {
 		pubs = append(pubs, v.PubKey)
 	}
 
+	var commands []sphinx.Commands
 	for _, v := range delays {
 		c := sphinx.Commands{Delay: v, Flag: "Flag"}
 		commands = append(commands, c)
 	}
-	encoded := cryptoClient.EncodeMessage(message, path, delays, recipient)
-	fmt.Println(encoded)
+	encoded := cryptoClient.EncodeMessage(message, mixPubs, delays, recipient)
+
+	assert.Equal(t, reflect.TypeOf([]byte{}), reflect.TypeOf(encoded))
 
 }
 
 func TestMixClientDecode(t *testing.T) {
 	packet := sphinx.SphinxPacket{Hdr: sphinx.Header{}, Pld: []byte("Message")}
 
-
 	decoded := cryptoClient.DecodeMessage(packet)
 	expected := packet
 
-	assert.Equal(t,expected, decoded)
+	assert.Equal(t, expected, decoded)
 }
 
 func TestGenerateDelaySequence(t *testing.T) {
 	delays := cryptoClient.GenerateDelaySequence(100, 5)
-	if len(delays) != 5 {
-		t.Error("Wrong length")
-	}
-	if reflect.TypeOf(delays).Elem().Kind() != reflect.Float64 {
-		t.Error("Incorrect type of generated delays")
-	}
+
+	assert.Equal(t, len(delays), 5, "The length of returned delays should be equal to theinput length")
+	assert.Equal(t, reflect.TypeOf([]float64{}), reflect.TypeOf(delays), "The delays should be in float64 type")
 }
 
 func TestGetRandomMixSequence(t *testing.T) {
-	// test two cases: the one when len is smaller than all mixes and the one when length is larger / the same
 	var mixes []publics.MixPubs
 	for i := 0; i < 5; i++ {
 		pub, _ := publics.GenerateKeyPair()
