@@ -28,13 +28,6 @@ type HeaderInitials struct {
 	SecretHash []byte
 }
 
-
-type SphinxPacket struct {
-	Hdr Header
-	Pld []byte
-}
-
-
 func (p *SphinxPacket) Bytes() []byte{
 	b, err := json.Marshal(p)
 
@@ -51,28 +44,6 @@ func PacketFromBytes(bytes []byte) SphinxPacket {
 	}
 	return packet
 }
-
-type Header struct {
-	Alpha []byte //publics.PublicKey
-	Beta []byte
-	Mac []byte
-}
-
-
-type Hop struct {
-	Id string
-	Address string
-	PubKey []byte
-}
-
-
-type RoutingInfo struct {
-	NextHop Hop
-	RoutingCommands Commands
-	NextHopMetaData []byte
-	Mac []byte
-}
-
 
 func (r *RoutingInfo) Bytes() []byte{
 	b, err := json.Marshal(r)
@@ -94,16 +65,11 @@ func RoutingInfoFromBytes(bytes []byte) RoutingInfo{
 	return finalHopReconstruct
 }
 
-type Commands struct {
-	Delay float64
-	Flag string
-}
-
 
 func PackForwardMessage(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, dest publics.MixPubs, message string) SphinxPacket{
 	asb, header := createHeader(curve, nodes, pubs, commands, dest)
 	payload := encapsulateContent(asb, message)
-	return SphinxPacket{Hdr: header, Pld: payload}
+	return SphinxPacket{Hdr: &header, Pld: payload}
 }
 
 
@@ -132,7 +98,7 @@ func encapsulateContent(asb []HeaderInitials, message string) []byte{
 
 func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, destination publics.MixPubs) Header{
 
-	finalHop := RoutingInfo{NextHop: Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: commands[len(commands) - 1], NextHopMetaData: []byte{}, Mac: []byte{}}
+	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: &commands[len(commands) - 1], NextHopMetaData: []byte{}, Mac: []byte{}}
 
 	encFinalHop := AES_CTR(KDF(asb[len(asb)-1].SecretHash), finalHop.Bytes())
 	mac := computeMac(KDF(asb[len(asb)-1].SecretHash) , encFinalHop)
@@ -142,7 +108,7 @@ func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []pub
 	var encRouting []byte
 	for i := len(pubs)-2; i >= 0; i-- {
 		nextNode := nodes[i+1]
-		routing := RoutingInfo{NextHop: Hop{Id: nextNode.Id, Address: nextNode.Host+":"+nextNode.Port, PubKey: pubs[i+1].Bytes()}, RoutingCommands: commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
+		routing := RoutingInfo{NextHop: &Hop{Id: nextNode.Id, Address: nextNode.Host+":"+nextNode.Port, PubKey: pubs[i+1].Bytes()}, RoutingCommands: &commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
 
 		encKey := KDF(asb[i].SecretHash)
 		encRouting = AES_CTR(encKey, routing.Bytes())
@@ -290,7 +256,7 @@ func expo_group_base(curve elliptic.Curve, exp []big.Int) publics.PublicKey{
 func ProcessSphinxPacket(packetBytes []byte, privKey publics.PrivateKey) (Hop, Commands, SphinxPacket, error) {
 
 	packet := PacketFromBytes(packetBytes)
-	hop, commands, newHeader, err := ProcessSphinxHeader(packet.Hdr, privKey)
+	hop, commands, newHeader, err := ProcessSphinxHeader(*packet.Hdr, privKey)
 
 	if err != nil {
 		return Hop{}, Commands{}, SphinxPacket{}, err
@@ -302,7 +268,7 @@ func ProcessSphinxPacket(packetBytes []byte, privKey publics.PrivateKey) (Hop, C
 		return Hop{}, Commands{}, SphinxPacket{}, err
 	}
 
-	return hop, commands, SphinxPacket{Hdr: newHeader, Pld: newPayload}, nil
+	return hop, commands, SphinxPacket{Hdr: &newHeader, Pld: newPayload}, nil
 }
 
 
@@ -339,8 +305,8 @@ func ProcessSphinxHeader(packet Header, privKey publics.PrivateKey) (Hop, Comman
 
 
 func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte){
-	nextHop := beta.NextHop
-	commands := beta.RoutingCommands
+	nextHop := *beta.NextHop
+	commands := *beta.RoutingCommands
 	nextBeta := beta.NextHopMetaData
 	nextMac := beta.Mac
 

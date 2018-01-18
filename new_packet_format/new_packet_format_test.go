@@ -223,19 +223,19 @@ func TestEncapsulateHeader(t *testing.T){
 						publics.MixPubs{Id: "DestinationId", Host: "DestinationAddress", Port: "9998", PubKey: pubD})
 
 
-	routing1 := RoutingInfo{NextHop: Hop{"DestinationId", "DestinationAddress:9998", []byte{}}, RoutingCommands: c3,
+	routing1 := RoutingInfo{NextHop: &Hop{"DestinationId", "DestinationAddress:9998", []byte{}}, RoutingCommands: &c3,
 							NextHopMetaData: []byte{}, Mac: []byte{}}
 
 	enc_routing1 := AES_CTR(KDF(sharedSecrets[2].SecretHash), routing1.Bytes())
 	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash) , enc_routing1)
 
-	routing2 := RoutingInfo{NextHop: Hop{"Node3", "localhost:3333", pub3.Bytes()}, RoutingCommands : c2,
+	routing2 := RoutingInfo{NextHop: &Hop{"Node3", "localhost:3333", pub3.Bytes()}, RoutingCommands : &c2,
 							NextHopMetaData: enc_routing1, Mac: mac1}
 
 	enc_routing2 := AES_CTR(KDF(sharedSecrets[1].SecretHash), routing2.Bytes())
 	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash) , enc_routing2)
 
-	expectedRouting := RoutingInfo{NextHop: Hop{"Node2", "localhost:3332", pub2.Bytes()}, RoutingCommands: c1,
+	expectedRouting := RoutingInfo{NextHop: &Hop{"Node2", "localhost:3332", pub2.Bytes()}, RoutingCommands: &c1,
 									NextHopMetaData: enc_routing2, Mac: mac2}
 
 	enc_expectedRouting := AES_CTR(KDF(sharedSecrets[0].SecretHash), expectedRouting.Bytes())
@@ -260,17 +260,17 @@ func TestProcessSphinxHeader(t *testing.T) {
 	sharedSecrets := getSharedSecrets(curve, []publics.PublicKey{pub1, pub2, pub3}, *x)
 
 	// Intermediate steps, which are needed to check whether the processing of the header was correct
-	routing1 := RoutingInfo{NextHop: Hop{"DestinationId", "DestinationAddress", []byte{}}, RoutingCommands: c3,
+	routing1 := RoutingInfo{NextHop: &Hop{"DestinationId", "DestinationAddress", []byte{}}, RoutingCommands: &c3,
 		NextHopMetaData: []byte{}, Mac: []byte{}}
 	enc_routing1 := AES_CTR(KDF(sharedSecrets[2].SecretHash), routing1.Bytes())
 	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash) , enc_routing1)
 
-	routing2 := RoutingInfo{NextHop: Hop{"Node3", "localhost:3333", pub3.Bytes()}, RoutingCommands : c2,
+	routing2 := RoutingInfo{NextHop: &Hop{"Node3", "localhost:3333", pub3.Bytes()}, RoutingCommands : &c2,
 		NextHopMetaData: enc_routing1, Mac: mac1}
 	enc_routing2 := AES_CTR(KDF(sharedSecrets[1].SecretHash), routing2.Bytes())
 	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash) , enc_routing2)
 
-	routing3 := RoutingInfo{NextHop: Hop{"Node2", "localhost:3332", pub2.Bytes()}, RoutingCommands: c1,
+	routing3 := RoutingInfo{NextHop: &Hop{"Node2", "localhost:3332", pub2.Bytes()}, RoutingCommands: &c1,
 		NextHopMetaData: enc_routing2, Mac: mac2}
 	enc_expectedRouting := AES_CTR(KDF(sharedSecrets[0].SecretHash), routing3.Bytes())
 	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash) , enc_expectedRouting)
