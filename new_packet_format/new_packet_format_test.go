@@ -241,7 +241,7 @@ func TestEncapsulateHeader(t *testing.T){
 	enc_expectedRouting := AES_CTR(KDF(sharedSecrets[0].SecretHash), expectedRouting.Bytes())
 	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash) , enc_expectedRouting)
 
-	expectedHeader := Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
+	expectedHeader := Header{sharedSecrets[0].Alpha.Bytes(), enc_expectedRouting, mac3}
 
 	assert.Equal(t, expectedHeader, actualHeader)
 }
@@ -275,7 +275,7 @@ func TestProcessSphinxHeader(t *testing.T) {
 	enc_expectedRouting := AES_CTR(KDF(sharedSecrets[0].SecretHash), routing3.Bytes())
 	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash) , enc_expectedRouting)
 
-	header := Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
+	header := Header{sharedSecrets[0].Alpha.Bytes(), enc_expectedRouting, mac3}
 
 	nextHop, newCommands, newHeader, err := ProcessSphinxHeader(header, priv1)
 
@@ -285,7 +285,7 @@ func TestProcessSphinxHeader(t *testing.T) {
 
 	assert.Equal(t, nextHop, Hop{Id: "Node2", Address: "localhost:3332", PubKey: pub2.Bytes()})
 	assert.Equal(t, newCommands, c1)
-	assert.Equal(t, newHeader, Header{Alpha: sharedSecrets[1].Alpha, Beta: enc_routing2, Mac: mac2})
+	assert.Equal(t, newHeader, Header{Alpha: sharedSecrets[1].Alpha.Bytes(), Beta: enc_routing2, Mac: mac2})
 
 }
 
@@ -307,7 +307,7 @@ func TestProcessSphinxPayload(t *testing.T) {
 	decMsg = encMsg
 	privs := []publics.PrivateKey{priv1, priv2, priv3}
 	for i, v := range privs{
-		decMsg, err = ProcessSphinxPayload(asb[i].Alpha, decMsg, v)
+		decMsg, err = ProcessSphinxPayload(asb[i].Alpha.Bytes(), decMsg, v)
 		if err != nil {
 			t.Error(err)
 		}

@@ -53,7 +53,7 @@ func PacketFromBytes(bytes []byte) SphinxPacket {
 }
 
 type Header struct {
-	Alpha publics.PublicKey
+	Alpha []byte //publics.PublicKey
 	Beta []byte
 	Mac []byte
 }
@@ -151,7 +151,7 @@ func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []pub
 		mac = computeMac(KDF(asb[i].SecretHash) , encRouting)
 
 	}
-	return Header{Alpha: asb[0].Alpha, Beta: encRouting, Mac : mac}
+	return Header{Alpha: asb[0].Alpha.Bytes(), Beta: encRouting, Mac : mac}
 
 }
 
@@ -308,7 +308,7 @@ func ProcessSphinxPacket(packetBytes []byte, privKey publics.PrivateKey) (Hop, C
 
 func ProcessSphinxHeader(packet Header, privKey publics.PrivateKey) (Hop, Commands, Header, error) {
 
-	alpha := packet.Alpha
+	alpha := publics.PubKeyFromBytes(elliptic.P224(), packet.Alpha)
 	beta := packet.Beta
 	mac := packet.Mac
 
@@ -334,7 +334,7 @@ func ProcessSphinxHeader(packet Header, privKey publics.PrivateKey) (Hop, Comman
 	decBeta := AES_CTR(encKey, beta)
 	nextHop, commands, nextBeta, nextMac := readBeta(RoutingInfoFromBytes(decBeta))
 
-	return nextHop, commands, Header{Alpha: newAlpha, Beta: nextBeta, Mac: nextMac}, nil
+	return nextHop, commands, Header{Alpha: newAlpha.Bytes(), Beta: nextBeta, Mac: nextMac}, nil
 }
 
 
@@ -348,9 +348,10 @@ func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte){
 }
 
 
-func ProcessSphinxPayload(alpha publics.PublicKey, payload []byte, privKey publics.PrivateKey) ([]byte, error) {
+func ProcessSphinxPayload(alphaBytes []byte, payload []byte, privKey publics.PrivateKey) ([]byte, error) {
 
 	curve := elliptic.P224()
+	alpha := publics.PubKeyFromBytes(elliptic.P224(), alphaBytes)
 	sharedSecretX, sharedSecretY:= curve.Params().ScalarMult(alpha.X, alpha.Y, privKey.Value)
 	sharedSecret := publics.PublicKey{Curve: curve, X: sharedSecretX, Y: sharedSecretY}
 
