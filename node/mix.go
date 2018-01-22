@@ -17,7 +17,7 @@ type Mix struct {
 	PrvKey publics.PrivateKey
 }
 
-func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, chop chan <- sphinx.Hop){
+func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, chop chan <- string){
 
 	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.PrvKey)
 
@@ -35,7 +35,7 @@ func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, chop chan <- sphinx.
 	}(newPacket.Bytes(), delay)
 
 	c <- <-timeoutCh
-	chop <- nextHop
+	chop <- nextHop.Address
 }
 
 func (m *Mix) SendLoopMessage() {

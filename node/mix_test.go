@@ -43,12 +43,12 @@ func TestMain(m *testing.M) {
 
 func TestMixProcessPacket(t *testing.T) {
 	ch := make(chan []byte, 1)
-	chHop := make(chan sphinx.Hop, 1)
+	chHop := make(chan string, 1)
 
 	mixWorker.ProcessPacket(testPacket.Bytes(), ch, chHop)
 	dePacket := <-ch
 	nextHop := <- chHop
 
-	assert.Equal(t, sphinx.Hop{Id: "Mix2", Address: "localhost:3331", PubKey: nodes[1].PubKey.Bytes()}, nextHop, "Next hope does not match")
+	assert.Equal(t, "localhost:3331", nextHop, "Next hope does not match")
 	assert.Equal(t, reflect.TypeOf([]byte{}), reflect.TypeOf(dePacket))
 }

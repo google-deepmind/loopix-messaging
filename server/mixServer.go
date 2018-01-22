@@ -10,7 +10,6 @@ import (
 
 	"anonymous-messaging/networker"
 	"anonymous-messaging/node"
-	sphinx "anonymous-messaging/sphinx"
 	"anonymous-messaging/pki"
 	"anonymous-messaging/publics"
 )
@@ -32,17 +31,17 @@ func (m *MixServer) ReceivedPacket(packet []byte) {
 	fmt.Println("> Received packet")
 
 	c := make(chan []byte)
-	cHop := make(chan sphinx.Hop)
+	cAdr := make(chan string)
 
-	go m.ProcessPacket(packet, c, cHop)
+	go m.ProcessPacket(packet, c, cAdr)
 	dePacket := <-c
-	nextHop := <- cHop
+	nextHopAdr := <- cAdr
 
-	m.ForwardPacket(dePacket, nextHop)
+	m.ForwardPacket(dePacket, nextHopAdr)
 }
 
-func (m *MixServer) ForwardPacket(packet []byte, hop sphinx.Hop) {
-	m.SendPacket(packet, hop.Address)
+func (m *MixServer) ForwardPacket(packet []byte, address string) {
+	m.SendPacket(packet, address)
 }
 
 func (m *MixServer) SendPacket(packet []byte, address string) {

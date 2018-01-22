@@ -4,7 +4,6 @@ import (
 	"anonymous-messaging/node"
 	"net"
 	"anonymous-messaging/networker"
-	sphinx "anonymous-messaging/sphinx"
 	"os"
 	"github.com/glog"
 	"anonymous-messaging/publics"
@@ -29,7 +28,7 @@ type ProviderServer struct {
 func (p *ProviderServer) ReceivedPacket(packet []byte) {
 
 	c := make(chan []byte)
-	cHop := make(chan sphinx.Hop)
+	cHop := make(chan string)
 
 	go p.ProcessPacket(packet, c, cHop)
 	dePacket := <-c
@@ -41,8 +40,8 @@ func (p *ProviderServer) ReceivedPacket(packet []byte) {
 	p.ForwardPacket(dePacket, nextHop)
 }
 
-func (p *ProviderServer) ForwardPacket(packet []byte, address sphinx.Hop){
-	p.SendPacket(packet, address.Address)
+func (p *ProviderServer) ForwardPacket(packet []byte, address string){
+	p.SendPacket(packet, address)
 }
 
 func (p *ProviderServer) SendPacket(packet []byte, address string) {
