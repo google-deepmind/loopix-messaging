@@ -7,9 +7,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	"crypto/elliptic"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 )
 
 var mixServer MixServer
+var providerServer ProviderServer
 
 func Clean() {
 
@@ -25,11 +27,14 @@ func TestMain(m *testing.M) {
 	pubM, privM := publics.GenerateKeyPair()
 	mixServer = *NewMixServer("MixServer", "localhost", "9998", pubM, privM, "testDatabase.db")
 
+	pubP, privP := publics.GenerateKeyPair()
+	providerServer = *NewProviderServer("Provider", "localhost", "9999", pubP, privP, "testDatabase.db")
+
 	os.Exit(m.Run())
 	Clean()
 }
 
-func TestSaveInPKI(t *testing.T) {
+func TestMixServerSaveInPKI(t *testing.T) {
 	Clean()
 	mixServer.SaveInPKI("testDatabase.db")
 
@@ -57,5 +62,21 @@ func TestSaveInPKI(t *testing.T) {
 	}
 
 	assert.Equal(t, 1, len(output), "There should be only one mix in the test database")
+
+}
+
+func TestProviderServerStoreMessage(t *testing.T) {
+	inboxId := "ClientXYZ"
+	fileName := "test.txt"
+	message := []byte("Hello world message")
+	providerServer.StoreMessage(message, inboxId, fileName)
+
+	file := "./inboxes/" + inboxId + "/" + fileName
+	_, err := os.Stat(file)
+	assert.Nil(t, err, "The file with the message should be created")
+
+	dat, err := ioutil.ReadFile(file)
+
+	assert.Equal(t, message, dat, "Messages should be the same")
 
 }
