@@ -32,12 +32,16 @@ func (m *MixServer) ReceivedPacket(packet []byte) {
 
 	c := make(chan []byte)
 	cAdr := make(chan string)
+	cFlag := make(chan string)
 
-	go m.ProcessPacket(packet, c, cAdr)
+	go m.ProcessPacket(packet, c, cAdr, cFlag)
 	dePacket := <-c
 	nextHopAdr := <- cAdr
+	flag := <- cFlag
 
-	m.ForwardPacket(dePacket, nextHopAdr)
+	if flag == "\xF1" {
+		m.ForwardPacket(dePacket, nextHopAdr)
+	}
 }
 
 func (m *MixServer) ForwardPacket(packet []byte, address string) {

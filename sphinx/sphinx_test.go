@@ -252,9 +252,9 @@ func TestProcessSphinxHeader(t *testing.T) {
 	pub2, _ := publics.GenerateKeyPair()
 	pub3, _ := publics.GenerateKeyPair()
 
-	c1 := Commands{Delay: 0.34, Flag: "0"}
-	c2 := Commands{Delay: 0.25, Flag: "1"}
-	c3 := Commands{Delay: 1.10, Flag: "1"}
+	c1 := Commands{Delay: 0.34}
+	c2 := Commands{Delay: 0.25}
+	c3 := Commands{Delay: 1.10}
 
 	x := big.NewInt(100)
 	sharedSecrets := getSharedSecrets(curve, []publics.PublicKey{pub1, pub2, pub3}, *x)

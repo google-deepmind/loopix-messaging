@@ -28,16 +28,20 @@ type ProviderServer struct {
 func (p *ProviderServer) ReceivedPacket(packet []byte) {
 
 	c := make(chan []byte)
-	cHop := make(chan string)
+	cAdr := make(chan string)
+	cFlag := make(chan string)
 
-	go p.ProcessPacket(packet, c, cHop)
+	go p.ProcessPacket(packet, c, cAdr, cFlag)
 	dePacket := <-c
-	nextHop := <- cHop
+	nextHop := <- cAdr
+	flag := <- cFlag
 
-	// here the provider should check whether the packet should be forwarded or stored
-	// if A then store, if B then forward
-	// probably we have to return some flags
-	p.ForwardPacket(dePacket, nextHop)
+	switch flag {
+	case "\xF1":
+		p.ForwardPacket(dePacket, nextHop)
+	case "\xF0":
+		p.StoreMessage(dePacket, nextHop, "TMP_MESSAGE_ID")
+	}
 }
 
 func (p *ProviderServer) ForwardPacket(packet []byte, address string){

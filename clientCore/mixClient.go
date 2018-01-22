@@ -21,19 +21,13 @@ type CryptoClient struct {
 
 func (c *CryptoClient) EncodeMessage(message string, path []publics.MixPubs, delays []float64, recipient publics.MixPubs) []byte {
 	var pubs []publics.PublicKey
-	var commands []sphinx.Commands
 
 	for _, v := range path {
 		pubs = append(pubs, v.PubKey)
 	}
 
-	for _, v := range delays {
-		c := sphinx.Commands{Delay: v, Flag: "Flag"}
-		commands = append(commands, c)
-	}
-
 	var packet sphinx.SphinxPacket
-	packet = sphinx.PackForwardMessage(c.Curve, path, pubs, commands, recipient, message)
+	packet = sphinx.PackForwardMessage(c.Curve, path, pubs, delays, recipient, message)
 
 	return packet.Bytes()
 }

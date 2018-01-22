@@ -19,6 +19,8 @@ const (
 	K = 16
 	R = 5
 	HEADERLENGTH = 192
+	LAST_HOP_FLAG = "\xF0"
+	RELAY_FLAG = "\xF1"
 )
 
 
@@ -68,18 +70,30 @@ func RoutingInfoFromBytes(bytes []byte) RoutingInfo{
 }
 
 
-func PackForwardMessage(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, dest publics.MixPubs, message string) SphinxPacket{
-	asb, header := createHeader(curve, nodes, pubs, commands, dest)
+func PackForwardMessage(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, delays []float64, dest publics.MixPubs, message string) SphinxPacket{
+	asb, header := createHeader(curve, nodes, pubs, delays, dest)
 	payload := encapsulateContent(asb, message)
 	return SphinxPacket{Hdr: &header, Pld: payload}
 }
 
 
-func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, dest publics.MixPubs) ([]HeaderInitials, Header){
+func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, delays []float64, dest publics.MixPubs) ([]HeaderInitials, Header){
 
 	x := randomBigInt(curve.Params())
 	asb := getSharedSecrets(curve, pubs, x)
 	computeFillers(pubs, asb)
+
+	var commands []Commands
+	for i, v := range delays {
+		var c Commands
+		if i == len(delays) - 1 {
+			c = Commands{Delay: v, Flag: LAST_HOP_FLAG}
+		} else {
+			c = Commands{Delay: v, Flag: RELAY_FLAG}
+		}
+		commands = append(commands, c)
+	}
+
 	header := encapsulateHeader(asb, nodes, pubs, commands, dest)
 	return asb, header
 
