@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"anonymous-messaging/publics"
-	sphinx "anonymous-messaging/new_packet_format"
+	sphinx "anonymous-messaging/sphinx"
 	"crypto/elliptic"
 	"github.com/stretchr/testify/assert"
 	"reflect"

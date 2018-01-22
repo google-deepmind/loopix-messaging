@@ -10,7 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"crypto/elliptic"
-	sphinx "anonymous-messaging/new_packet_format"
+	sphinx "anonymous-messaging/sphinx"
 )
 
 var client Client

@@ -10,7 +10,7 @@ import (
 
 	"anonymous-messaging/networker"
 	"anonymous-messaging/node"
-	sphinx "anonymous-messaging/new_packet_format"
+	sphinx "anonymous-messaging/sphinx"
 	"anonymous-messaging/pki"
 	"anonymous-messaging/publics"
 )

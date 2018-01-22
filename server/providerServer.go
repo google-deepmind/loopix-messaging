@@ -4,7 +4,7 @@ import (
 	"anonymous-messaging/node"
 	"net"
 	"anonymous-messaging/networker"
-	sphinx "anonymous-messaging/new_packet_format"
+	sphinx "anonymous-messaging/sphinx"
 	"os"
 	"github.com/glog"
 	"anonymous-messaging/publics"

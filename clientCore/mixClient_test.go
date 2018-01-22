@@ -9,7 +9,7 @@ import (
 
 	"anonymous-messaging/publics"
 	"github.com/stretchr/testify/assert"
-	sphinx "anonymous-messaging/new_packet_format"
+	sphinx "anonymous-messaging/sphinx"
 	"crypto/elliptic"
 )
 

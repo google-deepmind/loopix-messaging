@@ -6,7 +6,7 @@ package node
 import (
 	"fmt"
 
-	sphinx "anonymous-messaging/new_packet_format"
+	sphinx "anonymous-messaging/sphinx"
 	"anonymous-messaging/publics"
 	"time"
 )
