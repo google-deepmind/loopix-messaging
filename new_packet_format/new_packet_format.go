@@ -8,10 +8,11 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"strings"
-	"encoding/json"
 	"anonymous-messaging/publics"
 	"bytes"
 	"errors"
+
+	"github.com/protobuf/proto"
 )
 
 const (
@@ -29,8 +30,7 @@ type HeaderInitials struct {
 }
 
 func (p *SphinxPacket) Bytes() []byte{
-	b, err := json.Marshal(p)
-
+	b, err := proto.Marshal(p)
 	if err != nil {
 		fmt.Println("Error in converting Packet to bytes ", err)
 	}
@@ -39,14 +39,16 @@ func (p *SphinxPacket) Bytes() []byte{
 
 func PacketFromBytes(bytes []byte) SphinxPacket {
 	var packet SphinxPacket
-	if err := json.Unmarshal(bytes, &packet); err != nil {
+	err := proto.Unmarshal(bytes, &packet)
+
+	if err != nil {
 		panic(err)
 	}
 	return packet
 }
 
 func (r *RoutingInfo) Bytes() []byte{
-	b, err := json.Marshal(r)
+	b, err := proto.Marshal(r)
 	if err != nil{
 		fmt.Printf("Error during converting struct to bytes: %s", err)
 	}
@@ -58,7 +60,7 @@ func RoutingInfoFromBytes(bytes []byte) RoutingInfo{
 
 	var finalHopReconstruct RoutingInfo
 
-	err := json.Unmarshal(bytes, &finalHopReconstruct)
+	err := proto.Unmarshal(bytes, &finalHopReconstruct)
 	if err != nil {
 		panic(err)
 	}
