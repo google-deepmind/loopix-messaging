@@ -7,14 +7,13 @@ import (
 	"fmt"
 
 	sphinx "anonymous-messaging/sphinx"
-	"anonymous-messaging/publics"
 	"time"
 )
 
 type Mix struct {
 	Id     string
-	PubKey publics.PublicKey
-	PrvKey publics.PrivateKey
+	PubKey []byte //publics.PublicKey
+	PrvKey []byte //publics.PrivateKey
 }
 
 func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan <- string, cFlag chan <- string){
@@ -43,6 +42,6 @@ func (m *Mix) SendLoopMessage() {
 	fmt.Println("> Sending loop message")
 }
 
-func NewMix(id string, pubKey publics.PublicKey, prvKey publics.PrivateKey) *Mix {
+func NewMix(id string, pubKey []byte, prvKey []byte) *Mix {
 	return &Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 }

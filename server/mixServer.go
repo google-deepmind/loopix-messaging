@@ -11,7 +11,6 @@ import (
 	"anonymous-messaging/networker"
 	"anonymous-messaging/node"
 	"anonymous-messaging/pki"
-	"anonymous-messaging/publics"
 )
 
 type MixServerIt interface {
@@ -28,7 +27,7 @@ type MixServer struct {
 }
 
 func (m *MixServer) ReceivedPacket(packet []byte) {
-	fmt.Println("> Received packet")
+	fmt.Println("> Received packet: ", packet)
 
 	c := make(chan []byte)
 	cAdr := make(chan string)
@@ -41,6 +40,8 @@ func (m *MixServer) ReceivedPacket(packet []byte) {
 
 	if flag == "\xF1" {
 		m.ForwardPacket(dePacket, nextHopAdr)
+	} else  {
+		fmt.Println("Not forwarding")
 	}
 }
 
@@ -61,6 +62,7 @@ func (m *MixServer) SendPacket(packet []byte, address string) {
 }
 
 func (m *MixServer) Start() {
+
 	defer m.Run()
 }
 
@@ -93,7 +95,6 @@ func (m *MixServer) ListenForIncomingConnections() {
 }
 
 func (m *MixServer) HandleConnection(conn net.Conn) {
-	fmt.Println("> Handle Connection")
 
 	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
@@ -122,7 +123,7 @@ func (m *MixServer) SaveInPKI(pkiPath string) {
 	pubInfo["MixId"] = m.Id
 	pubInfo["Host"] = m.Host
 	pubInfo["Port"] = m.Port
-	pubInfo["PubKey"] = m.PubKey.Bytes()
+	pubInfo["PubKey"] = m.PubKey
 	pki.InsertToTable(db, "Mixes", pubInfo)
 
 	fmt.Println("> Public info of the mixserver saved in database")
@@ -130,7 +131,7 @@ func (m *MixServer) SaveInPKI(pkiPath string) {
 	db.Close()
 }
 
-func NewMixServer(id, host, port string, pubKey publics.PublicKey, prvKey publics.PrivateKey, pkiPath string) *MixServer {
+func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath string) *MixServer {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	mixServer := MixServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
 	mixServer.SaveInPKI(pkiPath)

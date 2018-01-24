@@ -9,7 +9,6 @@ import (
 	"anonymous-messaging/publics"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
-	"crypto/elliptic"
 	sphinx "anonymous-messaging/sphinx"
 )
 
@@ -29,7 +28,7 @@ func clean() {
 func TestMain(m *testing.M) {
 
 	pubC, privC := publics.GenerateKeyPair()
-	client = *NewClient("Client", "localhost", "3332", "testDatabase.db", pubC, privC)
+	client = *NewClient("Client", "localhost", "3332", pubC, privC, "testDatabase.db")
 
 	code := m.Run()
 	os.Exit(code)
@@ -63,7 +62,7 @@ func TestClientReadInMixnetPKI(t *testing.T) {
 	statement.Exec()
 
 	for _, elem := range mixPubs {
-		_, err := db.Exec("INSERT INTO Mixes (MixId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey.Bytes())
+		_, err := db.Exec("INSERT INTO Mixes (MixId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey)
 		if err != nil{
 			panic(err)
 		}
@@ -99,7 +98,7 @@ func TestClientReadInClientsPKI(t *testing.T) {
 	statement.Exec()
 
 	for _, elem := range clientPubs {
-		db.Exec("INSERT INTO Clients (ClientId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey.Bytes())
+		db.Exec("INSERT INTO Clients (ClientId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey)
 	}
 
 	defer db.Close()
@@ -137,6 +136,6 @@ func TestClientSaveInPKI(t *testing.T) {
 		assert.Equal(t, "Client", string(results["ClientId"].([]byte)), "The client id does not match")
 		assert.Equal(t, "localhost", string(results["Host"].([]byte)), "The host does not match")
 		assert.Equal(t, "3332", string(results["Port"].([]byte)), "The port does not match")
-		assert.Equal(t, client.PubKey, publics.PubKeyFromBytes(elliptic.P224() ,results["PubKey"].([]byte)), "The public key does not match")
+		assert.Equal(t, client.PubKey, results["PubKey"].([]byte), "The public key does not match")
 	}
 }

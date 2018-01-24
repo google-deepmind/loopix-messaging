@@ -21,12 +21,14 @@ const (
 	HEADERLENGTH = 192
 	LAST_HOP_FLAG = "\xF0"
 	RELAY_FLAG = "\xF1"
+
 )
 
+var curve = elliptic.P224()
 
 type HeaderInitials struct {
-	Alpha publics.PublicKey
-	Secret publics.PublicKey
+	Alpha []byte
+	Secret []byte
 	Blinder big.Int
 	SecretHash []byte
 }
@@ -70,14 +72,14 @@ func RoutingInfoFromBytes(bytes []byte) RoutingInfo{
 }
 
 
-func PackForwardMessage(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, delays []float64, dest publics.MixPubs, message string) SphinxPacket{
+func PackForwardMessage(curve elliptic.Curve, nodes []publics.MixPubs, pubs [][]byte, delays []float64, dest publics.MixPubs, message string) SphinxPacket{
 	asb, header := createHeader(curve, nodes, pubs, delays, dest)
 	payload := encapsulateContent(asb, message)
 	return SphinxPacket{Hdr: &header, Pld: payload}
 }
 
 
-func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs []publics.PublicKey, delays []float64, dest publics.MixPubs) ([]HeaderInitials, Header){
+func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs [][]byte, delays []float64, dest publics.MixPubs) ([]HeaderInitials, Header){
 
 	x := randomBigInt(curve.Params())
 	asb := getSharedSecrets(curve, pubs, x)
@@ -112,7 +114,7 @@ func encapsulateContent(asb []HeaderInitials, message string) []byte{
 }
 
 
-func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []publics.PublicKey, commands []Commands, destination publics.MixPubs) Header{
+func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs [][]byte, commands []Commands, destination publics.MixPubs) Header{
 
 	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: &commands[len(commands) - 1], NextHopMetaData: []byte{}, Mac: []byte{}}
 
@@ -124,7 +126,7 @@ func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []pub
 	var encRouting []byte
 	for i := len(pubs)-2; i >= 0; i-- {
 		nextNode := nodes[i+1]
-		routing := RoutingInfo{NextHop: &Hop{Id: nextNode.Id, Address: nextNode.Host+":"+nextNode.Port, PubKey: pubs[i+1].Bytes()}, RoutingCommands: &commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
+		routing := RoutingInfo{NextHop: &Hop{Id: nextNode.Id, Address: nextNode.Host+":"+nextNode.Port, PubKey: pubs[i+1]}, RoutingCommands: &commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
 
 		encKey := KDF(asb[i].SecretHash)
 		encRouting = AES_CTR(encKey, routing.Bytes())
@@ -133,7 +135,7 @@ func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs []pub
 		mac = computeMac(KDF(asb[i].SecretHash) , encRouting)
 
 	}
-	return Header{Alpha: asb[0].Alpha.Bytes(), Beta: encRouting, Mac : mac}
+	return Header{Alpha: asb[0].Alpha, Beta: encRouting, Mac : mac}
 
 }
 
@@ -143,7 +145,7 @@ func computeMac(key, data []byte) []byte{
 }
 
 
-func getSharedSecrets(curve elliptic.Curve, pubs []publics.PublicKey, initialVal big.Int) []HeaderInitials{
+func getSharedSecrets(curve elliptic.Curve, pubs [][]byte, initialVal big.Int) []HeaderInitials{
 
 	blindFactors := []big.Int{initialVal}
 	var tuples []HeaderInitials
@@ -153,7 +155,7 @@ func getSharedSecrets(curve elliptic.Curve, pubs []publics.PublicKey, initialVal
 		alpha := expo_group_base(curve, blindFactors)
 
 		s := expo(key, blindFactors)
-		aes_s := KDF(s.Bytes())
+		aes_s := KDF(s)
 
 		blinder := computeBlindingFactor(curve, aes_s)
 		blindFactors = append(blindFactors, *blinder)
@@ -165,7 +167,7 @@ func getSharedSecrets(curve elliptic.Curve, pubs []publics.PublicKey, initialVal
 }
 
 
-func computeFillers(pubs []publics.PublicKey, tuples []HeaderInitials) string{
+func computeFillers(pubs [][]byte, tuples []HeaderInitials) string{
 
 	filler := ""
 	minLen := HEADERLENGTH - 32
@@ -179,7 +181,6 @@ func computeFillers(pubs []publics.PublicKey, tuples []HeaderInitials) string{
 
 		minLen = minLen - K
 	}
-	fmt.Println("Filler len: ", len(filler))
 
 	return filler
 
@@ -234,9 +235,7 @@ func bytesToBigNum(curve elliptic.Curve, value []byte) *big.Int{
 
 
 func randomBigInt(curve *elliptic.CurveParams) big.Int{
-	order := curve.P
-	fmt.Println(order)
-
+	//order := curve.P
 	nBig, err := rand.Int(rand.Reader, big.NewInt(100))
 	if err != nil {
 		panic(err)
@@ -245,18 +244,19 @@ func randomBigInt(curve *elliptic.CurveParams) big.Int{
 }
 
 
-func expo(base publics.PublicKey, exp []big.Int) publics.PublicKey{
+func expo(base []byte, exp []big.Int) []byte{
 	x := exp[0]
 	for _, val := range exp[1:] {
 		x = *big.NewInt(0).Mul(&x, &val)
 	}
-	curve := base.Curve
-	resultX, resultY := curve.Params().ScalarMult(base.X, base.Y, x.Bytes())
-	return publics.PublicKey{curve, resultX, resultY}
+
+	baseX, baseY := elliptic.Unmarshal(elliptic.P224(), base)
+	resultX, resultY := curve.Params().ScalarMult(baseX, baseY, x.Bytes())
+	return elliptic.Marshal(curve, resultX, resultY)
 }
 
 
-func expo_group_base(curve elliptic.Curve, exp []big.Int) publics.PublicKey{
+func expo_group_base(curve elliptic.Curve, exp []big.Int) []byte{
 	x := exp[0]
 
 	for _, val := range exp[1:] {
@@ -264,16 +264,15 @@ func expo_group_base(curve elliptic.Curve, exp []big.Int) publics.PublicKey{
 	}
 
 	resultX, resultY := curve.Params().ScalarBaseMult(x.Bytes())
-	return publics.PublicKey{Curve: curve, X: resultX, Y: resultY}
+	return elliptic.Marshal(curve, resultX, resultY)
 
 }
 
 
-func ProcessSphinxPacket(packetBytes []byte, privKey publics.PrivateKey) (Hop, Commands, SphinxPacket, error) {
+func ProcessSphinxPacket(packetBytes []byte, privKey []byte) (Hop, Commands, SphinxPacket, error) {
 
 	packet := PacketFromBytes(packetBytes)
 	hop, commands, newHeader, err := ProcessSphinxHeader(*packet.Hdr, privKey)
-
 	if err != nil {
 		return Hop{}, Commands{}, SphinxPacket{}, err
 	}
@@ -288,18 +287,19 @@ func ProcessSphinxPacket(packetBytes []byte, privKey publics.PrivateKey) (Hop, C
 }
 
 
-func ProcessSphinxHeader(packet Header, privKey publics.PrivateKey) (Hop, Commands, Header, error) {
+func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, error) {
 
-	alpha := publics.PubKeyFromBytes(elliptic.P224(), packet.Alpha)
+	alpha := packet.Alpha
 	beta := packet.Beta
 	mac := packet.Mac
 
 	curve := elliptic.P224()
-	sharedSecretX, sharedSecretY:= curve.Params().ScalarMult(alpha.X, alpha.Y, privKey.Value)
-	sharedSecret := publics.PublicKey{elliptic.P224(), sharedSecretX, sharedSecretY}
+	alphaX, alphaY := elliptic.Unmarshal(curve, alpha)
+	sharedSecretX, sharedSecretY:= curve.Params().ScalarMult(alphaX, alphaY, privKey)
+	sharedSecret := elliptic.Marshal(curve, sharedSecretX, sharedSecretY)
 
 
-	aes_s := KDF(sharedSecret.Bytes())
+	aes_s := KDF(sharedSecret)
 	encKey := KDF(aes_s)
 
 
@@ -310,13 +310,13 @@ func ProcessSphinxHeader(packet Header, privKey publics.PrivateKey) (Hop, Comman
 	}
 
 	blinder := computeBlindingFactor(curve, aes_s)
-	newAlphaX, newAlphaY := curve.Params().ScalarMult(alpha.X, alpha.Y, blinder.Bytes())
-	newAlpha := publics.PublicKey{curve, newAlphaX, newAlphaY}
+	newAlphaX, newAlphaY := curve.Params().ScalarMult(alphaX, alphaY, blinder.Bytes())
+	newAlpha := elliptic.Marshal(curve, newAlphaX, newAlphaY)
 
 	decBeta := AES_CTR(encKey, beta)
 	nextHop, commands, nextBeta, nextMac := readBeta(RoutingInfoFromBytes(decBeta))
 
-	return nextHop, commands, Header{Alpha: newAlpha.Bytes(), Beta: nextBeta, Mac: nextMac}, nil
+	return nextHop, commands, Header{Alpha: newAlpha, Beta: nextBeta, Mac: nextMac}, nil
 }
 
 
@@ -330,14 +330,14 @@ func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte){
 }
 
 
-func ProcessSphinxPayload(alphaBytes []byte, payload []byte, privKey publics.PrivateKey) ([]byte, error) {
+func ProcessSphinxPayload(alpha []byte, payload []byte, privKey []byte) ([]byte, error) {
 
 	curve := elliptic.P224()
-	alpha := publics.PubKeyFromBytes(elliptic.P224(), alphaBytes)
-	sharedSecretX, sharedSecretY:= curve.Params().ScalarMult(alpha.X, alpha.Y, privKey.Value)
-	sharedSecret := publics.PublicKey{Curve: curve, X: sharedSecretX, Y: sharedSecretY}
+	alphaX, alphaY := elliptic.Unmarshal(curve, alpha)
+	sharedSecretX, sharedSecretY:= curve.Params().ScalarMult(alphaX, alphaY, privKey)
+	sharedSecret := elliptic.Marshal(curve, sharedSecretX, sharedSecretY)
 
-	aes_s := KDF(sharedSecret.Bytes())
+	aes_s := KDF(sharedSecret)
 	decKey := KDF(aes_s)
 
 	decPayload := AES_CTR(decKey, payload)

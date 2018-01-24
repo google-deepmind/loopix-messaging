@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"reflect"
 
 	"anonymous-messaging/clientCore"
 	"anonymous-messaging/networker"
@@ -53,16 +52,10 @@ func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
 
 	var path []publics.MixPubs
 
-	fmt.Println("MixSeq: ", mixSeq)
 	for _, v := range mixSeq {
 		path = append(path, v)
 	}
 	path = append(path, recipient)
-	fmt.Println("PATH: ", path)
-
-	for _, v := range path {
-		fmt.Println(reflect.TypeOf(v))
-	}
 	delays := c.GenerateDelaySequence(desiredRateParameter, pathLength)
 
 	packet := c.EncodeMessage(message, path, delays, recipient)
@@ -115,11 +108,20 @@ func (c *Client) ProcessPacket(packet []byte) []byte {
 
 func (c *Client) Start() {
 
+	go func() {
+		fmt.Println("Should ping here the provider")
+		c.contactProvider()
+	}()
+
 	defer c.Run()
 
 	c.ReadInClientsPKI(c.pkiDir)
 	c.ReadInMixnetPKI(c.pkiDir)
 
+}
+
+func (c *Client) contactProvider() {
+	fmt.Println("Sending to provider")
 }
 
 func (c *Client) Run() {
@@ -134,7 +136,7 @@ func (c *Client) Run() {
 	}()
 
 	go func() {
-		c.SendMessage("Hello world, this is me", c.OtherClients[1])
+		c.SendMessage("Hello world, this is me", c.OtherClients[0])
 	}()
 
 	<-finish
@@ -155,7 +157,7 @@ func (c *Client) ReadInMixnetPKI(pkiName string) {
 
 		}
 		pubs := publics.NewMixPubs(string(results["MixId"].([]byte)), string(results["Host"].([]byte)),
-			string(results["Port"].([]byte)), publics.PubKeyFromBytes(elliptic.P224() ,results["PubKey"].([]byte)))
+			string(results["Port"].([]byte)), results["PubKey"].([]byte))
 
 		c.ActiveMixes = append(c.ActiveMixes, pubs)
 	}
@@ -165,8 +167,11 @@ func (c *Client) ReadInMixnetPKI(pkiName string) {
 func (c *Client) ReadInClientsPKI(pkiName string) {
 	fmt.Println("Reading public information about clients")
 
+
 	db := c.ConnectToPKI(pkiName)
 	records := pki.QueryDatabase(db, "Clients")
+	fmt.Println(records)
+
 
 	for records.Next() {
 		results := make(map[string]interface{})
@@ -177,7 +182,7 @@ func (c *Client) ReadInClientsPKI(pkiName string) {
 
 		}
 		pubs := publics.NewMixPubs(string(results["ClientId"].([]byte)), string(results["Host"].([]byte)),
-			string(results["Port"].([]byte)), publics.PubKeyFromBytes(elliptic.P224() ,results["PubKey"].([]byte)))
+			string(results["Port"].([]byte)), results["PubKey"].([]byte))
 		c.OtherClients = append(c.OtherClients, pubs)
 	}
 	fmt.Println("> The clients data is uploaded.")
@@ -203,17 +208,18 @@ func SaveInPKI(c Client, pkiDir string) {
 	pubInfo["ClientId"] = c.Id
 	pubInfo["Host"] = c.Host
 	pubInfo["Port"] = c.Port
-	pubInfo["PubKey"] = c.PubKey.Bytes()
+	pubInfo["PubKey"] = c.PubKey
 	pki.InsertToTable(db, "Clients", pubInfo)
 
 	fmt.Println("> Public info of the client saved in database")
 	db.Close()
 }
 
-func NewClient(id, host, port, pkiDir string, pubKey publics.PublicKey, prvKey publics.PrivateKey) *Client {
-	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey}
+func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string) *Client {
+	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224()}
 	c := Client{Host: host, Port: port, CryptoClient: core}
 
+	c.pkiDir = pkiDir
 	SaveInPKI(c, pkiDir)
 
 	addr, err := net.ResolveTCPAddr("tcp", c.Host+":"+c.Port)

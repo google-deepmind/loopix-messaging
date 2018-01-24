@@ -38,7 +38,7 @@ func TestMixClientEncode(t *testing.T) {
 	pubD, _ := publics.GenerateKeyPair()
 	recipient := publics.MixPubs{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD}
 
-	var pubs []publics.PublicKey
+	var pubs [][]byte
 	for _, v := range mixPubs {
 		pubs = append(pubs, v.PubKey)
 	}

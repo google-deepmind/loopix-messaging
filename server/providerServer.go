@@ -8,8 +8,8 @@ import (
 	"github.com/glog"
 	"anonymous-messaging/publics"
 	"fmt"
-	"anonymous-messaging/pki"
-	"flag"
+	"bytes"
+	"io/ioutil"
 )
 
 type ProviderIt interface {
@@ -23,6 +23,17 @@ type ProviderServer struct {
 	Port string
 	node.Mix
 	listener *net.TCPListener
+
+	assignedClients map[string]ClientRecord
+
+}
+
+type ClientRecord struct {
+	Id string
+	Host string
+	Port string
+	PubKey publics.PublicKey
+	Token []byte
 }
 
 func (p *ProviderServer) ReceivedPacket(packet []byte) {
@@ -106,35 +117,88 @@ func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId 
 	file.Write(message)
 }
 
-func (p *ProviderServer) AuthenticateUser() {}
+func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) bool{
 
+	if bytes.Compare(p.assignedClients[clientId].Token, clientToken) == 0 {
+		return true
+	}
+	return false
+}
+
+func (p *ProviderServer) FetchMessages(clientId string) error{
+
+	// take messages from the particular inbox, hand them to the client and delete
+	path := fmt.Sprintf("./inboxes/%s", clientId)
+
+	_, err := os.Stat(path)
+	if err != nil{
+		return err
+	}
+
+	files, err := ioutil.ReadDir(path)
+	for _, f := range files {
+		fmt.Println(f.Name())
+		dat, err := ioutil.ReadFile(path + "/" + f.Name())
+		if err !=nil {
+			return err
+		}
+		address := p.assignedClients[clientId].Host + ":" + p.assignedClients[clientId].Port
+		p.SendPacket(dat, address)
+	}
+	return nil
+}
 
 func (p *ProviderServer) SaveInPKI(path string) {
 
-	db := pki.OpenDatabase(path, "sqlite3")
+	//pubs := publics.MixPubs{p.Id, p.Host, p.Port, p.PubKey}
+	//out, err := proto.Marshal(pubs)
+	//if err != nil {
+	// 	fmt.Println(err)
+	//}
+	//fmt.Println(out)
 
-	params := make(map[string]string)
-	params["ProviderId"] = "TEXT"
-	params["Host"] = "TEXT"
-	params["Port"] = "TEXT"
-	params["PubKey"] = "BLOB"
-	pki.CreateTable(db, "Providers", params)
-
-	pubInfo := make(map[string]interface{})
-	pubInfo["ProviderId"] = p.Id
-	pubInfo["Host"] = p.Host
-	pubInfo["Port"] = p.Port
-	pubInfo["PubKey"] = p.PubKey.Bytes()
-	pki.InsertToTable(db, "Providers", pubInfo)
-
-	flag.Parse()
-	glog.Info("Provider info stored in the PKI database")
-
-	db.Close()
+	//db := pki.OpenDatabase(path, "sqlite3")
+	//
+	//params := make(map[string]string)
+	//params["ProviderId"] = "TEXT"
+	//params["Host"] = "TEXT"
+	//params["Port"] = "TEXT"
+	//params["PubKey"] = "BLOB"
+	//pki.CreateTable(db, "Providers", params)
+	//
+	//pubInfo := make(map[string]interface{})
+	//pubInfo["ProviderId"] = p.Id
+	//pubInfo["Host"] = p.Host
+	//pubInfo["Port"] = p.Port
+	//pubInfo["PubKey"] = p.PubKey.Bytes()
+	//pki.InsertToTable(db, "Providers", pubInfo)
+	//
+	//flag.Parse()
+	//glog.Info("Provider info stored in the PKI database")
+	//
+	//db.Close()
 }
 
+func (p *ProviderServer) Start() {
+	defer p.Run()
+}
 
-func NewProviderServer(id string, host string, port string, pubKey publics.PublicKey, prvKey publics.PrivateKey, pkiPath string) *ProviderServer {
+func (p *ProviderServer) Run() {
+
+	fmt.Println("> The Mixserver is running")
+
+	defer p.listener.Close()
+	finish := make(chan bool)
+
+	go func() {
+		fmt.Println("Listening on " + p.Host + ":" + p.Port)
+		p.ListenForIncomingConnections()
+	}()
+
+	<-finish
+}
+
+func NewProviderServer(id string, host string, port string, pubKey []byte, prvKey []byte, pkiPath string) *ProviderServer {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	providerServer := ProviderServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
 	providerServer.SaveInPKI(pkiPath)

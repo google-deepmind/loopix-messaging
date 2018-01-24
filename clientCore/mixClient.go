@@ -14,13 +14,13 @@ import (
 
 type CryptoClient struct {
 	Id     string
-	PubKey publics.PublicKey
-	PrvKey publics.PrivateKey
+	PubKey []byte //publics.PublicKey
+	PrvKey []byte //publics.PrivateKey
 	Curve elliptic.Curve
 }
 
 func (c *CryptoClient) EncodeMessage(message string, path []publics.MixPubs, delays []float64, recipient publics.MixPubs) []byte {
-	var pubs []publics.PublicKey
+	var pubs [][]byte
 
 	for _, v := range path {
 		pubs = append(pubs, v.PubKey)

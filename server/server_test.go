@@ -5,9 +5,9 @@ import (
 	"testing"
 	"anonymous-messaging/publics"
 	"github.com/jmoiron/sqlx"
-	"crypto/elliptic"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"fmt"
 )
 
 var mixServer MixServer
@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 	Clean()
 }
 
-func TestMixServerSaveInPKI(t *testing.T) {
+func TestMixServer_SaveInPKI(t *testing.T) {
 	Clean()
 	mixServer.SaveInPKI("testDatabase.db")
 
@@ -57,7 +57,7 @@ func TestMixServerSaveInPKI(t *testing.T) {
 			t.Error(err)
 		}
 		mix := publics.MixPubs{Id: string(results["MixId"].([]byte)), Host: string(results["Host"].([]byte)),
-			Port: string(results["Port"].([]byte)), PubKey: publics.PubKeyFromBytes(elliptic.P224(), results["PubKey"].([]byte))}
+			Port: string(results["Port"].([]byte)), PubKey: results["PubKey"].([]byte)}
 		output = append(output, mix)
 	}
 
@@ -65,7 +65,7 @@ func TestMixServerSaveInPKI(t *testing.T) {
 
 }
 
-func TestProviderServerStoreMessage(t *testing.T) {
+func TestProvider_ServerStoreMessage(t *testing.T) {
 	inboxId := "ClientXYZ"
 	fileName := "test.txt"
 	message := []byte("Hello world message")
@@ -79,4 +79,13 @@ func TestProviderServerStoreMessage(t *testing.T) {
 
 	assert.Equal(t, message, dat, "Messages should be the same")
 
+}
+
+func TestProviderServer_FetchMessages(t *testing.T) {
+	inboxId := "ClientXYZ"
+
+	err := providerServer.FetchMessages(inboxId)
+	if err != nil {
+		fmt.Println(err)
+	}
 }

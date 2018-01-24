@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 	pubD, _ := publics.GenerateKeyPair()
 	dest := publics.MixPubs{Id : "Destination", Host: "localhost", Port: "3334", PubKey: pubD}
 
-	testPacket = sphinx.PackForwardMessage(curve, nodes, []publics.PublicKey{pub1, pub2, pub3}, []float64{1.4, 2.5, 2.3}, dest, "Test Message")
+	testPacket = sphinx.PackForwardMessage(curve, nodes, [][]byte{pub1, pub2, pub3}, []float64{1.4, 2.5, 2.3}, dest, "Test Message")
 	os.Exit(m.Run())
 }
 
