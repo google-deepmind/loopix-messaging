@@ -27,7 +27,7 @@ func clean() {
 
 func TestMain(m *testing.M) {
 
-	pubC, privC := publics.GenerateKeyPair()
+	pubC, privC := sphinx.GenerateKeyPair()
 	client = *NewClient("Client", "localhost", "3332", pubC, privC, "testDatabase.db")
 
 	code := m.Run()
@@ -50,7 +50,7 @@ func TestClientReadInMixnetPKI(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		pub, _ := publics.GenerateKeyPair()
+		pub, _ := sphinx.GenerateKeyPair()
 		mix := publics.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub)
 		mixPubs = append(mixPubs, mix)
 	}
@@ -86,7 +86,7 @@ func TestClientReadInClientsPKI(t *testing.T) {
 	}
 
 	for i := 0; i < 5; i++ {
-		pub, _ := publics.GenerateKeyPair()
+		pub, _ := sphinx.GenerateKeyPair()
 		client := publics.NewMixPubs(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), pub)
 		clientPubs = append(clientPubs, client)
 	}

@@ -17,9 +17,9 @@ var cryptoClient CryptoClient
 var mixPubs []publics.MixPubs
 
 func TestMain(m *testing.M) {
-	pubC, privC := publics.GenerateKeyPair()
-	pub1, _ := publics.GenerateKeyPair()
-	pub2, _ := publics.GenerateKeyPair()
+	pubC, privC := sphinx.GenerateKeyPair()
+	pub1, _ := sphinx.GenerateKeyPair()
+	pub2, _ := sphinx.GenerateKeyPair()
 
 	cryptoClient = CryptoClient{Id: "MixClient", PubKey: pubC, PrvKey: privC, Curve: elliptic.P224()}
 
@@ -35,7 +35,7 @@ func TestMixClientEncode(t *testing.T) {
 	message := "Hello world"
 	delays := []float64{1.4, 2.5, 2.3}
 
-	pubD, _ := publics.GenerateKeyPair()
+	pubD, _ := sphinx.GenerateKeyPair()
 	recipient := publics.MixPubs{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD}
 
 	var pubs [][]byte
@@ -73,7 +73,7 @@ func TestGenerateDelaySequence(t *testing.T) {
 func TestGetRandomMixSequence(t *testing.T) {
 	var mixes []publics.MixPubs
 	for i := 0; i < 5; i++ {
-		pub, _ := publics.GenerateKeyPair()
+		pub, _ := sphinx.GenerateKeyPair()
 		mixes = append(mixes, publics.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub))
 	}
 

@@ -1,10 +1,12 @@
-package new_packet_format
+package sphinx
 
 import (
 	"crypto/sha256"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
+	"crypto/elliptic"
+	"crypto/rand"
 )
 
 func AES_CTR(key, plaintext []byte) []byte {
@@ -39,4 +41,14 @@ func Hmac(key, message []byte) []byte{
 	mac := hmac.New(sha256.New, key)
 	mac.Write(message)
 	return mac.Sum(nil)
+}
+
+func GenerateKeyPair() ([]byte, []byte){
+	priv, x, y, err  := elliptic.GenerateKey(elliptic.P224(), rand.Reader)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return elliptic.Marshal(elliptic.P224(), x, y), priv
 }

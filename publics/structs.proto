@@ -1,0 +1,17 @@
+syntax = "proto3";
+package publics;
+
+message MixPubs {
+    string Id = 1;
+    string Host = 2;
+    string Port = 3;
+    bytes PubKey = 4;
+}
+
+message ClientPubs {
+    string Id = 1;
+    string Host = 2;
+    string Port = 3;
+    bytes PubKey = 4;
+    MixPubs Provider = 5;
+}

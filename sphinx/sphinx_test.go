@@ -1,4 +1,4 @@
-package new_packet_format
+package sphinx
 
 import (
 	"testing"
@@ -122,9 +122,9 @@ func TestComputeBlindingFactor(t *testing.T){
 
 func TestGetSharedSecrets(t *testing.T){
 
-	pub1, _ := publics.GenerateKeyPair()
-	pub2, _ := publics.GenerateKeyPair()
-	pub3, _ := publics.GenerateKeyPair()
+	pub1, _ := GenerateKeyPair()
+	pub2, _ := GenerateKeyPair()
+	pub3, _ := GenerateKeyPair()
 	pubs := [][]byte{pub1, pub2, pub3}
 
 	x := big.NewInt(100)
@@ -142,7 +142,7 @@ func TestGetSharedSecrets(t *testing.T){
 	aesS0 := KDF(s0)
 	b0:= computeBlindingFactor(curve, aesS0)
 
-	expected = append(expected, HeaderInitials{Alpha:alpha0, Secret: s0, Blinder: *b0, SecretHash: aesS0})
+	expected = append(expected, HeaderInitials{Alpha:alpha0, Secret: s0, Blinder: b0.Bytes(), SecretHash: aesS0})
 	blindFactors = append(blindFactors, *b0)
 
 
@@ -153,7 +153,7 @@ func TestGetSharedSecrets(t *testing.T){
 	aesS1 := KDF(s1)
 	b1:= computeBlindingFactor(curve, aesS1)
 
-	expected = append(expected, HeaderInitials{Alpha:alpha1, Secret: s1, Blinder: *b1, SecretHash: aesS1})
+	expected = append(expected, HeaderInitials{Alpha:alpha1, Secret: s1, Blinder: b1.Bytes(), SecretHash: aesS1})
 	blindFactors = append(blindFactors, *b1)
 
 
@@ -164,7 +164,7 @@ func TestGetSharedSecrets(t *testing.T){
 	aesS2 := KDF(s2)
 	b2:= computeBlindingFactor(curve, aesS2)
 
-	expected = append(expected, HeaderInitials{Alpha:alpha2, Secret: s2, Blinder: *b2, SecretHash: aesS2})
+	expected = append(expected, HeaderInitials{Alpha:alpha2, Secret: s2, Blinder: b2.Bytes(), SecretHash: aesS2})
 	blindFactors = append(blindFactors, *b2)
 
 	assert.Equal(t, expected, result)
@@ -174,14 +174,14 @@ func TestGetSharedSecrets(t *testing.T){
 func TestComputeFillers(t *testing.T){
 
 	g := elliptic.Marshal(curve, curve.Params().Gx, curve.Params().Gy)
-	h1 := HeaderInitials{Alpha: []byte{}, Secret: g, Blinder: big.Int{}, SecretHash: []byte("1111111111111111")}
-	h2 := HeaderInitials{Alpha: []byte{}, Secret: g, Blinder: big.Int{}, SecretHash: []byte("1111111111111111")}
-	h3 := HeaderInitials{Alpha: []byte{}, Secret: g, Blinder: big.Int{}, SecretHash: []byte("1111111111111111")}
+	h1 := HeaderInitials{Alpha: []byte{}, Secret: g, Blinder: []byte{}, SecretHash: []byte("1111111111111111")}
+	h2 := HeaderInitials{Alpha: []byte{}, Secret: g, Blinder: []byte{}, SecretHash: []byte("1111111111111111")}
+	h3 := HeaderInitials{Alpha: []byte{}, Secret: g, Blinder: []byte{}, SecretHash: []byte("1111111111111111")}
 	tuples := []HeaderInitials{h1, h2, h3}
 
-	pub1, _ := publics.GenerateKeyPair()
-	pub2, _ := publics.GenerateKeyPair()
-	pub3, _ := publics.GenerateKeyPair()
+	pub1, _ := GenerateKeyPair()
+	pub2, _ := GenerateKeyPair()
+	pub3, _ := GenerateKeyPair()
 
 	fillers := computeFillers([][]byte{pub1,pub2,pub3}, tuples)
 	fmt.Println("FILLER: ", fillers)
@@ -200,10 +200,10 @@ func TestXorBytesFail(t *testing.T){
 
 func TestEncapsulateHeader(t *testing.T){
 
-	pub1, _ := publics.GenerateKeyPair()
-	pub2, _ := publics.GenerateKeyPair()
-	pub3, _ := publics.GenerateKeyPair()
-	pubD, _ := publics.GenerateKeyPair()
+	pub1, _ := GenerateKeyPair()
+	pub2, _ := GenerateKeyPair()
+	pub3, _ := GenerateKeyPair()
+	pubD, _ := GenerateKeyPair()
 
 	c1 := Commands{Delay: 0.34, Flag: "0"}
 	c2 := Commands{Delay: 0.25, Flag: "1"}
@@ -246,9 +246,9 @@ func TestEncapsulateHeader(t *testing.T){
 
 func TestProcessSphinxHeader(t *testing.T) {
 
-	pub1, priv1 := publics.GenerateKeyPair()
-	pub2, _ := publics.GenerateKeyPair()
-	pub3, _ := publics.GenerateKeyPair()
+	pub1, priv1 := GenerateKeyPair()
+	pub2, _ := GenerateKeyPair()
+	pub3, _ := GenerateKeyPair()
 
 	c1 := Commands{Delay: 0.34}
 	c2 := Commands{Delay: 0.25}
@@ -291,9 +291,9 @@ func TestProcessSphinxPayload(t *testing.T) {
 
 	message := "Plaintext message"
 
-	pub1, priv1 := publics.GenerateKeyPair()
-	pub2, priv2 := publics.GenerateKeyPair()
-	pub3, priv3 := publics.GenerateKeyPair()
+	pub1, priv1 := GenerateKeyPair()
+	pub2, priv2 := GenerateKeyPair()
+	pub3, priv3 := GenerateKeyPair()
 
 	x := big.NewInt(100)
 	asb := getSharedSecrets(curve, [][]byte{pub1, pub2, pub3}, *x)

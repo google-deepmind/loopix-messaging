@@ -1,4 +1,4 @@
-package new_packet_format
+package sphinx
 
 import (
 	"crypto/elliptic"
@@ -25,13 +25,6 @@ const (
 )
 
 var curve = elliptic.P224()
-
-type HeaderInitials struct {
-	Alpha []byte
-	Secret []byte
-	Blinder big.Int
-	SecretHash []byte
-}
 
 func (p *SphinxPacket) Bytes() []byte{
 	b, err := proto.Marshal(p)
@@ -160,7 +153,7 @@ func getSharedSecrets(curve elliptic.Curve, pubs [][]byte, initialVal big.Int) [
 		blinder := computeBlindingFactor(curve, aes_s)
 		blindFactors = append(blindFactors, *blinder)
 
-		tuples = append(tuples, HeaderInitials{Alpha:alpha, Secret: s, Blinder: *blinder, SecretHash: aes_s})
+		tuples = append(tuples, HeaderInitials{Alpha:alpha, Secret: s, Blinder: blinder.Bytes(), SecretHash: aes_s})
 	}
 	return tuples
 

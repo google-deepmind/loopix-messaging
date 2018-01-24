@@ -1,4 +1,4 @@
-package new_packet_format
+package sphinx
 
 import "fmt"
 

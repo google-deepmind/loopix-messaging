@@ -6,7 +6,6 @@ import (
 	"anonymous-messaging/networker"
 	"os"
 	"github.com/glog"
-	"anonymous-messaging/publics"
 	"fmt"
 	"bytes"
 	"io/ioutil"
@@ -32,7 +31,7 @@ type ClientRecord struct {
 	Id string
 	Host string
 	Port string
-	PubKey publics.PublicKey
+	PubKey []byte
 	Token []byte
 }
 

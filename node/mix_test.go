@@ -19,9 +19,9 @@ var curve elliptic.Curve
 func TestMain(m *testing.M) {
 	curve := elliptic.P224()
 
-	pub1, priv1 := publics.GenerateKeyPair()
-	pub2, _ := publics.GenerateKeyPair()
-	pub3, _ := publics.GenerateKeyPair()
+	pub1, priv1 := sphinx.GenerateKeyPair()
+	pub2, _ := sphinx.GenerateKeyPair()
+	pub3, _ := sphinx.GenerateKeyPair()
 
 	m1 := publics.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
 	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 
 	nodes = []publics.MixPubs{m1, m2, m3}
 
-	pubD, _ := publics.GenerateKeyPair()
+	pubD, _ := sphinx.GenerateKeyPair()
 	dest := publics.MixPubs{Id : "Destination", Host: "localhost", Port: "3334", PubKey: pubD}
 
 	testPacket = sphinx.PackForwardMessage(curve, nodes, [][]byte{pub1, pub2, pub3}, []float64{1.4, 2.5, 2.3}, dest, "Test Message")

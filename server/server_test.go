@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"fmt"
+	"anonymous-messaging/sphinx"
 )
 
 var mixServer MixServer
@@ -24,10 +25,10 @@ func Clean() {
 }
 
 func TestMain(m *testing.M) {
-	pubM, privM := publics.GenerateKeyPair()
+	pubM, privM := sphinx.GenerateKeyPair()
 	mixServer = *NewMixServer("MixServer", "localhost", "9998", pubM, privM, "testDatabase.db")
 
-	pubP, privP := publics.GenerateKeyPair()
+	pubP, privP := sphinx.GenerateKeyPair()
 	providerServer = *NewProviderServer("Provider", "localhost", "9999", pubP, privP, "testDatabase.db")
 
 	os.Exit(m.Run())

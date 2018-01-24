@@ -1,5 +1,5 @@
 syntax = "proto3";
-package new_packet_format;
+package sphinx;
 
 
 message SphinxPacket {
@@ -29,4 +29,11 @@ message RoutingInfo {
 message Commands {
     double Delay = 1;
     string Flag = 2;
+}
+
+message HeaderInitials {
+    bytes Alpha = 1;
+    bytes Secret = 2;
+    bytes Blinder = 3;
+    bytes SecretHash = 4;
 }
