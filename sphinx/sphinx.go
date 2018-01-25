@@ -65,31 +65,36 @@ func RoutingInfoFromBytes(bytes []byte) RoutingInfo{
 }
 
 
-func PackForwardMessage(curve elliptic.Curve, nodes []publics.MixPubs, pubs [][]byte, delays []float64, dest publics.MixPubs, message string) SphinxPacket{
-	asb, header := createHeader(curve, nodes, pubs, delays, dest)
+func PackForwardMessage(curve elliptic.Curve, path publics.E2EPath, delays []float64, message string) SphinxPacket{
+	nodes := []publics.MixPubs{path.IngressProvider}
+	nodes = append(nodes, path.Mixes...)
+	nodes = append(nodes, path.EgressProvider)
+	dest := path.Recipient
+
+	asb, header := createHeader(curve, nodes, delays, dest)
 	payload := encapsulateContent(asb, message)
 	return SphinxPacket{Hdr: &header, Pld: payload}
 }
 
 
-func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, pubs [][]byte, delays []float64, dest publics.MixPubs) ([]HeaderInitials, Header){
+func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, delays []float64, dest publics.ClientPubs) ([]HeaderInitials, Header){
 
 	x := randomBigInt(curve.Params())
-	asb := getSharedSecrets(curve, pubs, x)
-	computeFillers(pubs, asb)
+	asb := getSharedSecrets(curve, nodes, x)
+	computeFillers(nodes, asb)
 
 	var commands []Commands
-	for i, v := range delays {
+	for i, _ := range nodes {
 		var c Commands
-		if i == len(delays) - 1 {
-			c = Commands{Delay: v, Flag: LAST_HOP_FLAG}
+		if i == len(nodes) - 1 {
+			c = Commands{Delay: delays[i], Flag: LAST_HOP_FLAG}
 		} else {
-			c = Commands{Delay: v, Flag: RELAY_FLAG}
+			c = Commands{Delay: delays[i], Flag: RELAY_FLAG}
 		}
 		commands = append(commands, c)
 	}
 
-	header := encapsulateHeader(asb, nodes, pubs, commands, dest)
+	header := encapsulateHeader(asb, nodes, commands, dest)
 	return asb, header
 
 }
@@ -107,7 +112,7 @@ func encapsulateContent(asb []HeaderInitials, message string) []byte{
 }
 
 
-func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs [][]byte, commands []Commands, destination publics.MixPubs) Header{
+func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, commands []Commands, destination publics.ClientPubs) Header{
 
 	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: &commands[len(commands) - 1], NextHopMetaData: []byte{}, Mac: []byte{}}
 
@@ -117,9 +122,9 @@ func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, pubs [][]b
 	routingCommands := [][]byte{encFinalHop}
 
 	var encRouting []byte
-	for i := len(pubs)-2; i >= 0; i-- {
+	for i := len(nodes)-2; i >= 0; i-- {
 		nextNode := nodes[i+1]
-		routing := RoutingInfo{NextHop: &Hop{Id: nextNode.Id, Address: nextNode.Host+":"+nextNode.Port, PubKey: pubs[i+1]}, RoutingCommands: &commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
+		routing := RoutingInfo{NextHop: &Hop{Id: nextNode.Id, Address: nextNode.Host+":"+nextNode.Port, PubKey: nodes[i+1].PubKey}, RoutingCommands: &commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
 
 		encKey := KDF(asb[i].SecretHash)
 		encRouting = AES_CTR(encKey, routing.Bytes())
@@ -138,16 +143,16 @@ func computeMac(key, data []byte) []byte{
 }
 
 
-func getSharedSecrets(curve elliptic.Curve, pubs [][]byte, initialVal big.Int) []HeaderInitials{
+func getSharedSecrets(curve elliptic.Curve, nodes []publics.MixPubs, initialVal big.Int) []HeaderInitials{
 
 	blindFactors := []big.Int{initialVal}
 	var tuples []HeaderInitials
 
-	for _, key := range pubs {
+	for _, n := range nodes {
 
 		alpha := expo_group_base(curve, blindFactors)
 
-		s := expo(key, blindFactors)
+		s := expo(n.PubKey, blindFactors)
 		aes_s := KDF(s)
 
 		blinder := computeBlindingFactor(curve, aes_s)
@@ -160,11 +165,11 @@ func getSharedSecrets(curve elliptic.Curve, pubs [][]byte, initialVal big.Int) [
 }
 
 
-func computeFillers(pubs [][]byte, tuples []HeaderInitials) string{
+func computeFillers(nodes []publics.MixPubs, tuples []HeaderInitials) string{
 
 	filler := ""
 	minLen := HEADERLENGTH - 32
-	for i := 1; i < len(pubs); i++ {
+	for i := 1; i < len(nodes); i++ {
 		base := filler + strings.Repeat("\x00", K)
 		kx := computeSharedSecretHash(tuples[i-1].SecretHash, []byte("hrhohrhohrhohrho"))
 		mx := strings.Repeat("\x00", minLen) + base
@@ -265,17 +270,16 @@ func expo_group_base(curve elliptic.Curve, exp []big.Int) []byte{
 func ProcessSphinxPacket(packetBytes []byte, privKey []byte) (Hop, Commands, SphinxPacket, error) {
 
 	packet := PacketFromBytes(packetBytes)
+
 	hop, commands, newHeader, err := ProcessSphinxHeader(*packet.Hdr, privKey)
 	if err != nil {
 		return Hop{}, Commands{}, SphinxPacket{}, err
 	}
-
 	newPayload, err := ProcessSphinxPayload(packet.Hdr.Alpha, packet.Pld, privKey)
 
 	if err != nil {
 		return Hop{}, Commands{}, SphinxPacket{}, err
 	}
-
 	return hop, commands, SphinxPacket{Hdr: &newHeader, Pld: newPayload}, nil
 }
 
@@ -290,7 +294,6 @@ func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, 
 	alphaX, alphaY := elliptic.Unmarshal(curve, alpha)
 	sharedSecretX, sharedSecretY:= curve.Params().ScalarMult(alphaX, alphaY, privKey)
 	sharedSecret := elliptic.Marshal(curve, sharedSecretX, sharedSecretY)
-
 
 	aes_s := KDF(sharedSecret)
 	encKey := KDF(aes_s)

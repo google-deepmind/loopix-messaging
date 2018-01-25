@@ -27,7 +27,7 @@ type MixServer struct {
 }
 
 func (m *MixServer) ReceivedPacket(packet []byte) {
-	fmt.Println("> Received packet: ", packet)
+	fmt.Println("> Mix Received packet: ", packet)
 
 	c := make(chan []byte)
 	cAdr := make(chan string)

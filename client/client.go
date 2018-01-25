@@ -40,26 +40,27 @@ type Client struct {
 	clientCore.CryptoClient
 
 	ActiveMixes  []publics.MixPubs
-	OtherClients []publics.MixPubs
+	OtherClients []publics.ClientPubs
 
 	listener *net.TCPListener
 
 	pkiDir string
+	Provider publics.MixPubs
 }
 
-func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
+func (c *Client) SendMessage(message string, recipient publics.ClientPubs) {
 	mixSeq := c.GetRandomMixSequence(c.ActiveMixes, pathLength)
 
-	var path []publics.MixPubs
+	var path publics.E2EPath
+	path.IngressProvider = c.Provider
+	path.Mixes = mixSeq
+	path.EgressProvider = *recipient.Provider
+	path.Recipient = recipient
 
-	for _, v := range mixSeq {
-		path = append(path, v)
-	}
-	path = append(path, recipient)
-	delays := c.GenerateDelaySequence(desiredRateParameter, pathLength)
+	delays := c.GenerateDelaySequence(desiredRateParameter, path.Len())
 
-	packet := c.EncodeMessage(message, path, delays, recipient)
-	c.Send(packet, path[0].Host, path[0].Port)
+	packet := c.EncodeMessage(message, path, delays)
+	c.Send(packet, path.IngressProvider.Host, path.IngressProvider.Port)
 }
 
 func (c *Client) Send(packet []byte, host string, port string) {
@@ -107,11 +108,6 @@ func (c *Client) ProcessPacket(packet []byte) []byte {
 }
 
 func (c *Client) Start() {
-
-	go func() {
-		fmt.Println("Should ping here the provider")
-		c.contactProvider()
-	}()
 
 	defer c.Run()
 
@@ -170,8 +166,6 @@ func (c *Client) ReadInClientsPKI(pkiName string) {
 
 	db := c.ConnectToPKI(pkiName)
 	records := pki.QueryDatabase(db, "Clients")
-	fmt.Println(records)
-
 
 	for records.Next() {
 		results := make(map[string]interface{})
@@ -181,8 +175,12 @@ func (c *Client) ReadInClientsPKI(pkiName string) {
 			panic(err)
 
 		}
-		pubs := publics.NewMixPubs(string(results["ClientId"].([]byte)), string(results["Host"].([]byte)),
-			string(results["Port"].([]byte)), results["PubKey"].([]byte))
+		provider, err := publics.MixPubsFromBytes(results["Provider"].([]byte))
+		if err != nil {
+			panic(err)
+		}
+		pubs := publics.NewClientPubs(string(results["ClientId"].([]byte)), string(results["Host"].([]byte)),
+			string(results["Port"].([]byte)), results["PubKey"].([]byte), provider)
 		c.OtherClients = append(c.OtherClients, pubs)
 	}
 	fmt.Println("> The clients data is uploaded.")
@@ -202,6 +200,7 @@ func SaveInPKI(c Client, pkiDir string) {
 	params["Host"] = "TEXT"
 	params["Port"] = "TEXT"
 	params["PubKey"] = "BLOB"
+	params["Provider"] = "BLOB"
 	pki.CreateTable(db, "Clients", params)
 
 	pubInfo := make(map[string]interface{})
@@ -209,17 +208,17 @@ func SaveInPKI(c Client, pkiDir string) {
 	pubInfo["Host"] = c.Host
 	pubInfo["Port"] = c.Port
 	pubInfo["PubKey"] = c.PubKey
+	pubInfo["Provider"], _ = publics.MixPubsToBytes(c.Provider)
 	pki.InsertToTable(db, "Clients", pubInfo)
 
 	fmt.Println("> Public info of the client saved in database")
 	db.Close()
 }
 
-func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string) *Client {
+func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider publics.MixPubs) *Client {
 	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224()}
-	c := Client{Host: host, Port: port, CryptoClient: core}
 
-	c.pkiDir = pkiDir
+	c := Client{Host: host, Port: port, CryptoClient: core, Provider: provider, pkiDir: pkiDir}
 	SaveInPKI(c, pkiDir)
 
 	addr, err := net.ResolveTCPAddr("tcp", c.Host+":"+c.Port)

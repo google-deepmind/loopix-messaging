@@ -5,6 +5,9 @@ import (
 	"anonymous-messaging/client"
 	"anonymous-messaging/server"
 	"anonymous-messaging/sphinx"
+	"anonymous-messaging/pki"
+	"fmt"
+	"anonymous-messaging/publics"
 )
 
 func main() {
@@ -13,12 +16,23 @@ func main() {
 	id := flag.String("id", "", "Id of the entity we want to run")
 	host := flag.String("host", "", "The host on which the entity is running")
 	port := flag.String("port", "", "The port on which the entity is running")
+	providerId := flag.String("provider", "", "The port on which the entity is running")
 	flag.Parse()
 
 	switch *typ {
 	case "client":
+		db := pki.OpenDatabase("pki/database.db", "sqlite3")
+		row := db.QueryRow("SELECT Info FROM Providers WHERE ProviderId = ?", providerId)
+
+		var results []byte
+		err := row.Scan(&results)
+		if err != nil {
+			fmt.Println(err)
+		}
+		providerInfo, err := publics.MixPubsFromBytes(results)
+
 		pubC, privC := sphinx.GenerateKeyPair()
-		client := client.NewClient(*id, *host, *port, pubC, privC, "./pki/database.db")
+		client := client.NewClient(*id, *host, *port, pubC, privC, "./pki/database.db", providerInfo)
 		client.Start()
 	case "mix":
 		pubM, privM := sphinx.GenerateKeyPair()

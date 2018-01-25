@@ -14,7 +14,8 @@ import (
 
 var client Client
 var mixPubs []publics.MixPubs
-var clientPubs []publics.MixPubs
+var clientPubs []publics.ClientPubs
+var providerPubs publics.MixPubs
 var testPacket sphinx.SphinxPacket
 
 
@@ -27,20 +28,23 @@ func clean() {
 
 func TestMain(m *testing.M) {
 
+	pubP, _ := sphinx.GenerateKeyPair()
+	providerPubs = publics.MixPubs{Id: "Provider", Host: "localhost", Port: "9995", PubKey: pubP}
+
 	pubC, privC := sphinx.GenerateKeyPair()
-	client = *NewClient("Client", "localhost", "3332", pubC, privC, "testDatabase.db")
+	client = *NewClient("Client", "localhost", "3332", pubC, privC, "testDatabase.db", providerPubs)
 
 	code := m.Run()
-	os.Exit(code)
 	clean()
+	os.Exit(code)
 
 }
 
-func TestClientProcessPacket(t *testing.T) {
+func TestClient_ProcessPacket(t *testing.T) {
 }
 
 
-func TestClientReadInMixnetPKI(t *testing.T) {
+func TestClient_ReadInMixnetPKI(t *testing.T) {
 
 	clean()
 	db, err := sqlx.Connect("sqlite3", "testDatabase.db")
@@ -76,7 +80,7 @@ func TestClientReadInMixnetPKI(t *testing.T) {
 
 }
 
-func TestClientReadInClientsPKI(t *testing.T) {
+func TestClient_ReadInClientsPKI(t *testing.T) {
 
 	clean()
 	db, err := sqlx.Connect("sqlite3", "testDatabase.db")
@@ -87,18 +91,19 @@ func TestClientReadInClientsPKI(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		pub, _ := sphinx.GenerateKeyPair()
-		client := publics.NewMixPubs(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), pub)
+		client := publics.NewClientPubs(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), pub, providerPubs)
 		clientPubs = append(clientPubs, client)
 	}
 
-	statement, e := db.Prepare("CREATE TABLE IF NOT EXISTS Clients ( id INTEGER PRIMARY KEY, ClientId TEXT, Host TEXT, Port TEXT, PubKey BLOB)")
+	statement, e := db.Prepare("CREATE TABLE IF NOT EXISTS Clients ( id INTEGER PRIMARY KEY, ClientId TEXT, Host TEXT, Port TEXT, PubKey BLOB, Provider BLOB)")
 	if e != nil {
 		panic(e)
 	}
 	statement.Exec()
 
 	for _, elem := range clientPubs {
-		db.Exec("INSERT INTO Clients (ClientId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey)
+		provider, _ := publics.MixPubsToBytes(*elem.Provider)
+		db.Exec("INSERT INTO Clients (ClientId, Host, Port, PubKey, Provider) VALUES (?, ?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey, provider)
 	}
 
 	defer db.Close()
@@ -110,7 +115,7 @@ func TestClientReadInClientsPKI(t *testing.T) {
 	assert.Equal(t, clientPubs, client.OtherClients)
 }
 
-func TestClientSaveInPKI(t *testing.T) {
+func TestClient_SaveInPKI(t *testing.T) {
 
 	clean()
 	SaveInPKI(client, "testDatabase.db")

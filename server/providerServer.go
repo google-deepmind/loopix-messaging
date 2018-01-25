@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"bytes"
 	"io/ioutil"
+	"anonymous-messaging/pki"
+	"anonymous-messaging/publics"
 )
 
 type ProviderIt interface {
@@ -36,6 +38,7 @@ type ClientRecord struct {
 }
 
 func (p *ProviderServer) ReceivedPacket(packet []byte) {
+	fmt.Println("> Provider received packet")
 
 	c := make(chan []byte)
 	cAdr := make(chan string)
@@ -87,7 +90,7 @@ func (p *ProviderServer) ListenForIncomingConnections() {
 func (p *ProviderServer) HandleConnection(conn net.Conn) {
 	glog.Info("Provider handle connection")
 
-	var buff []byte
+	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
 
 	if err != nil {
@@ -101,19 +104,26 @@ func (p *ProviderServer) HandleConnection(conn net.Conn) {
 func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId string) {
 
 	path := fmt.Sprintf("./inboxes/%s", inboxId)
+
+	fmt.Println(path)
 	fileName := path + "/" + messageId
+	fmt.Println(fileName)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			panic("Unable to create directory for storage file! - " + err.Error())
 		}
+
 	}
 	file, err := os.Create(fileName)
+	fmt.Println("Created path")
+	fmt.Println(file)
 
 	if err != nil {
 		glog.Error("Provider error while storing message: ", err.Error())
 	}
 	defer file.Close()
 	file.Write(message)
+
 }
 
 func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) bool{
@@ -126,7 +136,6 @@ func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) b
 
 func (p *ProviderServer) FetchMessages(clientId string) error{
 
-	// take messages from the particular inbox, hand them to the client and delete
 	path := fmt.Sprintf("./inboxes/%s", clientId)
 
 	_, err := os.Stat(path)
@@ -149,33 +158,25 @@ func (p *ProviderServer) FetchMessages(clientId string) error{
 
 func (p *ProviderServer) SaveInPKI(path string) {
 
-	//pubs := publics.MixPubs{p.Id, p.Host, p.Port, p.PubKey}
-	//out, err := proto.Marshal(pubs)
-	//if err != nil {
-	// 	fmt.Println(err)
-	//}
-	//fmt.Println(out)
+	db := pki.OpenDatabase(path, "sqlite3")
 
-	//db := pki.OpenDatabase(path, "sqlite3")
-	//
-	//params := make(map[string]string)
-	//params["ProviderId"] = "TEXT"
-	//params["Host"] = "TEXT"
-	//params["Port"] = "TEXT"
-	//params["PubKey"] = "BLOB"
-	//pki.CreateTable(db, "Providers", params)
-	//
-	//pubInfo := make(map[string]interface{})
-	//pubInfo["ProviderId"] = p.Id
-	//pubInfo["Host"] = p.Host
-	//pubInfo["Port"] = p.Port
-	//pubInfo["PubKey"] = p.PubKey.Bytes()
-	//pki.InsertToTable(db, "Providers", pubInfo)
-	//
-	//flag.Parse()
-	//glog.Info("Provider info stored in the PKI database")
-	//
-	//db.Close()
+	params := make(map[string]string)
+	params["ProviderId"] = "TEXT"
+	params["Info"] = "BLOB"
+	pki.CreateTable(db, "Providers", params)
+
+	pubInfo := make(map[string]interface{})
+	pubs := publics.MixPubs{p.Id, p.Host, p.Port, p.PubKey}
+	pubsBytes, err := publics.MixPubsToBytes(pubs)
+	if err != nil {
+		panic(err)
+	}
+
+	pubInfo["ProviderId"] = p.Id
+	pubInfo["Info"] = pubsBytes
+	pki.InsertToTable(db, "Providers", pubInfo)
+	db.Close()
+	fmt.Println("> Provider public information saved in the database")
 }
 
 func (p *ProviderServer) Start() {
@@ -184,7 +185,7 @@ func (p *ProviderServer) Start() {
 
 func (p *ProviderServer) Run() {
 
-	fmt.Println("> The Mixserver is running")
+	fmt.Println("> The provider server is running")
 
 	defer p.listener.Close()
 	finish := make(chan bool)

@@ -14,18 +14,23 @@ import (
 )
 
 var cryptoClient CryptoClient
-var mixPubs []publics.MixPubs
+var path publics.E2EPath
 
 func TestMain(m *testing.M) {
 	pubC, privC := sphinx.GenerateKeyPair()
 	pub1, _ := sphinx.GenerateKeyPair()
 	pub2, _ := sphinx.GenerateKeyPair()
+	pubP, _ := sphinx.GenerateKeyPair()
+	pubD, _ := sphinx.GenerateKeyPair()
 
 	cryptoClient = CryptoClient{Id: "MixClient", PubKey: pubC, PrvKey: privC, Curve: elliptic.P224()}
 
 	m1 := publics.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
 	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
-	mixPubs = []publics.MixPubs{m1, m2}
+	provider := publics.MixPubs{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP}
+	recipient := publics.ClientPubs{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD, Provider: &provider}
+
+	path = publics.E2EPath{IngressProvider: provider, Mixes: []publics.MixPubs{m1, m2}, EgressProvider: provider, Recipient: recipient}
 
 	os.Exit(m.Run())
 }
@@ -33,22 +38,14 @@ func TestMain(m *testing.M) {
 func TestMixClientEncode(t *testing.T) {
 
 	message := "Hello world"
-	delays := []float64{1.4, 2.5, 2.3}
-
-	pubD, _ := sphinx.GenerateKeyPair()
-	recipient := publics.MixPubs{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD}
-
-	var pubs [][]byte
-	for _, v := range mixPubs {
-		pubs = append(pubs, v.PubKey)
-	}
+	delays := []float64{1.4, 2.5, 2.3, 3.5, 6.7}
 
 	var commands []sphinx.Commands
 	for _, v := range delays {
 		c := sphinx.Commands{Delay: v, Flag: "Flag"}
 		commands = append(commands, c)
 	}
-	encoded := cryptoClient.EncodeMessage(message, mixPubs, delays, recipient)
+	encoded := cryptoClient.EncodeMessage(message, path, delays)
 
 	assert.Equal(t, reflect.TypeOf([]byte{}), reflect.TypeOf(encoded))
 

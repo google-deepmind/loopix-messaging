@@ -19,11 +19,9 @@ type Mix struct {
 func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan <- string, cFlag chan <- string){
 
 	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.PrvKey)
-
 	if err != nil {
 		panic(err)
 	}
-
 	delay := commands.Delay
 	fmt.Println(delay)
 	timeoutCh := make(chan []byte, 1)

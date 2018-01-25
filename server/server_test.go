@@ -7,7 +7,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
-	"fmt"
 	"anonymous-messaging/sphinx"
 )
 
@@ -29,10 +28,11 @@ func TestMain(m *testing.M) {
 	mixServer = *NewMixServer("MixServer", "localhost", "9998", pubM, privM, "testDatabase.db")
 
 	pubP, privP := sphinx.GenerateKeyPair()
-	providerServer = *NewProviderServer("Provider", "localhost", "9999", pubP, privP, "testDatabase.db")
+	providerServer = *NewProviderServer("Provider", "localhost", "9997", pubP, privP, "testDatabase.db")
 
-	os.Exit(m.Run())
+	code := m.Run()
 	Clean()
+	os.Exit(code)
 }
 
 func TestMixServer_SaveInPKI(t *testing.T) {
@@ -87,6 +87,6 @@ func TestProviderServer_FetchMessages(t *testing.T) {
 
 	err := providerServer.FetchMessages(inboxId)
 	if err != nil {
-		fmt.Println(err)
+		t.Error(err)
 	}
 }
