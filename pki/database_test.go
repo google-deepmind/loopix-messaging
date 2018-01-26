@@ -1,13 +1,13 @@
 package pki
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
+	"database/sql"
 )
 
 func Setup() {
@@ -58,7 +58,7 @@ func TestCreateTable(t *testing.T) {
 		panic(err)
 	}
 
-	params := map[string]string{"Column1": "TEXT", "Column2": "NUM", "Column3": "BIT", "Column4": "BLOB"}
+	params := map[string]string{"Id": "TEXT", "Typ": "TEXT", "Config": "BLOB"}
 	CreateTable(db, "TestTable", params)
 
 	var exists bool
@@ -70,19 +70,17 @@ func TestCreateTable(t *testing.T) {
 }
 
 func TestInsertToTable(t *testing.T) {
-	db, e := sqlx.Connect("sqlite3", "./testDatabase2.db")
+	db, err := sqlx.Connect("sqlite3", "./testDatabase2.db")
 
-	if e != nil {
-		panic(e)
+	if err != nil {
+		t.Error(err)
 	}
-
-	data := map[string]interface{}{"Column1": "SpecialValue", "Column2": 23, "Column3": true, "Column4": "XYZ"}
-	InsertToTable(db, "TestTable", data)
+	InsertIntoTable(db, "TestTable", "TestVal1", "TestVal2", []byte("TestVal3"))
 
 	var exists bool
-	err := db.QueryRow("SELECT exists (SELECT * FROM TestTable WHERE Column1=$1 AND Column2=$2 AND Column3=$3 AND Column4=$4)", "SpecialValue", 23, true, "XYZ").Scan(&exists)
+	err = db.QueryRow("SELECT exists (SELECT * FROM TestTable WHERE Id=$1 AND Typ=$2 AND Config=$3)", "TestVal1", "TestVal2", []byte("TestVal3")).Scan(&exists)
 	if err != nil && err != sql.ErrNoRows {
-		fmt.Printf("error checking if row exists %v", err)
+		t.Error(err)
 	}
 	assert.True(t, exists, "Row was not added to the database")
 }
@@ -100,9 +98,44 @@ func TestQueryDatabase(t *testing.T) {
 			fmt.Printf("Error %v \n", err)
 		}
 
-		assert.Equal(t, "SpecialValue", string(results["Column1"].([]byte)), "Values should be equal")
-		assert.Equal(t, int64(23), results["Column2"].(int64), "Values should be equal")
-		assert.Equal(t, int64(1), results["Column3"].(int64), "Values should be equal")
-		assert.Equal(t, "XYZ", string(results["Column4"].([]byte)), "Values should be equal")
+		assert.Equal(t, "TestVal1", string(results["Id"].([]byte)), "Values should be equal")
+		assert.Equal(t, "TestVal2", string(results["Typ"].([]byte)), "Values should be equal")
+		assert.Equal(t, []byte("TestVal3"), results["Config"].([]byte), "Values should be equal")
 	}
+}
+
+func TestInsertIntoTable(t *testing.T) {
+	db := OpenDatabase("./testDatabase2.db", "sqlite3")
+
+	params := make(map[string]string)
+	params["Id"] = "TEXT"
+	params["Typ"] = "TEXT"
+	params["Config"] = "BLOB"
+
+	CreateTable(db, "InsertTestTable", params)
+
+	err := InsertIntoTable(db, "InsertTestTable", "MyId", "MyTyp", []byte("Some bytes"))
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	rows, err := db.Queryx("SELECT * FROM InsertTestTable")
+	if err != nil {
+		t.Error(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		results := make(map[string]interface{})
+		err := rows.MapScan(results)
+
+		if err != nil {
+			t.Error(err)
+		}
+		assert.Equal(t, "MyId", string(results["Id"].([]byte)), "Should be equal")
+		assert.Equal(t, "MyTyp", string(results["Typ"].([]byte)), "Should be equal")
+		assert.Equal(t, []byte("Some bytes"), results["Config"].([]byte), "Should be equal")
+	}
+
 }

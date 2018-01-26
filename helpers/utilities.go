@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"anonymous-messaging/publics"
+	"net"
 )
 
 func Permute(slice []publics.MixPubs) []publics.MixPubs {
@@ -29,4 +30,12 @@ func RandomSample(slice []publics.MixPubs, length int) []publics.MixPubs {
 func RandomExponential(expParam float64) float64 {
 	rand.Seed(time.Now().UTC().UnixNano())
 	return rand.ExpFloat64() / expParam
+}
+
+func ResolveTCPAddress(host, port string) (*net.TCPAddr, error) {
+	addr, err := net.ResolveTCPAddr("tcp", host+":"+port)
+	if err != nil {
+		return nil, err
+	}
+	return addr, nil
 }

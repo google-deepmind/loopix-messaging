@@ -11,6 +11,8 @@ import (
 	"anonymous-messaging/networker"
 	"anonymous-messaging/node"
 	"anonymous-messaging/pki"
+	"anonymous-messaging/publics"
+	"anonymous-messaging/helpers"
 )
 
 type MixServerIt interface {
@@ -24,6 +26,8 @@ type MixServer struct {
 	Port string
 	listener *net.TCPListener
 	node.Mix
+
+	Config publics.MixPubs
 }
 
 func (m *MixServer) ReceivedPacket(packet []byte) {
@@ -113,35 +117,38 @@ func (m *MixServer) SaveInPKI(pkiPath string) {
 	db := pki.OpenDatabase(pkiPath, "sqlite3")
 
 	params := make(map[string]string)
-	params["MixId"] = "TEXT"
-	params["Host"] = "TEXT"
-	params["Port"] = "TEXT"
-	params["PubKey"] = "BLOB"
+	params["Id"] = "TEXT"
+	params["Typ"] = "TEXT"
+	params["Config"] = "BLOB"
 	pki.CreateTable(db, "Mixes", params)
 
-	pubInfo := make(map[string]interface{})
-	pubInfo["MixId"] = m.Id
-	pubInfo["Host"] = m.Host
-	pubInfo["Port"] = m.Port
-	pubInfo["PubKey"] = m.PubKey
-	pki.InsertToTable(db, "Mixes", pubInfo)
+	configBytes, err := publics.MixPubsToBytes(m.Config)
+	if err != nil {
+		panic(err)
+	}
+
+	pki.InsertIntoTable(db, "Mixes", m.Id, "Mix", configBytes)
 
 	fmt.Println("> Public info of the mixserver saved in database")
-
 	db.Close()
 }
 
 func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath string) *MixServer {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	mixServer := MixServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
+	mixServer.Config = publics.MixPubs{Id : mixServer.Id, Host: mixServer.Host, Port: mixServer.Port, PubKey: mixServer.PubKey}
+
 	mixServer.SaveInPKI(pkiPath)
 
-	addr, err := net.ResolveTCPAddr("tcp", mixServer.Host+":"+mixServer.Port)
+	addr, err := helpers.ResolveTCPAddress(mixServer.Host, mixServer.Port)
+
+	if err != nil {
+		panic(err)
+	}
 	mixServer.listener, err = net.ListenTCP("tcp", addr)
 
 	if err != nil {
-		fmt.Println("Error listening:", err.Error())
-		os.Exit(1)
+		panic(err)
 	}
 
 	return &mixServer

@@ -8,9 +8,10 @@ import (
 	"github.com/glog"
 	"fmt"
 	"bytes"
-	"io/ioutil"
 	"anonymous-messaging/pki"
 	"anonymous-messaging/publics"
+	"io/ioutil"
+	"anonymous-messaging/helpers"
 )
 
 type ProviderIt interface {
@@ -27,6 +28,7 @@ type ProviderServer struct {
 
 	assignedClients map[string]ClientRecord
 
+	Config publics.MixPubs
 }
 
 type ClientRecord struct {
@@ -144,14 +146,18 @@ func (p *ProviderServer) FetchMessages(clientId string) error{
 	}
 
 	files, err := ioutil.ReadDir(path)
+
 	for _, f := range files {
 		fmt.Println(f.Name())
 		dat, err := ioutil.ReadFile(path + "/" + f.Name())
 		if err !=nil {
 			return err
 		}
+		fmt.Println(dat)
+
 		address := p.assignedClients[clientId].Host + ":" + p.assignedClients[clientId].Port
-		p.SendPacket(dat, address)
+		fmt.Println("ADR: ", address)
+	//	p.SendPacket(dat, address)
 	}
 	return nil
 }
@@ -161,20 +167,17 @@ func (p *ProviderServer) SaveInPKI(path string) {
 	db := pki.OpenDatabase(path, "sqlite3")
 
 	params := make(map[string]string)
-	params["ProviderId"] = "TEXT"
-	params["Info"] = "BLOB"
+	params["Id"] = "TEXT"
+	params["Typ"] = "TEXT"
+	params["Config"] = "BLOB"
 	pki.CreateTable(db, "Providers", params)
 
-	pubInfo := make(map[string]interface{})
-	pubs := publics.MixPubs{p.Id, p.Host, p.Port, p.PubKey}
-	pubsBytes, err := publics.MixPubsToBytes(pubs)
+	pubsBytes, err := publics.MixPubsToBytes(p.Config)
 	if err != nil {
 		panic(err)
 	}
 
-	pubInfo["ProviderId"] = p.Id
-	pubInfo["Info"] = pubsBytes
-	pki.InsertToTable(db, "Providers", pubInfo)
+	pki.InsertIntoTable(db, "Providers", p.Id, "Provider", pubsBytes)
 	db.Close()
 	fmt.Println("> Provider public information saved in the database")
 }
@@ -201,14 +204,18 @@ func (p *ProviderServer) Run() {
 func NewProviderServer(id string, host string, port string, pubKey []byte, prvKey []byte, pkiPath string) *ProviderServer {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	providerServer := ProviderServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
+	providerServer.Config = publics.MixPubs{Id: providerServer.Id, Host: providerServer.Host, Port: providerServer.Port, PubKey: providerServer.PubKey}
 	providerServer.SaveInPKI(pkiPath)
 
-	addr, err := net.ResolveTCPAddr("tcp", providerServer.Host+":"+providerServer.Port)
+	addr, err := helpers.ResolveTCPAddress(providerServer.Host, providerServer.Port)
+
+	if err != nil {
+		panic(err)
+	}
 	providerServer.listener, err = net.ListenTCP("tcp", addr)
 
 	if err != nil {
-		fmt.Println("Error listening:", err.Error())
-		os.Exit(1)
+		panic(err)
 	}
 
 	return &providerServer

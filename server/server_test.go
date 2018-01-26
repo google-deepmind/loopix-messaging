@@ -13,10 +13,14 @@ import (
 var mixServer MixServer
 var providerServer ProviderServer
 
+const (
+	TEST_DATABASE = "testDatabase.db"
+)
+
 func Clean() {
 
-	if _, err := os.Stat("testDatabase.db"); err == nil {
-		errRemove := os.Remove("testDatabase.db")
+	if _, err := os.Stat(TEST_DATABASE); err == nil {
+		errRemove := os.Remove(TEST_DATABASE)
 		if errRemove != nil {
 			panic(err)
 		}
@@ -25,21 +29,21 @@ func Clean() {
 
 func TestMain(m *testing.M) {
 	pubM, privM := sphinx.GenerateKeyPair()
-	mixServer = *NewMixServer("MixServer", "localhost", "9998", pubM, privM, "testDatabase.db")
+	mixServer = *NewMixServer("MixServer", "localhost", "9998", pubM, privM, TEST_DATABASE)
 
 	pubP, privP := sphinx.GenerateKeyPair()
-	providerServer = *NewProviderServer("Provider", "localhost", "9997", pubP, privP, "testDatabase.db")
+	providerServer = *NewProviderServer("Provider", "localhost", "9997", pubP, privP, TEST_DATABASE)
 
 	code := m.Run()
-	Clean()
 	os.Exit(code)
+	Clean()
 }
 
 func TestMixServer_SaveInPKI(t *testing.T) {
 	Clean()
-	mixServer.SaveInPKI("testDatabase.db")
+	mixServer.SaveInPKI(TEST_DATABASE)
 
-	db, err := sqlx.Connect("sqlite3", "testDatabase.db")
+	db, err := sqlx.Connect("sqlite3", TEST_DATABASE)
 	if err != nil {
 		t.Error(err)
 	}
@@ -48,22 +52,23 @@ func TestMixServer_SaveInPKI(t *testing.T) {
 	if err != nil{
 		t.Error(err)
 	}
-
-	output := []publics.MixPubs{}
 	for rows.Next() {
-		results := make(map[string]interface{})
-		err := rows.MapScan(results)
+		result := make(map[string]interface{})
+		err := rows.MapScan(result)
 
 		if err != nil{
 			t.Error(err)
 		}
-		mix := publics.MixPubs{Id: string(results["MixId"].([]byte)), Host: string(results["Host"].([]byte)),
-			Port: string(results["Port"].([]byte)), PubKey: results["PubKey"].([]byte)}
-		output = append(output, mix)
+
+		pubs, err := publics.MixPubsFromBytes(result["Config"].([]byte))
+		if err != nil {
+			t.Error(err)
+		}
+
+		assert.Equal(t, "MixServer", string(result["Id"].([]byte)), "The client id does not match")
+		assert.Equal(t, "Mix", string(result["Typ"].([]byte)), "The host does not match")
+		assert.Equal(t, mixServer.Config, pubs, "The config does not match")
 	}
-
-	assert.Equal(t, 1, len(output), "There should be only one mix in the test database")
-
 }
 
 func TestProvider_ServerStoreMessage(t *testing.T) {

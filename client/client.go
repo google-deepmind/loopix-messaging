@@ -15,6 +15,7 @@ import (
 	"anonymous-messaging/publics"
 	"github.com/jmoiron/sqlx"
 	"crypto/elliptic"
+	"anonymous-messaging/helpers"
 )
 
 const (
@@ -46,6 +47,7 @@ type Client struct {
 
 	pkiDir string
 	Provider publics.MixPubs
+	Config publics.ClientPubs
 }
 
 func (c *Client) SendMessage(message string, recipient publics.ClientPubs) {
@@ -60,19 +62,25 @@ func (c *Client) SendMessage(message string, recipient publics.ClientPubs) {
 	delays := c.GenerateDelaySequence(desiredRateParameter, path.Len())
 
 	packet := c.EncodeMessage(message, path, delays)
-	c.Send(packet, path.IngressProvider.Host, path.IngressProvider.Port)
+
+	err := c.Send(packet, path.IngressProvider.Host, path.IngressProvider.Port)
+	if err != nil{
+		fmt.Println("> Client sending FAILURE!")
+	}
 }
 
-func (c *Client) Send(packet []byte, host string, port string) {
+func (c *Client) Send(packet []byte, host string, port string) error {
 	conn, err := net.Dial("tcp", host+":"+port)
-	defer conn.Close()
 
 	if err != nil {
 		fmt.Print("Error in Client connect", err.Error())
 		os.Exit(1)
+	} else {
+		defer conn.Close()
 	}
 
-	conn.Write(packet)
+	_, err = conn.Write(packet)
+	return err
 }
 
 func (c *Client) ListenForIncomingConnections() {
@@ -168,19 +176,17 @@ func (c *Client) ReadInClientsPKI(pkiName string) {
 	records := pki.QueryDatabase(db, "Clients")
 
 	for records.Next() {
-		results := make(map[string]interface{})
-		err := records.MapScan(results)
+		result := make(map[string]interface{})
+		err := records.MapScan(result)
 
 		if err != nil {
 			panic(err)
-
 		}
-		provider, err := publics.MixPubsFromBytes(results["Provider"].([]byte))
+
+		pubs, err := publics.ClientPubsFromBytes(result["Config"].([]byte))
 		if err != nil {
 			panic(err)
 		}
-		pubs := publics.NewClientPubs(string(results["ClientId"].([]byte)), string(results["Host"].([]byte)),
-			string(results["Port"].([]byte)), results["PubKey"].([]byte), provider)
 		c.OtherClients = append(c.OtherClients, pubs)
 	}
 	fmt.Println("> The clients data is uploaded.")
@@ -195,22 +201,21 @@ func SaveInPKI(c Client, pkiDir string) {
 
 	db := pki.OpenDatabase(pkiDir, "sqlite3")
 
+	// TO DO: THIS SHOULD BE REMOVED AND DONE IS A PRE SETTING FILE
+
 	params := make(map[string]string)
-	params["ClientId"] = "TEXT"
-	params["Host"] = "TEXT"
-	params["Port"] = "TEXT"
-	params["PubKey"] = "BLOB"
-	params["Provider"] = "BLOB"
+	params["Id"] = "TEXT"
+	params["Typ"] = "TEXT"
+	params["Config"] = "BLOB"
 	pki.CreateTable(db, "Clients", params)
 
-	pubInfo := make(map[string]interface{})
-	pubInfo["ClientId"] = c.Id
-	pubInfo["Host"] = c.Host
-	pubInfo["Port"] = c.Port
-	pubInfo["PubKey"] = c.PubKey
-	pubInfo["Provider"], _ = publics.MixPubsToBytes(c.Provider)
-	pki.InsertToTable(db, "Clients", pubInfo)
 
+	configBytes, err := publics.ClientPubsToBytes(c.Config)
+	if err != nil {
+		panic(err)
+	}
+
+	pki.InsertIntoTable(db, "Clients", c.Id, "Client", configBytes)
 	fmt.Println("> Public info of the client saved in database")
 	db.Close()
 }
@@ -219,13 +224,19 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224()}
 
 	c := Client{Host: host, Port: port, CryptoClient: core, Provider: provider, pkiDir: pkiDir}
+	c.Config = publics.ClientPubs{Id : c.Id, Host: c.Host, Port: c.Port, PubKey: c.PubKey, Provider: &c.Provider}
+
 	SaveInPKI(c, pkiDir)
 
-	addr, err := net.ResolveTCPAddr("tcp", c.Host+":"+c.Port)
+
+	addr, err := helpers.ResolveTCPAddress(c.Host, c.Port)
 	if err != nil {
-		fmt.Println("Error listening:", err.Error())
-		os.Exit(1)
+		panic(err)
 	}
 	c.listener, err = net.ListenTCP("tcp", addr)
+
+	if err != nil {
+		panic(err)
+	}
 	return &c
 }

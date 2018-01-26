@@ -14,7 +14,6 @@ import (
 
 var client Client
 var mixPubs []publics.MixPubs
-var clientPubs []publics.ClientPubs
 var providerPubs publics.MixPubs
 var testPacket sphinx.SphinxPacket
 
@@ -89,21 +88,23 @@ func TestClient_ReadInClientsPKI(t *testing.T) {
 		panic(err)
 	}
 
+	var clientsList []Client
+	var clientsPubs []publics.ClientPubs
 	for i := 0; i < 5; i++ {
-		pub, _ := sphinx.GenerateKeyPair()
-		client := publics.NewClientPubs(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), pub, providerPubs)
-		clientPubs = append(clientPubs, client)
+		pub, priv := sphinx.GenerateKeyPair()
+		client := NewClient(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), pub, priv, "testDatabase.db", providerPubs)
+		clientsList = append(clientsList, *client)
+		clientsPubs = append(clientsPubs, client.Config)
 	}
 
-	statement, e := db.Prepare("CREATE TABLE IF NOT EXISTS Clients ( id INTEGER PRIMARY KEY, ClientId TEXT, Host TEXT, Port TEXT, PubKey BLOB, Provider BLOB)")
+	statement, e := db.Prepare("CREATE TABLE IF NOT EXISTS Clients ( id INTEGER PRIMARY KEY, Id TEXT, Typ TEXT, Config BLOB)")
 	if e != nil {
 		panic(e)
 	}
 	statement.Exec()
 
-	for _, elem := range clientPubs {
-		provider, _ := publics.MixPubsToBytes(*elem.Provider)
-		db.Exec("INSERT INTO Clients (ClientId, Host, Port, PubKey, Provider) VALUES (?, ?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey, provider)
+	for _, elem := range clientsList {
+		db.Exec("INSERT INTO Clients (Id, Typ, Config) VALUES (?, ?, ?)", elem.Id, "Client", elem.Config)
 	}
 
 	defer db.Close()
@@ -111,8 +112,8 @@ func TestClient_ReadInClientsPKI(t *testing.T) {
 
 	client.ReadInClientsPKI("testDatabase.db")
 
-	assert.Equal(t, len(clientPubs), len(client.OtherClients))
-	assert.Equal(t, clientPubs, client.OtherClients)
+	assert.Equal(t, len(clientsList), len(client.OtherClients))
+	assert.Equal(t, clientsPubs, client.OtherClients)
 }
 
 func TestClient_SaveInPKI(t *testing.T) {
@@ -123,24 +124,29 @@ func TestClient_SaveInPKI(t *testing.T) {
 	db, err := sqlx.Connect("sqlite3", "testDatabase.db")
 	defer db.Close()
 	if err != nil {
-		panic(err)
+		t.Error(err)
 	}
 
-	rows, err := db.Queryx("SELECT * FROM Clients WHERE ClientId = 'Client'")
+	rows, err := db.Queryx("SELECT * FROM Clients WHERE Id = 'Client'")
 	if err != nil {
 		t.Error(err)
 	}
 
 	for rows.Next() {
-		results := make(map[string]interface{})
-		e := rows.MapScan(results)
-		if e != nil {
-			t.Error(e)
+		result := make(map[string]interface{})
+		err = rows.MapScan(result)
+		if err != nil {
+			t.Error(err)
 		}
 
-		assert.Equal(t, "Client", string(results["ClientId"].([]byte)), "The client id does not match")
-		assert.Equal(t, "localhost", string(results["Host"].([]byte)), "The host does not match")
-		assert.Equal(t, "3332", string(results["Port"].([]byte)), "The port does not match")
-		assert.Equal(t, client.PubKey, results["PubKey"].([]byte), "The public key does not match")
+		pubs, err := publics.ClientPubsFromBytes(result["Config"].([]byte))
+		if err != nil {
+			t.Error(err)
+		}
+
+
+		assert.Equal(t, "Client", string(result["Id"].([]byte)), "The client id does not match")
+		assert.Equal(t, "Client", string(result["Typ"].([]byte)), "The host does not match")
+		assert.Equal(t, client.Config, pubs, "The config does not match")
 	}
 }
