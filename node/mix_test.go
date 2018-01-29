@@ -62,7 +62,7 @@ func TestMixProcessPacket(t *testing.T) {
 	nextHop := <- chHop
 	flag := <- cAdr
 
-	assert.Equal(t, "localhost:3330", nextHop, "Next hope does not match")
+	assert.Equal(t, "localhost:3330", nextHop, "Next hop does not match")
 	assert.Equal(t, reflect.TypeOf([]byte{}), reflect.TypeOf(dePacket))
 	assert.Equal(t, "\xF1", flag, reflect.TypeOf(dePacket))
 }

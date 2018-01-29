@@ -34,7 +34,7 @@ func (c *CryptoClient) DecodeMessage(packet sphinx.SphinxPacket) sphinx.SphinxPa
 	return packet
 }
 
-func (c *CryptoClient) GenerateDelaySequence(desiredRateParameter float64, length int) []float64 {
+func (c *CryptoClient) GenerateDelaySequence(desiredRateParameter float64, length int) []float64{
 	var delays []float64
 	for i := 0; i < length; i++ {
 		delays = append(delays, helpers.RandomExponential(desiredRateParameter))

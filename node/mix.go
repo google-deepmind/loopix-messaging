@@ -12,31 +12,33 @@ import (
 
 type Mix struct {
 	Id     string
-	PubKey []byte //publics.PublicKey
-	PrvKey []byte //publics.PrivateKey
+	PubKey []byte
+	PrvKey []byte
 }
 
-func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan <- string, cFlag chan <- string){
+func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan <- string, cFlag chan <- string, errCh chan <- error){
 
 	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.PrvKey)
 	if err != nil {
-		panic(err)
+		errCh <- err
 	}
-	delay := commands.Delay
-	fmt.Println(delay)
+
 	timeoutCh := make(chan []byte, 1)
 
 	go func(p []byte, delay float64) {
 		time.Sleep(time.Second * time.Duration(delay))
 		timeoutCh <- p
-	}(newPacket, delay)
+	}(newPacket, commands.Delay)
 
 	c <- <-timeoutCh
 	cAdr <- nextHop.Address
 	cFlag <- commands.Flag
+	errCh <- nil
+
 }
 
 func (m *Mix) SendLoopMessage() {
+	// TO DO: this function is currently not used
 	fmt.Println("> Sending loop message")
 }
 

@@ -5,13 +5,14 @@ import (
 	"net"
 	"anonymous-messaging/networker"
 	"os"
-	"github.com/glog"
 	"fmt"
 	"bytes"
 	"anonymous-messaging/pki"
 	"anonymous-messaging/config"
 	"io/ioutil"
 	"anonymous-messaging/helpers"
+	"anonymous-messaging/logging"
+	"log"
 )
 
 type ProviderIt interface {
@@ -29,6 +30,8 @@ type ProviderServer struct {
 	assignedClients map[string]ClientRecord
 
 	Config config.MixPubs
+	infoLogger *log.Logger
+	errorLogger *log.Logger
 }
 
 type ClientRecord struct {
@@ -39,35 +42,42 @@ type ClientRecord struct {
 	Token []byte
 }
 
-func (p *ProviderServer) ReceivedPacket(packet []byte) {
-	fmt.Println("> Provider received packet")
+func (p *ProviderServer) ReceivedPacket(packet []byte) error{
+	p.infoLogger.Println(fmt.Sprintf("%s: received new packet", p.Id))
 
 	c := make(chan []byte)
 	cAdr := make(chan string)
 	cFlag := make(chan string)
+	errCh := make(chan error)
 
-	go p.ProcessPacket(packet, c, cAdr, cFlag)
+	go p.ProcessPacket(packet, c, cAdr, cFlag, errCh)
 	dePacket := <-c
 	nextHop := <- cAdr
 	flag := <- cFlag
+	err := <- errCh
 
+	if err != nil{
+		return err
+	}
 	switch flag {
 	case "\xF1":
 		p.ForwardPacket(dePacket, nextHop)
 	case "\xF0":
 		p.StoreMessage(dePacket, nextHop, "TMP_MESSAGE_ID")
 	}
+	return nil
 }
 
 func (p *ProviderServer) ForwardPacket(packet []byte, address string){
 	p.SendPacket(packet, address)
+	p.infoLogger.Println(fmt.Sprintf("%s: forwarded packet", p.Id))
 }
 
 func (p *ProviderServer) SendPacket(packet []byte, address string) {
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		glog.Info("Error in Provider Send Packet:  ", err.Error())
+		p.errorLogger.Println(err)
 		os.Exit(1)
 	}
 
@@ -81,25 +91,28 @@ func (p *ProviderServer) ListenForIncomingConnections() {
 		conn, err := p.listener.Accept()
 
 		if err != nil {
-			glog.Info("Error in Provider connection accepting:  ", err.Error())
+			p.errorLogger.Println(err)
 			os.Exit(1)
 		}
-		glog.Info("Provider received connection from: ", conn.RemoteAddr())
+		p.infoLogger.Println(fmt.Sprintf("%s: Received new connection from %s", p.Id, conn.RemoteAddr()))
 		go p.HandleConnection(conn)
 	}
 }
 
 func (p *ProviderServer) HandleConnection(conn net.Conn) {
-	glog.Info("Provider handle connection")
 
 	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
 
 	if err != nil {
-		glog.Info("Connection handling failed")
+		p.errorLogger.Println(err)
 	}
 
-	p.ReceivedPacket(buff[:reqLen])
+	err = p.ReceivedPacket(buff[:reqLen])
+	if err != nil {
+		p.errorLogger.Println(err)
+	}
+	
 	conn.Close()
 }
 
@@ -112,14 +125,14 @@ func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId 
 	fmt.Println(fileName)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0755); err != nil {
-			panic("Unable to create directory for storage file! - " + err.Error())
+			p.errorLogger.Println("Unable to create directory for storage file! - " + err.Error())
 		}
 
 	}
 	file, err := os.Create(fileName)
 
 	if err != nil {
-		glog.Error("Provider error while storing message: ", err.Error())
+		p.errorLogger.Println(err)
 	}
 	defer file.Close()
 	file.Write(message)
@@ -154,18 +167,19 @@ func (p *ProviderServer) FetchMessages(clientId string) error{
 		fmt.Println(dat)
 
 		address := p.assignedClients[clientId].Host + ":" + p.assignedClients[clientId].Port
-		fmt.Println("ADR: ", address)
+		p.infoLogger.Println(fmt.Sprintf("%s: fetch message adr", p.Id, address))
 	//	p.SendPacket(dat, address)
 	}
 	return nil
 }
 
-func (p *ProviderServer) SaveInPKI(path string) {
+func (p *ProviderServer) SaveInPKI(path string) error {
 
 	db, err := pki.OpenDatabase(path, "sqlite3")
+	defer db.Close()
 
 	if err != nil{
-		panic(err)
+		return err
 	}
 
 	params := make(map[string]string)
@@ -175,50 +189,61 @@ func (p *ProviderServer) SaveInPKI(path string) {
 	pki.CreateTable(db, "Providers", params)
 
 	pubsBytes, err := config.MixPubsToBytes(p.Config)
-	if err != nil {
-		panic(err)
-	}
 
-	pki.InsertIntoTable(db, "Providers", p.Id, "Provider", pubsBytes)
-	db.Close()
-	fmt.Println("> Provider public information saved in the database")
+	err = pki.InsertIntoTable(db, "Providers", p.Id, "Provider", pubsBytes)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (p *ProviderServer) Start() {
 	defer p.Run()
+
+	f, err := os.OpenFile("./logging/network_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
+
+	if err != nil{
+		panic(err)
+	}
+	// defer f.Close()
+
+	p.infoLogger = logging.NewInitLogger(f)
+	p.errorLogger = logging.NewErrorLogger(f)
 }
 
 func (p *ProviderServer) Run() {
-
-	fmt.Println("> The provider server is running")
 
 	defer p.listener.Close()
 	finish := make(chan bool)
 
 	go func() {
-		fmt.Println("Listening on " + p.Host + ":" + p.Port)
+		p.infoLogger.Println(fmt.Sprintf("%s: Listening on %s", p.Id, p.Host + ":" + p.Port))
 		p.ListenForIncomingConnections()
 	}()
 
 	<-finish
 }
 
-func NewProviderServer(id string, host string, port string, pubKey []byte, prvKey []byte, pkiPath string) *ProviderServer {
+func NewProviderServer(id string, host string, port string, pubKey []byte, prvKey []byte, pkiPath string) (*ProviderServer, error) {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	providerServer := ProviderServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
 	providerServer.Config = config.MixPubs{Id: providerServer.Id, Host: providerServer.Host, Port: providerServer.Port, PubKey: providerServer.PubKey}
-	providerServer.SaveInPKI(pkiPath)
+
+	err := providerServer.SaveInPKI(pkiPath)
+	if err != nil {
+		return nil, err
+	}
 
 	addr, err := helpers.ResolveTCPAddress(providerServer.Host, providerServer.Port)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	providerServer.listener, err = net.ListenTCP("tcp", addr)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return &providerServer
+	return &providerServer, nil
 }
