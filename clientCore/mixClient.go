@@ -19,10 +19,13 @@ type CryptoClient struct {
 	Curve elliptic.Curve
 }
 
-func (c *CryptoClient) EncodeMessage(message string, path publics.E2EPath, delays []float64) []byte {
+func (c *CryptoClient) EncodeMessage(message string, path publics.E2EPath, delays []float64) ([]byte, error) {
 
 	var packet sphinx.SphinxPacket
-	packet = sphinx.PackForwardMessage(c.Curve, path, delays, message)
+	packet, err := sphinx.PackForwardMessage(c.Curve, path, delays, message)
+	if err != nil{
+		return nil, err
+	}
 
 	return packet.Bytes()
 }

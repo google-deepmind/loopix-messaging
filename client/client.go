@@ -61,18 +61,20 @@ func (c *Client) SendMessage(message string, recipient publics.ClientPubs) {
 
 	delays := c.GenerateDelaySequence(desiredRateParameter, path.Len())
 
-	packet := c.EncodeMessage(message, path, delays)
+	packet, err := c.EncodeMessage(message, path, delays)
+	if err != nil{
+		panic(err)
+	}
 
-	err := c.Send(packet, path.IngressProvider.Host, path.IngressProvider.Port)
+	err = c.Send(packet, path.IngressProvider.Host, path.IngressProvider.Port)
 	if err != nil{
 		fmt.Println("> Client sending FAILURE!")
+		panic(err)
 	}
 }
 
 func (c *Client) Send(packet []byte, host string, port string) error {
 
-	fmt.Println("HOST: ", host)
-	fmt.Println("PORT: ", port)
 	conn, err := net.Dial("tcp", host+":"+port)
 
 	if err != nil {
@@ -104,9 +106,8 @@ func (c *Client) HandleConnection(conn net.Conn) {
 	buff := make([]byte, 1024)
 
 	reqLen, err := conn.Read(buff)
-	fmt.Println(reqLen)
 	if err != nil {
-		fmt.Println()
+		panic(err)
 	}
 
 	c.ProcessPacket(buff[:reqLen])

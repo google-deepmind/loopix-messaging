@@ -28,10 +28,10 @@ func Clean() {
 }
 
 func TestMain(m *testing.M) {
-	pubM, privM := sphinx.GenerateKeyPair()
+	pubM, privM, _ := sphinx.GenerateKeyPair()
 	mixServer = *NewMixServer("MixServer", "localhost", "9998", pubM, privM, TEST_DATABASE)
 
-	pubP, privP := sphinx.GenerateKeyPair()
+	pubP, privP, _ := sphinx.GenerateKeyPair()
 	providerServer = *NewProviderServer("Provider", "localhost", "9997", pubP, privP, TEST_DATABASE)
 
 	code := m.Run()

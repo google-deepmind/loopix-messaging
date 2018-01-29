@@ -19,11 +19,11 @@ var curve elliptic.Curve
 func TestMain(m *testing.M) {
 	curve := elliptic.P224()
 
-	pub1, _ := sphinx.GenerateKeyPair()
-	pub2, _ := sphinx.GenerateKeyPair()
-	pub3, _ := sphinx.GenerateKeyPair()
+	pub1, _, _ := sphinx.GenerateKeyPair()
+	pub2, _, _ := sphinx.GenerateKeyPair()
+	pub3, _, _ := sphinx.GenerateKeyPair()
 
-	pubP, privP := sphinx.GenerateKeyPair()
+	pubP, privP, _ := sphinx.GenerateKeyPair()
 
 	m1 := publics.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
 	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
@@ -34,12 +34,16 @@ func TestMain(m *testing.M) {
 
 	nodes = []publics.MixPubs{m1, m2, m3}
 
-	pubD, _ := sphinx.GenerateKeyPair()
+	pubD, _, _ := sphinx.GenerateKeyPair()
 	dest := publics.ClientPubs{Id : "Destination", Host: "localhost", Port: "3334", PubKey: pubD, Provider: &provider}
 
 	path := publics.E2EPath{IngressProvider: provider, Mixes: []publics.MixPubs{m1, m2, m3}, EgressProvider: provider, Recipient: dest}
 
-	testPacket = sphinx.PackForwardMessage(curve, path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")
+	var err error
+	testPacket, err = sphinx.PackForwardMessage(curve, path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")
+	if err != nil{
+		panic(err)
+	}
 	os.Exit(m.Run())
 }
 
@@ -48,7 +52,12 @@ func TestMixProcessPacket(t *testing.T) {
 	chHop := make(chan string, 1)
 	cAdr := make(chan string, 1)
 
-	providerWorker.ProcessPacket(testPacket.Bytes(), ch, chHop, cAdr)
+	testPacketBytes, err := testPacket.Bytes()
+	if err != nil{
+		t.Error(err)
+	}
+
+	providerWorker.ProcessPacket(testPacketBytes, ch, chHop, cAdr)
 	dePacket := <-ch
 	nextHop := <- chHop
 	flag := <- cAdr

@@ -27,10 +27,10 @@ func clean() {
 
 func TestMain(m *testing.M) {
 
-	pubP, _ := sphinx.GenerateKeyPair()
+	pubP, _, _ := sphinx.GenerateKeyPair()
 	providerPubs = publics.MixPubs{Id: "Provider", Host: "localhost", Port: "9995", PubKey: pubP}
 
-	pubC, privC := sphinx.GenerateKeyPair()
+	pubC, privC, _ := sphinx.GenerateKeyPair()
 	client = *NewClient("Client", "localhost", "3332", pubC, privC, "testDatabase.db", providerPubs)
 
 	code := m.Run()
@@ -56,9 +56,11 @@ func TestClient_ReadInMixnetPKI(t *testing.T) {
 	var mixes []server.MixServer
 	var mixPubs []publics.MixPubs
 	for i := 0; i < 10; i++ {
-		pub, priv := sphinx.GenerateKeyPair()
-		mix := server.MixServer{fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub, priv, "testDatabase.db"}
-		mixes = append(mixes, mix)
+		pub, priv, _ := sphinx.GenerateKeyPair()
+
+		// CHANGE THIS TO CONSTRUCTOR AND PASS A MIX WORKER
+		mix := server.NewMixServer(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub, priv, "testDatabase.db")
+		mixes = append(mixes, *mix)
 		mixPubs = append(mixPubs, mix.Config)
 	}
 
@@ -95,7 +97,7 @@ func TestClient_ReadInClientsPKI(t *testing.T) {
 	var clientsList []Client
 	var clientsPubs []publics.ClientPubs
 	for i := 0; i < 5; i++ {
-		pub, priv := sphinx.GenerateKeyPair()
+		pub, priv, _ := sphinx.GenerateKeyPair()
 		client := NewClient(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), pub, priv, "testDatabase.db", providerPubs)
 		clientsList = append(clientsList, *client)
 		clientsPubs = append(clientsPubs, client.Config)

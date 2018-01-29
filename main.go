@@ -39,15 +39,27 @@ func main() {
 		}
 		providerInfo, err := publics.MixPubsFromBytes(results)
 
-		pubC, privC := sphinx.GenerateKeyPair()
+		pubC, privC, err := sphinx.GenerateKeyPair()
+		if err != nil{
+			panic(err)
+		}
+
 		client := client.NewClient(*id, *host, *port, pubC, privC, "./pki/database.db", providerInfo)
 		client.Start()
 	case "mix":
-		pubM, privM := sphinx.GenerateKeyPair()
+		pubM, privM, err := sphinx.GenerateKeyPair()
+		if err != nil{
+			panic(err)
+		}
+
 		mixServer := server.NewMixServer(*id, *host, *port, pubM, privM, "./pki/database.db")
 		mixServer.Start()
 	case "provider":
-		pubP, privP := sphinx.GenerateKeyPair()
+		pubP, privP, err := sphinx.GenerateKeyPair()
+		if err != nil{
+			panic(err)
+		}
+
 		providerServer := server.NewProviderServer(*id, *host, *port, pubP, privP, "./pki/database.db")
 		providerServer.Start()
 	}

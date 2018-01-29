@@ -29,7 +29,7 @@ func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan <- string,
 	go func(p []byte, delay float64) {
 		time.Sleep(time.Second * time.Duration(delay))
 		timeoutCh <- p
-	}(newPacket.Bytes(), delay)
+	}(newPacket, delay)
 
 	c <- <-timeoutCh
 	cAdr <- nextHop.Address

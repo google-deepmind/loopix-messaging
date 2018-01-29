@@ -17,11 +17,14 @@ var cryptoClient CryptoClient
 var path publics.E2EPath
 
 func TestMain(m *testing.M) {
-	pubC, privC := sphinx.GenerateKeyPair()
-	pub1, _ := sphinx.GenerateKeyPair()
-	pub2, _ := sphinx.GenerateKeyPair()
-	pubP, _ := sphinx.GenerateKeyPair()
-	pubD, _ := sphinx.GenerateKeyPair()
+	pubC, privC, err := sphinx.GenerateKeyPair()
+	pub1, _, _ := sphinx.GenerateKeyPair()
+	pub2, _, _ := sphinx.GenerateKeyPair()
+	pubP, _, _ := sphinx.GenerateKeyPair()
+	pubD, _, _ := sphinx.GenerateKeyPair()
+	if err != nil{
+		panic(err)
+	}
 
 	cryptoClient = CryptoClient{Id: "MixClient", PubKey: pubC, PrvKey: privC, Curve: elliptic.P224()}
 
@@ -45,7 +48,10 @@ func TestMixClientEncode(t *testing.T) {
 		c := sphinx.Commands{Delay: v, Flag: "Flag"}
 		commands = append(commands, c)
 	}
-	encoded := cryptoClient.EncodeMessage(message, path, delays)
+	encoded, err := cryptoClient.EncodeMessage(message, path, delays)
+	if err != nil{
+		t.Error(err)
+	}
 
 	assert.Equal(t, reflect.TypeOf([]byte{}), reflect.TypeOf(encoded))
 
@@ -70,7 +76,10 @@ func TestGenerateDelaySequence(t *testing.T) {
 func TestGetRandomMixSequence(t *testing.T) {
 	var mixes []publics.MixPubs
 	for i := 0; i < 5; i++ {
-		pub, _ := sphinx.GenerateKeyPair()
+		pub, _, err := sphinx.GenerateKeyPair()
+		if err != nil{
+			t.Error(err)
+		}
 		mixes = append(mixes, publics.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub))
 	}
 

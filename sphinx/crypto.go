@@ -9,7 +9,7 @@ import (
 	"crypto/rand"
 )
 
-func AES_CTR(key, plaintext []byte) []byte {
+func AES_CTR(key, plaintext []byte) ([]byte, error) {
 
 	ciphertext := make([]byte, len(plaintext))
 
@@ -20,13 +20,13 @@ func AES_CTR(key, plaintext []byte) []byte {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	stream := cipher.NewCTR(block, iv)
 	stream.XORKeyStream(ciphertext, plaintext)
 
-	return ciphertext
+	return ciphertext, nil
 }
 
 func hash(arg []byte) []byte{
@@ -43,12 +43,12 @@ func Hmac(key, message []byte) []byte{
 	return mac.Sum(nil)
 }
 
-func GenerateKeyPair() ([]byte, []byte){
+func GenerateKeyPair() ([]byte, []byte, error) {
 	priv, x, y, err  := elliptic.GenerateKey(elliptic.P224(), rand.Reader)
 
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 
-	return elliptic.Marshal(elliptic.P224(), x, y), priv
+	return elliptic.Marshal(elliptic.P224(), x, y), priv, nil
 }
