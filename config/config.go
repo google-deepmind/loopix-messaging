@@ -3,7 +3,7 @@
 	of the network participants.
  */
 
-package publics
+package config
 
 import (
 	"github.com/protobuf/proto"

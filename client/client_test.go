@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	sphinx "anonymous-messaging/sphinx"
@@ -14,7 +14,7 @@ import (
 )
 
 var client Client
-var providerPubs publics.MixPubs
+var providerPubs config.MixPubs
 var testPacket sphinx.SphinxPacket
 
 
@@ -28,7 +28,7 @@ func clean() {
 func TestMain(m *testing.M) {
 
 	pubP, _, _ := sphinx.GenerateKeyPair()
-	providerPubs = publics.MixPubs{Id: "Provider", Host: "localhost", Port: "9995", PubKey: pubP}
+	providerPubs = config.MixPubs{Id: "Provider", Host: "localhost", Port: "9995", PubKey: pubP}
 
 	pubC, privC, _ := sphinx.GenerateKeyPair()
 	client = *NewClient("Client", "localhost", "3332", pubC, privC, "testDatabase.db", providerPubs)
@@ -54,7 +54,7 @@ func TestClient_ReadInMixnetPKI(t *testing.T) {
 
 	// TO DO: fix this test
 	var mixes []server.MixServer
-	var mixPubs []publics.MixPubs
+	var mixPubs []config.MixPubs
 	for i := 0; i < 10; i++ {
 		pub, priv, _ := sphinx.GenerateKeyPair()
 
@@ -95,7 +95,7 @@ func TestClient_ReadInClientsPKI(t *testing.T) {
 	}
 
 	var clientsList []Client
-	var clientsPubs []publics.ClientPubs
+	var clientsPubs []config.ClientPubs
 	for i := 0; i < 5; i++ {
 		pub, priv, _ := sphinx.GenerateKeyPair()
 		client := NewClient(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), pub, priv, "testDatabase.db", providerPubs)
@@ -145,7 +145,7 @@ func TestClient_SaveInPKI(t *testing.T) {
 			t.Error(err)
 		}
 
-		pubs, err := publics.ClientPubsFromBytes(result["Config"].([]byte))
+		pubs, err := config.ClientPubsFromBytes(result["Config"].([]byte))
 		if err != nil {
 			t.Error(err)
 		}

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"bytes"
 	"anonymous-messaging/pki"
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 	"io/ioutil"
 	"anonymous-messaging/helpers"
 )
@@ -28,7 +28,7 @@ type ProviderServer struct {
 
 	assignedClients map[string]ClientRecord
 
-	Config publics.MixPubs
+	Config config.MixPubs
 }
 
 type ClientRecord struct {
@@ -174,7 +174,7 @@ func (p *ProviderServer) SaveInPKI(path string) {
 	params["Config"] = "BLOB"
 	pki.CreateTable(db, "Providers", params)
 
-	pubsBytes, err := publics.MixPubsToBytes(p.Config)
+	pubsBytes, err := config.MixPubsToBytes(p.Config)
 	if err != nil {
 		panic(err)
 	}
@@ -206,7 +206,7 @@ func (p *ProviderServer) Run() {
 func NewProviderServer(id string, host string, port string, pubKey []byte, prvKey []byte, pkiPath string) *ProviderServer {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	providerServer := ProviderServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
-	providerServer.Config = publics.MixPubs{Id: providerServer.Id, Host: providerServer.Host, Port: providerServer.Port, PubKey: providerServer.PubKey}
+	providerServer.Config = config.MixPubs{Id: providerServer.Id, Host: providerServer.Host, Port: providerServer.Port, PubKey: providerServer.PubKey}
 	providerServer.SaveInPKI(pkiPath)
 
 	addr, err := helpers.ResolveTCPAddress(providerServer.Host, providerServer.Port)

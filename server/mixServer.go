@@ -11,7 +11,7 @@ import (
 	"anonymous-messaging/networker"
 	"anonymous-messaging/node"
 	"anonymous-messaging/pki"
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 	"anonymous-messaging/helpers"
 )
 
@@ -27,7 +27,7 @@ type MixServer struct {
 	listener *net.TCPListener
 	node.Mix
 
-	Config publics.MixPubs
+	Config config.MixPubs
 }
 
 func (m *MixServer) ReceivedPacket(packet []byte) {
@@ -127,7 +127,7 @@ func (m *MixServer) SaveInPKI(pkiPath string) {
 
 	pki.CreateTable(db, "Mixes", params)
 
-	configBytes, err := publics.MixPubsToBytes(m.Config)
+	configBytes, err := config.MixPubsToBytes(m.Config)
 	if err != nil {
 		panic(err)
 	}
@@ -141,7 +141,7 @@ func (m *MixServer) SaveInPKI(pkiPath string) {
 func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath string) *MixServer {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	mixServer := MixServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
-	mixServer.Config = publics.MixPubs{Id : mixServer.Id, Host: mixServer.Host, Port: mixServer.Port, PubKey: mixServer.PubKey}
+	mixServer.Config = config.MixPubs{Id : mixServer.Id, Host: mixServer.Host, Port: mixServer.Port, PubKey: mixServer.PubKey}
 
 	mixServer.SaveInPKI(pkiPath)
 

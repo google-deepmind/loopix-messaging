@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 	sphinx "anonymous-messaging/sphinx"
 	"crypto/elliptic"
 	"github.com/stretchr/testify/assert"
@@ -13,7 +13,7 @@ import (
 
 var providerWorker Mix
 var testPacket sphinx.SphinxPacket
-var nodes []publics.MixPubs
+var nodes []config.MixPubs
 var curve elliptic.Curve
 
 func TestMain(m *testing.M) {
@@ -25,19 +25,19 @@ func TestMain(m *testing.M) {
 
 	pubP, privP, _ := sphinx.GenerateKeyPair()
 
-	m1 := publics.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
-	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
-	m3 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3332", PubKey: pub3}
-	provider := publics.MixPubs{Id: "Provider", Host: "localhost", Port: "3333", PubKey: pubP}
+	m1 := config.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
+	m2 := config.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
+	m3 := config.MixPubs{Id: "Mix2", Host: "localhost", Port: "3332", PubKey: pub3}
+	provider := config.MixPubs{Id: "Provider", Host: "localhost", Port: "3333", PubKey: pubP}
 
 	providerWorker = *NewMix("ProviderWorker", pubP, privP)
 
-	nodes = []publics.MixPubs{m1, m2, m3}
+	nodes = []config.MixPubs{m1, m2, m3}
 
 	pubD, _, _ := sphinx.GenerateKeyPair()
-	dest := publics.ClientPubs{Id : "Destination", Host: "localhost", Port: "3334", PubKey: pubD, Provider: &provider}
+	dest := config.ClientPubs{Id : "Destination", Host: "localhost", Port: "3334", PubKey: pubD, Provider: &provider}
 
-	path := publics.E2EPath{IngressProvider: provider, Mixes: []publics.MixPubs{m1, m2, m3}, EgressProvider: provider, Recipient: dest}
+	path := config.E2EPath{IngressProvider: provider, Mixes: []config.MixPubs{m1, m2, m3}, EgressProvider: provider, Recipient: dest}
 
 	var err error
 	testPacket, err = sphinx.PackForwardMessage(curve, path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")

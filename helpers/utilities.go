@@ -8,13 +8,13 @@ import (
 	"math/rand"
 	"time"
 
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 	"net"
 )
 
-func Permute(slice []publics.MixPubs) []publics.MixPubs {
+func Permute(slice []config.MixPubs) []config.MixPubs {
 	rand.Seed(time.Now().UTC().UnixNano())
-	permutedData := make([]publics.MixPubs, len(slice))
+	permutedData := make([]config.MixPubs, len(slice))
 	permutation := rand.Perm(len(slice))
 	for i, v := range permutation {
 		permutedData[v] = slice[i]
@@ -22,7 +22,7 @@ func Permute(slice []publics.MixPubs) []publics.MixPubs {
 	return permutedData
 }
 
-func RandomSample(slice []publics.MixPubs, length int) []publics.MixPubs {
+func RandomSample(slice []config.MixPubs, length int) []config.MixPubs {
 	permuted := Permute(slice)
 	return permuted[:length]
 }

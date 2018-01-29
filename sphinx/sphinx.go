@@ -7,7 +7,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"strings"
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 	"bytes"
 	"errors"
 
@@ -67,8 +67,8 @@ func RoutingInfoFromBytes(bytes []byte) (RoutingInfo, error) {
 }
 
 
-func PackForwardMessage(curve elliptic.Curve, path publics.E2EPath, delays []float64, message string) (SphinxPacket, error){
-	nodes := []publics.MixPubs{path.IngressProvider}
+func PackForwardMessage(curve elliptic.Curve, path config.E2EPath, delays []float64, message string) (SphinxPacket, error){
+	nodes := []config.MixPubs{path.IngressProvider}
 	nodes = append(nodes, path.Mixes...)
 	nodes = append(nodes, path.EgressProvider)
 	dest := path.Recipient
@@ -87,7 +87,7 @@ func PackForwardMessage(curve elliptic.Curve, path publics.E2EPath, delays []flo
 }
 
 
-func createHeader(curve elliptic.Curve, nodes []publics.MixPubs, delays []float64, dest publics.ClientPubs) ([]HeaderInitials, Header, error){
+func createHeader(curve elliptic.Curve, nodes []config.MixPubs, delays []float64, dest config.ClientPubs) ([]HeaderInitials, Header, error){
 
 	x, err := randomBigInt(curve.Params())
 
@@ -137,7 +137,7 @@ func encapsulateContent(asb []HeaderInitials, message string) ([]byte, error) {
 }
 
 
-func encapsulateHeader(asb []HeaderInitials, nodes []publics.MixPubs, commands []Commands, destination publics.ClientPubs) (Header, error){
+func encapsulateHeader(asb []HeaderInitials, nodes []config.MixPubs, commands []Commands, destination config.ClientPubs) (Header, error){
 
 	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: &commands[len(commands) - 1], NextHopMetaData: []byte{}, Mac: []byte{}}
 
@@ -186,7 +186,7 @@ func computeMac(key, data []byte) []byte{
 }
 
 
-func getSharedSecrets(curve elliptic.Curve, nodes []publics.MixPubs, initialVal big.Int) ([]HeaderInitials, error){
+func getSharedSecrets(curve elliptic.Curve, nodes []config.MixPubs, initialVal big.Int) ([]HeaderInitials, error){
 
 	blindFactors := []big.Int{initialVal}
 	var tuples []HeaderInitials
@@ -211,7 +211,7 @@ func getSharedSecrets(curve elliptic.Curve, nodes []publics.MixPubs, initialVal 
 }
 
 
-func computeFillers(nodes []publics.MixPubs, tuples []HeaderInitials) (string, error) {
+func computeFillers(nodes []config.MixPubs, tuples []HeaderInitials) (string, error) {
 
 	filler := ""
 	minLen := HEADERLENGTH - 32

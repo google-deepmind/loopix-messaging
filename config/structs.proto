@@ -1,5 +1,5 @@
 syntax = "proto3";
-package publics;
+package config;
 
 message MixPubs {
     string Id = 1;

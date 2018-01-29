@@ -7,7 +7,7 @@ import (
 	"anonymous-messaging/sphinx"
 	"anonymous-messaging/pki"
 	"fmt"
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 )
 
 func main() {
@@ -37,7 +37,7 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		providerInfo, err := publics.MixPubsFromBytes(results)
+		providerInfo, err := config.MixPubsFromBytes(results)
 
 		pubC, privC, err := sphinx.GenerateKeyPair()
 		if err != nil{

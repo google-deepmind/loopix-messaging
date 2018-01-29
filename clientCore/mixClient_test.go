@@ -7,14 +7,14 @@ import (
 	"strconv"
 	"testing"
 
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 	"github.com/stretchr/testify/assert"
 	sphinx "anonymous-messaging/sphinx"
 	"crypto/elliptic"
 )
 
 var cryptoClient CryptoClient
-var path publics.E2EPath
+var path config.E2EPath
 
 func TestMain(m *testing.M) {
 	pubC, privC, err := sphinx.GenerateKeyPair()
@@ -28,12 +28,12 @@ func TestMain(m *testing.M) {
 
 	cryptoClient = CryptoClient{Id: "MixClient", PubKey: pubC, PrvKey: privC, Curve: elliptic.P224()}
 
-	m1 := publics.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
-	m2 := publics.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
-	provider := publics.MixPubs{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP}
-	recipient := publics.ClientPubs{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD, Provider: &provider}
+	m1 := config.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
+	m2 := config.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
+	provider := config.MixPubs{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP}
+	recipient := config.ClientPubs{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD, Provider: &provider}
 
-	path = publics.E2EPath{IngressProvider: provider, Mixes: []publics.MixPubs{m1, m2}, EgressProvider: provider, Recipient: recipient}
+	path = config.E2EPath{IngressProvider: provider, Mixes: []config.MixPubs{m1, m2}, EgressProvider: provider, Recipient: recipient}
 
 	os.Exit(m.Run())
 }
@@ -74,16 +74,16 @@ func TestGenerateDelaySequence(t *testing.T) {
 }
 
 func TestGetRandomMixSequence(t *testing.T) {
-	var mixes []publics.MixPubs
+	var mixes []config.MixPubs
 	for i := 0; i < 5; i++ {
 		pub, _, err := sphinx.GenerateKeyPair()
 		if err != nil{
 			t.Error(err)
 		}
-		mixes = append(mixes, publics.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub))
+		mixes = append(mixes, config.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub))
 	}
 
-	var sequence []publics.MixPubs
+	var sequence []config.MixPubs
 	sequence = cryptoClient.GetRandomMixSequence(mixes, 6)
 	assert.Equal(t, 5, len(sequence), "When the given length is larger than the number of active nodes, the path should be "+
 		"the sequence of all active mixes")

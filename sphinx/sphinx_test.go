@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"fmt"
 	"crypto/aes"
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 )
 
 
@@ -134,11 +134,11 @@ func TestGetSharedSecrets(t *testing.T){
 
 	pubs := [][]byte{pub1, pub2, pub3}
 
-	m1 := publics.MixPubs{Id: "", Host:"", Port: "", PubKey: pub1}
-	m2 := publics.MixPubs{Id: "", Host:"", Port: "", PubKey: pub2}
-	m3 := publics.MixPubs{Id: "", Host:"", Port: "", PubKey: pub3}
+	m1 := config.MixPubs{Id: "", Host:"", Port: "", PubKey: pub1}
+	m2 := config.MixPubs{Id: "", Host:"", Port: "", PubKey: pub2}
+	m3 := config.MixPubs{Id: "", Host:"", Port: "", PubKey: pub3}
 
-	nodes := []publics.MixPubs{m1, m2, m3}
+	nodes := []config.MixPubs{m1, m2, m3}
 
 	x := big.NewInt(100)
 
@@ -211,11 +211,11 @@ func TestComputeFillers(t *testing.T){
 		t.Error(err)
 	}
 
-	m1 := publics.MixPubs{Id: "", Host:"", Port: "", PubKey: pub1}
-	m2 := publics.MixPubs{Id: "", Host:"", Port: "", PubKey: pub2}
-	m3 := publics.MixPubs{Id: "", Host:"", Port: "", PubKey: pub3}
+	m1 := config.MixPubs{Id: "", Host:"", Port: "", PubKey: pub1}
+	m2 := config.MixPubs{Id: "", Host:"", Port: "", PubKey: pub2}
+	m3 := config.MixPubs{Id: "", Host:"", Port: "", PubKey: pub3}
 
-	fillers, err := computeFillers([]publics.MixPubs{m1, m2, m3}, tuples)
+	fillers, err := computeFillers([]config.MixPubs{m1, m2, m3}, tuples)
 	if err != nil{
 		t.Error(err)
 	}
@@ -244,11 +244,11 @@ func TestEncapsulateHeader(t *testing.T){
 		t.Error(err)
 	}
 
-	m1 := publics.NewMixPubs("Node1", "localhost", "3331", pub1)
-	m2 := publics.NewMixPubs("Node2", "localhost", "3332", pub2)
-	m3 := publics.NewMixPubs("Node3", "localhost", "3333", pub3)
+	m1 := config.NewMixPubs("Node1", "localhost", "3331", pub1)
+	m2 := config.NewMixPubs("Node2", "localhost", "3332", pub2)
+	m3 := config.NewMixPubs("Node3", "localhost", "3333", pub3)
 
-	nodes := []publics.MixPubs{m1, m2, m3}
+	nodes := []config.MixPubs{m1, m2, m3}
 
 	c1 := Commands{Delay: 0.34, Flag: "0"}
 	c2 := Commands{Delay: 0.25, Flag: "1"}
@@ -262,7 +262,7 @@ func TestEncapsulateHeader(t *testing.T){
 	}
 
 	actualHeader, err := encapsulateHeader(sharedSecrets, nodes, commands,
-						publics.ClientPubs{Id: "DestinationId", Host: "DestinationAddress", Port: "9998", PubKey: pubD})
+		config.ClientPubs{Id: "DestinationId", Host: "DestinationAddress", Port: "9998", PubKey: pubD})
 	if err != nil{
 		t.Error(err)
 	}
@@ -332,11 +332,11 @@ func TestProcessSphinxHeader(t *testing.T) {
 	c2 := Commands{Delay: 0.25}
 	c3 := Commands{Delay: 1.10}
 
-	m1 := publics.NewMixPubs("Node1", "localhost", "3331", pub1)
-	m2 := publics.NewMixPubs("Node2", "localhost", "3332", pub2)
-	m3 := publics.NewMixPubs("Node3", "localhost", "3333", pub3)
+	m1 := config.NewMixPubs("Node1", "localhost", "3331", pub1)
+	m2 := config.NewMixPubs("Node2", "localhost", "3332", pub2)
+	m3 := config.NewMixPubs("Node3", "localhost", "3333", pub3)
 
-	nodes := []publics.MixPubs{m1, m2, m3}
+	nodes := []config.MixPubs{m1, m2, m3}
 
 	x := big.NewInt(100)
 	sharedSecrets, err := getSharedSecrets(curve, nodes, *x)
@@ -416,11 +416,11 @@ func TestProcessSphinxPayload(t *testing.T) {
 	}
 
 
-	m1 := publics.NewMixPubs("Node1", "localhost", "3331", pub1)
-	m2 := publics.NewMixPubs("Node2", "localhost", "3332", pub2)
-	m3 := publics.NewMixPubs("Node3", "localhost", "3333", pub3)
+	m1 := config.NewMixPubs("Node1", "localhost", "3331", pub1)
+	m2 := config.NewMixPubs("Node2", "localhost", "3332", pub2)
+	m3 := config.NewMixPubs("Node3", "localhost", "3333", pub3)
 
-	nodes := []publics.MixPubs{m1, m2, m3}
+	nodes := []config.MixPubs{m1, m2, m3}
 
 	x := big.NewInt(100)
 	asb, err := getSharedSecrets(curve, nodes, *x)

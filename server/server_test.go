@@ -3,7 +3,7 @@ package server
 import (
 	"os"
 	"testing"
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -60,7 +60,7 @@ func TestMixServer_SaveInPKI(t *testing.T) {
 			t.Error(err)
 		}
 
-		pubs, err := publics.MixPubsFromBytes(result["Config"].([]byte))
+		pubs, err := config.MixPubsFromBytes(result["Config"].([]byte))
 		if err != nil {
 			t.Error(err)
 		}

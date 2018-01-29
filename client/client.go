@@ -12,7 +12,7 @@ import (
 	"anonymous-messaging/clientCore"
 	"anonymous-messaging/networker"
 	"anonymous-messaging/pki"
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 	"github.com/jmoiron/sqlx"
 	"crypto/elliptic"
 	"anonymous-messaging/helpers"
@@ -26,7 +26,7 @@ const (
 type ClientIt interface {
 	networker.NetworkClient
 	networker.NetworkServer
-	SendMessage(message string, recipient publics.MixPubs)
+	SendMessage(message string, recipient config.MixPubs)
 	ProcessPacket(packet []byte)
 	Start()
 	ReadInMixnetPKI()
@@ -40,20 +40,20 @@ type Client struct {
 
 	clientCore.CryptoClient
 
-	ActiveMixes  []publics.MixPubs
-	OtherClients []publics.ClientPubs
+	ActiveMixes  []config.MixPubs
+	OtherClients []config.ClientPubs
 
 	listener *net.TCPListener
 
 	pkiDir string
-	Provider publics.MixPubs
-	Config publics.ClientPubs
+	Provider config.MixPubs
+	Config config.ClientPubs
 }
 
-func (c *Client) SendMessage(message string, recipient publics.ClientPubs) {
+func (c *Client) SendMessage(message string, recipient config.ClientPubs) {
 	mixSeq := c.GetRandomMixSequence(c.ActiveMixes, pathLength)
 
-	var path publics.E2EPath
+	var path config.E2EPath
 	path.IngressProvider = c.Provider
 	path.Mixes = mixSeq
 	path.EgressProvider = *recipient.Provider
@@ -174,7 +174,7 @@ func (c *Client) ReadInMixnetPKI(pkiName string) {
 			panic(err)
 
 		}
-		pubs, err := publics.MixPubsFromBytes(result["Config"].([]byte))
+		pubs, err := config.MixPubsFromBytes(result["Config"].([]byte))
 		if err != nil {
 			panic(err)
 		}
@@ -208,7 +208,7 @@ func (c *Client) ReadInClientsPKI(pkiName string) {
 			panic(err)
 		}
 
-		pubs, err := publics.ClientPubsFromBytes(result["Config"].([]byte))
+		pubs, err := config.ClientPubsFromBytes(result["Config"].([]byte))
 		if err != nil {
 			panic(err)
 		}
@@ -239,7 +239,7 @@ func SaveInPKI(c Client, pkiDir string) {
 	pki.CreateTable(db, "Clients", params)
 
 
-	configBytes, err := publics.ClientPubsToBytes(c.Config)
+	configBytes, err := config.ClientPubsToBytes(c.Config)
 	if err != nil {
 		panic(err)
 	}
@@ -249,11 +249,11 @@ func SaveInPKI(c Client, pkiDir string) {
 	db.Close()
 }
 
-func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider publics.MixPubs) *Client {
+func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixPubs) *Client {
 	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224()}
 
 	c := Client{Host: host, Port: port, CryptoClient: core, Provider: provider, pkiDir: pkiDir}
-	c.Config = publics.ClientPubs{Id : c.Id, Host: c.Host, Port: c.Port, PubKey: c.PubKey, Provider: &c.Provider}
+	c.Config = config.ClientPubs{Id : c.Id, Host: c.Host, Port: c.Port, PubKey: c.PubKey, Provider: &c.Provider}
 
 	SaveInPKI(c, pkiDir)
 

@@ -7,7 +7,7 @@ package clientCore
 
 import (
 	"anonymous-messaging/helpers"
-	"anonymous-messaging/publics"
+	"anonymous-messaging/config"
 	sphinx "anonymous-messaging/sphinx"
 	"crypto/elliptic"
 )
@@ -19,7 +19,7 @@ type CryptoClient struct {
 	Curve elliptic.Curve
 }
 
-func (c *CryptoClient) EncodeMessage(message string, path publics.E2EPath, delays []float64) ([]byte, error) {
+func (c *CryptoClient) EncodeMessage(message string, path config.E2EPath, delays []float64) ([]byte, error) {
 
 	var packet sphinx.SphinxPacket
 	packet, err := sphinx.PackForwardMessage(c.Curve, path, delays, message)
@@ -42,7 +42,7 @@ func (c *CryptoClient) GenerateDelaySequence(desiredRateParameter float64, lengt
 	return delays
 }
 
-func (c *CryptoClient) GetRandomMixSequence(mixes []publics.MixPubs, length int) []publics.MixPubs {
+func (c *CryptoClient) GetRandomMixSequence(mixes []config.MixPubs, length int) []config.MixPubs {
 	if length > len(mixes) {
 		return mixes
 	} else {
