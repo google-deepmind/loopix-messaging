@@ -46,8 +46,15 @@ func TestMain(m *testing.M) {
 }
 
 func TestCreateDatabase(t *testing.T) {
-	OpenDatabase("./testDatabase.db", "sqlite3")
-	_, err := os.Stat("testDatabase.db")
+	_, err := OpenDatabase("./testDatabase.db", "sqlite3")
+	if err != nil{
+		t.Error(err)
+	}
+
+	_, err = os.Stat("testDatabase.db")
+	if err != nil{
+		t.Error(err)
+	}
 	assert.False(t, os.IsNotExist(err), "The database file does not exist")
 }
 
@@ -59,7 +66,10 @@ func TestCreateTable(t *testing.T) {
 	}
 
 	params := map[string]string{"Id": "TEXT", "Typ": "TEXT", "Config": "BLOB"}
-	CreateTable(db, "TestTable", params)
+	err = CreateTable(db, "TestTable", params)
+	if err != nil{
+		t.Error(err)
+	}
 
 	var exists bool
 	err = db.QueryRow("SELECT CASE WHEN exists (SELECT * from sqlite_master WHERE type = 'table' AND name = 'TestTable') then 1 else 0 end").Scan(&exists)
@@ -75,20 +85,35 @@ func TestInsertToTable(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	InsertIntoTable(db, "TestTable", "TestVal1", "TestVal2", []byte("TestVal3"))
+
+	err = InsertIntoTable(db, "TestTable", "TestVal1", "TestVal2", []byte("TestVal3"))
+
+	if err != nil{
+		t.Error(err)
+	}
 
 	var exists bool
 	err = db.QueryRow("SELECT exists (SELECT * FROM TestTable WHERE Id=$1 AND Typ=$2 AND Config=$3)", "TestVal1", "TestVal2", []byte("TestVal3")).Scan(&exists)
+
 	if err != nil && err != sql.ErrNoRows {
 		t.Error(err)
 	}
+
 	assert.True(t, exists, "Row was not added to the database")
 }
 
 func TestQueryDatabase(t *testing.T) {
-	db := OpenDatabase("./testDatabase2.db", "sqlite3")
+	db, err := OpenDatabase("./testDatabase2.db", "sqlite3")
 
-	rows := QueryDatabase(db, "TestTable")
+	if err != nil{
+		t.Error(err)
+	}
+
+	rows, err := QueryDatabase(db, "TestTable")
+
+	if err != nil{
+		t.Error(err)
+	}
 
 	for rows.Next() {
 		results := make(map[string]interface{})
@@ -105,7 +130,11 @@ func TestQueryDatabase(t *testing.T) {
 }
 
 func TestInsertIntoTable(t *testing.T) {
-	db := OpenDatabase("./testDatabase2.db", "sqlite3")
+	db, err := OpenDatabase("./testDatabase2.db", "sqlite3")
+
+	if err != nil{
+		t.Error(err)
+	}
 
 	params := make(map[string]string)
 	params["Id"] = "TEXT"
@@ -114,7 +143,7 @@ func TestInsertIntoTable(t *testing.T) {
 
 	CreateTable(db, "InsertTestTable", params)
 
-	err := InsertIntoTable(db, "InsertTestTable", "MyId", "MyTyp", []byte("Some bytes"))
+	err = InsertIntoTable(db, "InsertTestTable", "MyId", "MyTyp", []byte("Some bytes"))
 
 	if err != nil {
 		t.Error(err)

@@ -114,12 +114,17 @@ func (m *MixServer) HandleConnection(conn net.Conn) {
 func (m *MixServer) SaveInPKI(pkiPath string) {
 	fmt.Println("> Saving into Database")
 
-	db := pki.OpenDatabase(pkiPath, "sqlite3")
+	db, err := pki.OpenDatabase(pkiPath, "sqlite3")
+
+	if err != nil{
+		panic(err)
+	}
 
 	params := make(map[string]string)
 	params["Id"] = "TEXT"
 	params["Typ"] = "TEXT"
 	params["Config"] = "BLOB"
+
 	pki.CreateTable(db, "Mixes", params)
 
 	configBytes, err := publics.MixPubsToBytes(m.Config)

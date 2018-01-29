@@ -70,10 +70,13 @@ func (c *Client) SendMessage(message string, recipient publics.ClientPubs) {
 }
 
 func (c *Client) Send(packet []byte, host string, port string) error {
+
+	fmt.Println("HOST: ", host)
+	fmt.Println("PORT: ", port)
 	conn, err := net.Dial("tcp", host+":"+port)
 
 	if err != nil {
-		fmt.Print("Error in Client connect", err.Error())
+		fmt.Print("Error in Client connect: ", err.Error())
 		os.Exit(1)
 	} else {
 		defer conn.Close()
@@ -139,6 +142,7 @@ func (c *Client) Run() {
 		c.ListenForIncomingConnections()
 	}()
 
+
 	go func() {
 		c.SendMessage("Hello world, this is me", c.OtherClients[0])
 	}()
@@ -149,19 +153,30 @@ func (c *Client) Run() {
 func (c *Client) ReadInMixnetPKI(pkiName string) {
 	fmt.Println("Reading network from pki:  ", pkiName)
 
-	db := c.ConnectToPKI(pkiName)
-	records := pki.QueryDatabase(db, "Mixes")
+	db, err := c.ConnectToPKI(pkiName)
+
+	if err != nil{
+		panic(err)
+	}
+
+	records, err := pki.QueryDatabase(db, "Mixes")
+
+	if err != nil{
+		panic(err)
+	}
 
 	for records.Next() {
-		results := make(map[string]interface{})
-		err := records.MapScan(results)
+		result := make(map[string]interface{})
+		err := records.MapScan(result)
 
 		if err != nil {
 			panic(err)
 
 		}
-		pubs := publics.NewMixPubs(string(results["MixId"].([]byte)), string(results["Host"].([]byte)),
-			string(results["Port"].([]byte)), results["PubKey"].([]byte))
+		pubs, err := publics.MixPubsFromBytes(result["Config"].([]byte))
+		if err != nil {
+			panic(err)
+		}
 
 		c.ActiveMixes = append(c.ActiveMixes, pubs)
 	}
@@ -172,8 +187,17 @@ func (c *Client) ReadInClientsPKI(pkiName string) {
 	fmt.Println("Reading public information about clients")
 
 
-	db := c.ConnectToPKI(pkiName)
-	records := pki.QueryDatabase(db, "Clients")
+	db, err := c.ConnectToPKI(pkiName)
+
+	if err != nil{
+		panic(err)
+	}
+
+	records, err := pki.QueryDatabase(db, "Clients")
+
+	if err != nil {
+		panic(err)
+	}
 
 	for records.Next() {
 		result := make(map[string]interface{})
@@ -192,14 +216,18 @@ func (c *Client) ReadInClientsPKI(pkiName string) {
 	fmt.Println("> The clients data is uploaded.")
 }
 
-func (c *Client) ConnectToPKI(dbName string) *sqlx.DB {
+func (c *Client) ConnectToPKI(dbName string) (*sqlx.DB, error) {
 	return pki.OpenDatabase(dbName, "sqlite3")
 }
 
 func SaveInPKI(c Client, pkiDir string) {
 	fmt.Println("> Saving Client Public Info into Database")
 
-	db := pki.OpenDatabase(pkiDir, "sqlite3")
+	db, err := pki.OpenDatabase(pkiDir, "sqlite3")
+
+	if err != nil {
+		panic(err)
+	}
 
 	// TO DO: THIS SHOULD BE REMOVED AND DONE IS A PRE SETTING FILE
 

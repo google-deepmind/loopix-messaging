@@ -10,10 +10,10 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	sphinx "anonymous-messaging/sphinx"
+	"anonymous-messaging/server"
 )
 
 var client Client
-var mixPubs []publics.MixPubs
 var providerPubs publics.MixPubs
 var testPacket sphinx.SphinxPacket
 
@@ -52,20 +52,24 @@ func TestClient_ReadInMixnetPKI(t *testing.T) {
 		panic(err)
 	}
 
+	// TO DO: fix this test
+	var mixes []server.MixServer
+	var mixPubs []publics.MixPubs
 	for i := 0; i < 10; i++ {
-		pub, _ := sphinx.GenerateKeyPair()
-		mix := publics.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub)
-		mixPubs = append(mixPubs, mix)
+		pub, priv := sphinx.GenerateKeyPair()
+		mix := server.MixServer{fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub, priv, "testDatabase.db"}
+		mixes = append(mixes, mix)
+		mixPubs = append(mixPubs, mix.Config)
 	}
 
-	statement, e := db.Prepare("CREATE TABLE IF NOT EXISTS Mixes ( id INTEGER PRIMARY KEY, MixId TEXT, Host TEXT, Port TEXT, PubKey BLOB)")
+	statement, e := db.Prepare("CREATE TABLE IF NOT EXISTS Mixes ( id INTEGER PRIMARY KEY, Id TEXT, Typ TEXT, Config BLOB)")
 	if e != nil {
 		panic(e)
 	}
 	statement.Exec()
 
-	for _, elem := range mixPubs {
-		_, err := db.Exec("INSERT INTO Mixes (MixId, Host, Port, PubKey) VALUES (?, ?, ?, ?)", elem.Id, elem.Host, elem.Port, elem.PubKey)
+	for _, elem := range mixes {
+		_, err := db.Exec("INSERT INTO Mixes (Id, Typ, Config) VALUES (?, ?, ?)", elem.Id, "Mix", elem.Config)
 		if err != nil{
 			panic(err)
 		}
@@ -74,7 +78,7 @@ func TestClient_ReadInMixnetPKI(t *testing.T) {
 
 	client.ReadInMixnetPKI("testDatabase.db")
 
-	assert.Equal(t, len(mixPubs), len(client.ActiveMixes))
+	assert.Equal(t, len(mixes), len(client.ActiveMixes))
 	assert.Equal(t, mixPubs, client.ActiveMixes)
 
 }

@@ -12,6 +12,8 @@ import (
 
 func main() {
 
+	fmt.Println("Starting!!")
+
 	typ := flag.String("typ", "", "A type of entity we want to run")
 	id := flag.String("id", "", "Id of the entity we want to run")
 	host := flag.String("host", "", "The host on which the entity is running")
@@ -21,11 +23,17 @@ func main() {
 
 	switch *typ {
 	case "client":
-		db := pki.OpenDatabase("pki/database.db", "sqlite3")
-		row := db.QueryRow("SELECT Info FROM Providers WHERE ProviderId = ?", providerId)
+		db, err := pki.OpenDatabase("pki/database.db", "sqlite3")
+
+		if err != nil{
+			panic(err)
+		}
+
+
+		row := db.QueryRow("SELECT Config FROM Providers WHERE Id = ?", providerId)
 
 		var results []byte
-		err := row.Scan(&results)
+		err = row.Scan(&results)
 		if err != nil {
 			fmt.Println(err)
 		}

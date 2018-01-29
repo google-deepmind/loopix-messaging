@@ -14,8 +14,8 @@ import (
 
 type CryptoClient struct {
 	Id     string
-	PubKey []byte //publics.PublicKey
-	PrvKey []byte //publics.PrivateKey
+	PubKey []byte
+	PrvKey []byte
 	Curve elliptic.Curve
 }
 

@@ -117,8 +117,6 @@ func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId 
 
 	}
 	file, err := os.Create(fileName)
-	fmt.Println("Created path")
-	fmt.Println(file)
 
 	if err != nil {
 		glog.Error("Provider error while storing message: ", err.Error())
@@ -164,7 +162,11 @@ func (p *ProviderServer) FetchMessages(clientId string) error{
 
 func (p *ProviderServer) SaveInPKI(path string) {
 
-	db := pki.OpenDatabase(path, "sqlite3")
+	db, err := pki.OpenDatabase(path, "sqlite3")
+
+	if err != nil{
+		panic(err)
+	}
 
 	params := make(map[string]string)
 	params["Id"] = "TEXT"
