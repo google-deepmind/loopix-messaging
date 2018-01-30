@@ -1,5 +1,6 @@
 #!bin/sh
 
+echo "Press CTRL-C to stop."
 rm -rf pki/database.db
 
 #NUMMIXES=$1

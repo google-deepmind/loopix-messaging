@@ -15,3 +15,13 @@ message ClientPubs {
     bytes PubKey = 4;
     MixPubs Provider = 5;
 }
+
+message GeneralPacket {
+    string Flag = 1;
+    bytes Data = 2;
+}
+
+message PullRequest {
+    string Id = 1;
+    bytes Token = 2;
+}

@@ -55,6 +55,41 @@ func ClientPubsFromBytes(b []byte) (ClientPubs, error) {
 	return pubs, nil
 }
 
+func GeneralPacketToBytes(pkt GeneralPacket) ([]byte, error) {
+	data, err := proto.Marshal(&pkt)
+
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func GeneralPacketFromBytes(b []byte) (GeneralPacket, error) {
+	var pkt GeneralPacket
+	err := proto.Unmarshal(b, &pkt)
+	if err != nil {
+		return pkt, err
+	}
+	return pkt, nil
+}
+
+func PullRequestToBytes(r PullRequest) ([]byte, error) {
+	data, err := proto.Marshal(&r)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func PullRequestFromBytes(b []byte) (PullRequest, error) {
+	var r PullRequest
+	err := proto.Unmarshal(b, &r)
+	if err != nil {
+		return r, err
+	}
+	return r, nil
+}
+
 
 type E2EPath struct {
 	IngressProvider MixPubs

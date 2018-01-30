@@ -51,16 +51,21 @@ func TestMixProcessPacket(t *testing.T) {
 	ch := make(chan []byte, 1)
 	chHop := make(chan string, 1)
 	cAdr := make(chan string, 1)
+	errCh := make(chan error, 1)
 
 	testPacketBytes, err := testPacket.Bytes()
 	if err != nil{
 		t.Error(err)
 	}
 
-	providerWorker.ProcessPacket(testPacketBytes, ch, chHop, cAdr)
+	providerWorker.ProcessPacket(testPacketBytes, ch, chHop, cAdr, errCh)
 	dePacket := <-ch
 	nextHop := <- chHop
 	flag := <- cAdr
+	err = <- errCh
+	if err != nil{
+		t.Error(err)
+	}
 
 	assert.Equal(t, "localhost:3330", nextHop, "Next hop does not match")
 	assert.Equal(t, reflect.TypeOf([]byte{}), reflect.TypeOf(dePacket))

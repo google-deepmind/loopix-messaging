@@ -10,7 +10,6 @@ import (
 
 	"anonymous-messaging/networker"
 	"anonymous-messaging/node"
-	"anonymous-messaging/pki"
 	"anonymous-messaging/config"
 	"anonymous-messaging/helpers"
 	"log"
@@ -61,11 +60,16 @@ func (m *MixServer) ReceivedPacket(packet []byte) error{
 	return nil
 }
 
-func (m *MixServer) ForwardPacket(packet []byte, address string) {
-	m.SendPacket(packet, address)
+func (m *MixServer) ForwardPacket(sphinxPacket []byte, address string) {
+	packet := config.GeneralPacket{Flag:COMM_FLAG, Data: sphinxPacket}
+	packetBytes, err := config.GeneralPacketToBytes(packet)
+	if err != nil{
+		panic(err)
+	}
+	m.Send(packetBytes, address)
 }
 
-func (m *MixServer) SendPacket(packet []byte, address string) {
+func (m *MixServer) Send(packet []byte, address string) {
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -85,7 +89,6 @@ func (m *MixServer) Start() {
 	if err != nil{
 		panic(err)
 	}
-	// defer f.Close()
 
 	m.infoLogger = logging.NewInitLogger(f)
 	m.errorLogger = logging.NewErrorLogger(f)
@@ -126,40 +129,22 @@ func (m *MixServer) HandleConnection(conn net.Conn) {
 		m.errorLogger.Println(err)
 	}
 
-	err = m.ReceivedPacket(buff[:reqLen])
-	if err != nil{
+	packet, err := config.GeneralPacketFromBytes(buff[:reqLen])
+	if err != nil {
 		m.errorLogger.Println(err)
 	}
+
+	switch packet.Flag {
+	case COMM_FLAG:
+		err = m.ReceivedPacket(packet.Data)
+		if err != nil{
+			m.errorLogger.Println(err)
+		}
+	default:
+		m.infoLogger.Println(fmt.Sprintf("%s : Packet flag not recognised. Packet dropped.", m.Id))
+	}
+
 	conn.Close()
-}
-
-func (m *MixServer) SaveInPKI(pkiPath string) error {
-
-	db, err := pki.OpenDatabase(pkiPath, "sqlite3")
-	defer db.Close()
-
-	if err != nil{
-		return err
-	}
-
-	params := make(map[string]string)
-	params["Id"] = "TEXT"
-	params["Typ"] = "TEXT"
-	params["Config"] = "BLOB"
-
-	pki.CreateTable(db, "Mixes", params)
-
-	configBytes, err := config.MixPubsToBytes(m.Config)
-	if err != nil {
-		return err
-	}
-
-	err = pki.InsertIntoTable(db, "Mixes", m.Id, "Mix", configBytes)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath string) (*MixServer, error) {
@@ -167,8 +152,12 @@ func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath s
 	mixServer := MixServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
 	mixServer.Config = config.MixPubs{Id : mixServer.Id, Host: mixServer.Host, Port: mixServer.Port, PubKey: mixServer.PubKey}
 
-	err := mixServer.SaveInPKI(pkiPath)
-	if err != nil {
+	configBytes, err := config.MixPubsToBytes(mixServer.Config)
+	if err != nil{
+		return nil, err
+	}
+	err = helpers.AddToDatabase(pkiPath, "Mixes", mixServer.Id, "Mix", configBytes)
+	if err != nil{
 		return nil, err
 	}
 

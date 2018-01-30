@@ -10,8 +10,8 @@ import (
 	"anonymous-messaging/sphinx"
 )
 
-var mixServer MixServer
-var providerServer ProviderServer
+var mixServer *MixServer
+var providerServer *ProviderServer
 
 const (
 	TEST_DATABASE = "testDatabase.db"
@@ -28,11 +28,19 @@ func Clean() {
 }
 
 func TestMain(m *testing.M) {
+	var err error
+
 	pubM, privM, _ := sphinx.GenerateKeyPair()
-	mixServer = *NewMixServer("MixServer", "localhost", "9998", pubM, privM, TEST_DATABASE)
+	mixServer, err = NewMixServer("MixServer", "localhost", "9998", pubM, privM, TEST_DATABASE)
+	if err != nil{
+		panic(m)
+	}
 
 	pubP, privP, _ := sphinx.GenerateKeyPair()
-	providerServer = *NewProviderServer("Provider", "localhost", "9997", pubP, privP, TEST_DATABASE)
+	providerServer, err = NewProviderServer("Provider", "localhost", "9997", pubP, privP, TEST_DATABASE)
+	if err != nil{
+		panic(m)
+	}
 
 	code := m.Run()
 	os.Exit(code)
@@ -41,7 +49,7 @@ func TestMain(m *testing.M) {
 
 func TestMixServer_SaveInPKI(t *testing.T) {
 	Clean()
-	mixServer.SaveInPKI(TEST_DATABASE)
+	// mixServer.SaveInPKI(TEST_DATABASE)
 
 	db, err := sqlx.Connect("sqlite3", TEST_DATABASE)
 	if err != nil {

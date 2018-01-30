@@ -7,12 +7,18 @@ import (
 	"os"
 	"fmt"
 	"bytes"
-	"anonymous-messaging/pki"
 	"anonymous-messaging/config"
 	"io/ioutil"
 	"anonymous-messaging/helpers"
 	"anonymous-messaging/logging"
 	"log"
+)
+
+const (
+	ASSIGNE_FLAG = "\xA2"
+	COMM_FLAG = "\xC6"
+	TOKEN_FLAG = "xA9"
+	PULL_FLAG = "\xFF"
 )
 
 type ProviderIt interface {
@@ -42,6 +48,32 @@ type ClientRecord struct {
 	Token []byte
 }
 
+func (p *ProviderServer) Start() error{
+	defer p.Run()
+
+	f, err := os.OpenFile("./logging/network_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
+	if err != nil{
+		return err
+	}
+
+	p.infoLogger = logging.NewInitLogger(f)
+	p.errorLogger = logging.NewErrorLogger(f)
+	return nil
+}
+
+func (p *ProviderServer) Run() {
+
+	defer p.listener.Close()
+	finish := make(chan bool)
+
+	go func() {
+		p.infoLogger.Println(fmt.Sprintf("%s: Listening on %s", p.Id, p.Host + ":" + p.Port))
+		p.ListenForIncomingConnections()
+	}()
+
+	<-finish
+}
+
 func (p *ProviderServer) ReceivedPacket(packet []byte) error{
 	p.infoLogger.Println(fmt.Sprintf("%s: received new packet", p.Id))
 
@@ -59,30 +91,45 @@ func (p *ProviderServer) ReceivedPacket(packet []byte) error{
 	if err != nil{
 		return err
 	}
+
 	switch flag {
 	case "\xF1":
-		p.ForwardPacket(dePacket, nextHop)
+		err = p.ForwardPacket(dePacket, nextHop)
+		if err != nil{
+			return err
+		}
 	case "\xF0":
-		p.StoreMessage(dePacket, nextHop, "TMP_MESSAGE_ID")
+		err = p.StoreMessage(dePacket, nextHop, "TMP_MESSAGE_ID")
+		if err != nil{
+			return err
+		}
 	}
+
 	return nil
 }
 
-func (p *ProviderServer) ForwardPacket(packet []byte, address string){
-	p.SendPacket(packet, address)
+func (p *ProviderServer) ForwardPacket(sphinxPacket []byte, address string) error{
+	packet := config.GeneralPacket{Flag:COMM_FLAG, Data: sphinxPacket}
+	packetBytes, err := config.GeneralPacketToBytes(packet)
+
+	err = p.Send(packetBytes, address)
+	if err != nil{
+		return err
+	}
 	p.infoLogger.Println(fmt.Sprintf("%s: forwarded packet", p.Id))
+	return nil
 }
 
-func (p *ProviderServer) SendPacket(packet []byte, address string) {
+func (p *ProviderServer) Send(packet []byte, address string) error {
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		p.errorLogger.Println(err)
-		os.Exit(1)
+		return err
 	}
+	defer conn.Close()
 
 	conn.Write(packet)
-	defer conn.Close()
+	return nil
 }
 
 
@@ -92,8 +139,8 @@ func (p *ProviderServer) ListenForIncomingConnections() {
 
 		if err != nil {
 			p.errorLogger.Println(err)
-			os.Exit(1)
 		}
+
 		p.infoLogger.Println(fmt.Sprintf("%s: Received new connection from %s", p.Id, conn.RemoteAddr()))
 		go p.HandleConnection(conn)
 	}
@@ -108,35 +155,74 @@ func (p *ProviderServer) HandleConnection(conn net.Conn) {
 		p.errorLogger.Println(err)
 	}
 
-	err = p.ReceivedPacket(buff[:reqLen])
+	packet, err := config.GeneralPacketFromBytes(buff[:reqLen])
 	if err != nil {
 		p.errorLogger.Println(err)
 	}
-	
+
+	switch packet.Flag {
+	case ASSIGNE_FLAG:
+		err = p.HandleAssignRequest(packet.Data)
+		if err != nil {
+			p.errorLogger.Println(err)
+		}
+	case COMM_FLAG:
+		err = p.ReceivedPacket(packet.Data)
+		if err != nil {
+			p.errorLogger.Println(err)
+		}
+	case PULL_FLAG:
+		err = p.HandlePullRequest(packet.Data)
+		if err != nil{
+			p.errorLogger.Println(err)
+		}
+	default:
+		p.infoLogger.Println(fmt.Sprintf("%s : Packet flag not recognised. Packet dropped.", p.Id))
+	}
+
 	conn.Close()
 }
 
-func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId string) {
-
-	path := fmt.Sprintf("./inboxes/%s", inboxId)
-
-	fmt.Println(path)
-	fileName := path + "/" + messageId
-	fmt.Println(fileName)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err := os.MkdirAll(path, 0755); err != nil {
-			p.errorLogger.Println("Unable to create directory for storage file! - " + err.Error())
-		}
-
+func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, error){
+	clientConf, err := config.ClientPubsFromBytes(clientBytes)
+	if err != nil{
+		return nil, "", err
 	}
-	file, err := os.Create(fileName)
+	token := []byte("tmptoken")
+	record := ClientRecord{Id: clientConf.Id, Host: clientConf.Host, Port: clientConf.Port, PubKey: clientConf.PubKey, Token: token}
+	p.assignedClients[clientConf.Id] = record
+	address := clientConf.Host + ":" + clientConf.Port
+	return token, address, nil
+}
 
+func (p *ProviderServer) HandleAssignRequest(packet []byte) error {
+	p.infoLogger.Println(fmt.Sprintf("%s : Received assign request from the client.", p.Id))
+
+	token, adr, err := p.RegisterNewClient(packet)
 	if err != nil {
-		p.errorLogger.Println(err)
+		return err
 	}
-	defer file.Close()
-	file.Write(message)
+	tokenPacket := config.GeneralPacket{Flag: TOKEN_FLAG, Data: token}
+	tokenBytes, err := config.GeneralPacketToBytes(tokenPacket)
 
+	err = p.Send(tokenBytes, adr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
+	request, err := config.PullRequestFromBytes(rqsBytes)
+	if err != nil {
+		return err
+	}
+
+	p.infoLogger.Println(fmt.Sprintf("%s : Hangling a pull request.", p.Id))
+	p.infoLogger.Println(fmt.Sprintf("%s : Request: %s %s", p.Id, request.Id, string(request.Token)))
+
+	return nil
 }
 
 func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) bool{
@@ -159,7 +245,6 @@ func (p *ProviderServer) FetchMessages(clientId string) error{
 	files, err := ioutil.ReadDir(path)
 
 	for _, f := range files {
-		fmt.Println(f.Name())
 		dat, err := ioutil.ReadFile(path + "/" + f.Name())
 		if err !=nil {
 			return err
@@ -167,70 +252,51 @@ func (p *ProviderServer) FetchMessages(clientId string) error{
 		fmt.Println(dat)
 
 		address := p.assignedClients[clientId].Host + ":" + p.assignedClients[clientId].Port
-		p.infoLogger.Println(fmt.Sprintf("%s: fetch message adr", p.Id, address))
-	//	p.SendPacket(dat, address)
+		p.infoLogger.Println(fmt.Sprintf("%s: fetch message for adrress %s", p.Id, address))
+		//	p.SendPacket(dat, address)
 	}
 	return nil
 }
 
-func (p *ProviderServer) SaveInPKI(path string) error {
+func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId string) error {
 
-	db, err := pki.OpenDatabase(path, "sqlite3")
-	defer db.Close()
+	path := fmt.Sprintf("./inboxes/%s", inboxId)
+	fileName := path + "/" + messageId
 
-	if err != nil{
-		return err
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return err
+		}
+
 	}
 
-	params := make(map[string]string)
-	params["Id"] = "TEXT"
-	params["Typ"] = "TEXT"
-	params["Config"] = "BLOB"
-	pki.CreateTable(db, "Providers", params)
-
-	pubsBytes, err := config.MixPubsToBytes(p.Config)
-
-	err = pki.InsertIntoTable(db, "Providers", p.Id, "Provider", pubsBytes)
+	file, err := os.Create(fileName)
 	if err != nil {
 		return err
 	}
-	return nil
-}
+	defer file.Close()
 
-func (p *ProviderServer) Start() {
-	defer p.Run()
-
-	f, err := os.OpenFile("./logging/network_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
-
-	if err != nil{
-		panic(err)
+	_, err = file.Write(message)
+	if err != nil {
+		return err
 	}
-	// defer f.Close()
 
-	p.infoLogger = logging.NewInitLogger(f)
-	p.errorLogger = logging.NewErrorLogger(f)
-}
-
-func (p *ProviderServer) Run() {
-
-	defer p.listener.Close()
-	finish := make(chan bool)
-
-	go func() {
-		p.infoLogger.Println(fmt.Sprintf("%s: Listening on %s", p.Id, p.Host + ":" + p.Port))
-		p.ListenForIncomingConnections()
-	}()
-
-	<-finish
+	p.infoLogger.Println(fmt.Sprintf("%s: stored message for client %s", p.Id, inboxId))
+	return nil
 }
 
 func NewProviderServer(id string, host string, port string, pubKey []byte, prvKey []byte, pkiPath string) (*ProviderServer, error) {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	providerServer := ProviderServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
 	providerServer.Config = config.MixPubs{Id: providerServer.Id, Host: providerServer.Host, Port: providerServer.Port, PubKey: providerServer.PubKey}
+	providerServer.assignedClients = make(map[string]ClientRecord)
 
-	err := providerServer.SaveInPKI(pkiPath)
-	if err != nil {
+	configBytes, err := config.MixPubsToBytes(providerServer.Config)
+	if err != nil{
+		return nil, err
+	}
+	err = helpers.AddToDatabase(pkiPath, "Providers", providerServer.Id, "Provider", configBytes)
+	if err != nil{
 		return nil, err
 	}
 

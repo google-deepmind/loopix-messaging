@@ -23,6 +23,10 @@ import (
 const (
 	desiredRateParameter = 5
 	pathLength           = 2
+	ASSIGNE_FLAG = "\xA2"
+	COMM_FLAG = "\xC6"
+	TOKEN_FLAG = "xA9"
+	PULL_FLAG = "\xFF"
 )
 
 type ClientIt interface {
@@ -52,6 +56,9 @@ type Client struct {
 
 	infoLogger *log.Logger
 	errorLogger *log.Logger
+
+	token []byte
+
 }
 
 func (c *Client) SendMessage(message string, recipient config.ClientPubs) {
@@ -60,12 +67,19 @@ func (c *Client) SendMessage(message string, recipient config.ClientPubs) {
 	path := c.buildPath(recipient)
 	delays := c.GenerateDelaySequence(desiredRateParameter, path.Len())
 
-	packet, err := c.EncodeMessage(message, path, delays)
+	sphinxPacket, err := c.EncodeMessage(message, path, delays)
 	if err != nil{
 		panic(err)
 	}
 
-	err = c.Send(packet, path.IngressProvider.Host, path.IngressProvider.Port)
+	packet := config.GeneralPacket{Flag: COMM_FLAG, Data: sphinxPacket}
+	packetBytes, err := config.GeneralPacketToBytes(packet)
+	if err != nil{
+		c.errorLogger.Println(err)
+		panic(err)
+	}
+
+	err = c.Send(packetBytes, path.IngressProvider.Host, path.IngressProvider.Port)
 	if err != nil{
 		c.errorLogger.Println(err)
 		panic(err)
@@ -120,9 +134,28 @@ func (c *Client) HandleConnection(conn net.Conn) {
 		c.errorLogger.Println(err)
 		panic(err)
 	}
+	packet, err := config.GeneralPacketFromBytes(buff[:reqLen])
+	if err != nil {
+		c.errorLogger.Println(err)
+	}
+	switch packet.Flag {
+	case TOKEN_FLAG:
+		c.RegisterToken(packet.Data)
+		go func() {
+			c.SendMessage("Hello world, this is me", c.OtherClients[0])
+		}()
+	case COMM_FLAG:
+		c.ProcessPacket(packet.Data)
+	default:
+		c.infoLogger.Println(fmt.Sprintf("%s: Packet flag not recognised. Packet dropped.", c.Id))
+	}
 
-	c.ProcessPacket(buff[:reqLen])
 	conn.Close()
+}
+
+func (c *Client) RegisterToken(token []byte) {
+	c.token = token
+	c.infoLogger.Println(fmt.Sprintf("%s: Registered token %s", c.Id, c.token))
 }
 
 func (c *Client) ProcessPacket(packet []byte) []byte {
@@ -137,7 +170,6 @@ func (c *Client) Start() {
 	if err != nil{
 		panic(err)
 	}
-	// defer f.Close()
 
 	c.infoLogger = logging.NewInitLogger(f)
 	c.errorLogger = logging.NewErrorLogger(f)
@@ -146,11 +178,27 @@ func (c *Client) Start() {
 
 	c.ReadInClientsPKI(c.pkiDir)
 	c.ReadInMixnetPKI(c.pkiDir)
+	c.RegisterToProvider()
 
 }
 
-func (c *Client) contactProvider() {
+func (c *Client) RegisterToProvider() error{
+
 	c.infoLogger.Println(fmt.Sprintf("%s: Sending to provider", c.Id))
+
+	confBytes, err := config.ClientPubsToBytes(c.Config)
+	if err != nil{
+		return err
+	}
+
+	pkt := config.GeneralPacket{Flag: ASSIGNE_FLAG, Data: confBytes}
+	pktBytes, err := config.GeneralPacketToBytes(pkt)
+	if err != nil{
+		return err
+	}
+
+	c.Send(pktBytes, c.Provider.Host, c.Provider.Port)
+	return nil
 }
 
 func (c *Client) Run() {
@@ -158,13 +206,8 @@ func (c *Client) Run() {
 	finish := make(chan bool)
 
 	go func() {
-		c.infoLogger.Println(fmt.Sprintf("%s: listening on address %s", c.Id, c.Host + ":" + c.Port))
+		c.infoLogger.Println(fmt.Sprintf("%s: Listening on address %s", c.Id, c.Host + ":" + c.Port))
 		c.ListenForIncomingConnections()
-	}()
-
-
-	go func() {
-		c.SendMessage("Hello world, this is me", c.OtherClients[0])
 	}()
 
 	<-finish
@@ -248,36 +291,6 @@ func (c *Client) ConnectToPKI(dbName string) (*sqlx.DB, error) {
 	return pki.OpenDatabase(dbName, "sqlite3")
 }
 
-func SaveInPKI(c Client, pkiDir string) error {
-
-	db, err := pki.OpenDatabase(pkiDir, "sqlite3")
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	// TO DO: THIS SHOULD BE REMOVED AND DONE IS A PRE SETTING FILE
-
-	params := make(map[string]string)
-	params["Id"] = "TEXT"
-	params["Typ"] = "TEXT"
-	params["Config"] = "BLOB"
-	pki.CreateTable(db, "Clients", params)
-
-
-	configBytes, err := config.ClientPubsToBytes(c.Config)
-	if err != nil {
-		return err
-	}
-
-	err = pki.InsertIntoTable(db, "Clients", c.Id, "Client", configBytes)
-	if err != nil{
-		return err
-	}
-
-	return nil
-
-}
 
 func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixPubs) (*Client, error) {
 	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224()}
@@ -285,7 +298,11 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 	c := Client{Host: host, Port: port, CryptoClient: core, Provider: provider, pkiDir: pkiDir}
 	c.Config = config.ClientPubs{Id : c.Id, Host: c.Host, Port: c.Port, PubKey: c.PubKey, Provider: &c.Provider}
 
-	err := SaveInPKI(c, pkiDir)
+	configBytes, err := config.ClientPubsToBytes(c.Config)
+	if err != nil{
+		return nil, err
+	}
+	err = helpers.AddToDatabase(pkiDir, "Clients", c.Id, "Client", configBytes)
 	if err != nil{
 		return nil, err
 	}

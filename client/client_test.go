@@ -13,7 +13,7 @@ import (
 	"anonymous-messaging/server"
 )
 
-var client Client
+var client *Client
 var providerPubs config.MixPubs
 var testPacket sphinx.SphinxPacket
 
@@ -31,7 +31,11 @@ func TestMain(m *testing.M) {
 	providerPubs = config.MixPubs{Id: "Provider", Host: "localhost", Port: "9995", PubKey: pubP}
 
 	pubC, privC, _ := sphinx.GenerateKeyPair()
-	client = *NewClient("Client", "localhost", "3332", pubC, privC, "testDatabase.db", providerPubs)
+	var err error
+	client, err = NewClient("Client", "localhost", "3332", pubC, privC, "testDatabase.db", providerPubs)
+	if err != nil{
+		panic(m)
+	}
 
 	code := m.Run()
 	clean()
@@ -59,7 +63,10 @@ func TestClient_ReadInMixnetPKI(t *testing.T) {
 		pub, priv, _ := sphinx.GenerateKeyPair()
 
 		// CHANGE THIS TO CONSTRUCTOR AND PASS A MIX WORKER
-		mix := server.NewMixServer(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub, priv, "testDatabase.db")
+		mix, err := server.NewMixServer(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub, priv, "testDatabase.db")
+		if err != nil {
+			t.Error(err)
+		}
 		mixes = append(mixes, *mix)
 		mixPubs = append(mixPubs, mix.Config)
 	}
@@ -98,7 +105,10 @@ func TestClient_ReadInClientsPKI(t *testing.T) {
 	var clientsPubs []config.ClientPubs
 	for i := 0; i < 5; i++ {
 		pub, priv, _ := sphinx.GenerateKeyPair()
-		client := NewClient(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), pub, priv, "testDatabase.db", providerPubs)
+		client, err := NewClient(fmt.Sprintf("Client%d", i), "localhost", strconv.Itoa(3320+i), pub, priv, "testDatabase.db", providerPubs)
+		if err != nil{
+			t.Error(err)
+		}
 		clientsList = append(clientsList, *client)
 		clientsPubs = append(clientsPubs, client.Config)
 	}
@@ -125,7 +135,7 @@ func TestClient_ReadInClientsPKI(t *testing.T) {
 func TestClient_SaveInPKI(t *testing.T) {
 
 	clean()
-	SaveInPKI(client, "testDatabase.db")
+	// SaveInPKI(*client, "testDatabase.db")
 
 	db, err := sqlx.Connect("sqlite3", "testDatabase.db")
 	defer db.Close()

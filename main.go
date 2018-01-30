@@ -10,6 +10,37 @@ import (
 	"anonymous-messaging/config"
 )
 
+
+func pkiPreSetting(pkiDir string) error {
+	db, err := pki.OpenDatabase(pkiDir, "sqlite3")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	params := make(map[string]string)
+	params["Id"] = "TEXT"
+	params["Typ"] = "TEXT"
+	params["Config"] = "BLOB"
+
+	err = pki.CreateTable(db, "Clients", params)
+	if err != nil {
+		return err
+	}
+
+	err = pki.CreateTable(db, "Mixes", params)
+	if err != nil {
+		return err
+	}
+
+	err = pki.CreateTable(db, "Providers", params)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 
 	typ := flag.String("typ", "", "A type of entity we want to run")
@@ -18,6 +49,12 @@ func main() {
 	port := flag.String("port", "", "The port on which the entity is running")
 	providerId := flag.String("provider", "", "The port on which the entity is running")
 	flag.Parse()
+
+	err := pkiPreSetting("pki/database.db")
+	if err != nil{
+		panic(err)
+	}
+
 
 	switch *typ {
 	case "client":
@@ -71,6 +108,9 @@ func main() {
 			panic(err)
 		}
 
-		providerServer.Start()
+		err = providerServer.Start()
+		if err != nil{
+			panic(err)
+		}
 	}
 }

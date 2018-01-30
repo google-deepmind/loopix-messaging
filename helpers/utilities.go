@@ -10,6 +10,7 @@ import (
 
 	"anonymous-messaging/config"
 	"net"
+	"anonymous-messaging/pki"
 )
 
 func Permute(slice []config.MixPubs) []config.MixPubs {
@@ -38,4 +39,18 @@ func ResolveTCPAddress(host, port string) (*net.TCPAddr, error) {
 		return nil, err
 	}
 	return addr, nil
+}
+
+func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte ) error {
+	db, err := pki.OpenDatabase(pkiPath, "sqlite3")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	err = pki.InsertIntoTable(db, tableName, id, typ, config)
+	if err != nil {
+		return err
+	}
+	return nil
 }
