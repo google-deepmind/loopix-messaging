@@ -2,7 +2,6 @@ package sphinx
 
 import (
 	"crypto/elliptic"
-	"crypto/rand"
 	"math/big"
 	"crypto/aes"
 	"crypto/cipher"
@@ -181,11 +180,6 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixPubs, commands []
 }
 
 
-func computeMac(key, data []byte) []byte{
-	return Hmac(key, data)
-}
-
-
 func getSharedSecrets(curve elliptic.Curve, nodes []config.MixPubs, initialVal big.Int) ([]HeaderInitials, error){
 
 	blindFactors := []big.Int{initialVal}
@@ -268,54 +262,6 @@ func computeSharedSecretHash(key []byte, iv []byte) ([]byte, error) {
 }
 
 
-func KDF(key []byte) []byte{
-	return hash(key)[:K]
-}
-
-
-func bytesToBigNum(curve elliptic.Curve, value []byte) *big.Int{
-	nBig := new(big.Int)
-	nBig.SetBytes(value)
-
-	return new(big.Int).Mod(nBig, curve.Params().P)
-}
-
-
-func randomBigInt(curve *elliptic.CurveParams) (big.Int, error) {
-	//order := curve.P
-	nBig, err := rand.Int(rand.Reader, big.NewInt(100))
-	if err != nil {
-		return big.Int{}, err
-	}
-	return *nBig, nil
-}
-
-
-func expo(base []byte, exp []big.Int) []byte{
-	x := exp[0]
-	for _, val := range exp[1:] {
-		x = *big.NewInt(0).Mul(&x, &val)
-	}
-
-	baseX, baseY := elliptic.Unmarshal(elliptic.P224(), base)
-	resultX, resultY := curve.Params().ScalarMult(baseX, baseY, x.Bytes())
-	return elliptic.Marshal(curve, resultX, resultY)
-}
-
-
-func expo_group_base(curve elliptic.Curve, exp []big.Int) []byte{
-	x := exp[0]
-
-	for _, val := range exp[1:] {
-		x = *big.NewInt(0).Mul(&x, &val)
-	}
-
-	resultX, resultY := curve.Params().ScalarBaseMult(x.Bytes())
-	return elliptic.Marshal(curve, resultX, resultY)
-
-}
-
-
 func ProcessSphinxPacket(packetBytes []byte, privKey []byte) (Hop, Commands, []byte, error) {
 
 	packet, err := PacketFromBytes(packetBytes)
@@ -362,7 +308,7 @@ func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, 
 	recomputedMac := computeMac(KDF(aes_s) , beta)
 
 	if bytes.Compare(recomputedMac, mac) != 0 {
-		return Hop{}, Commands{}, Header{}, errors.New("packet processing error: MACs are not matching")
+		return Hop{}, Commands{}, Header{}, errors.New("Packet processing error: MACs are not matching")
 	}
 
 	blinder, err := computeBlindingFactor(curve, aes_s)
