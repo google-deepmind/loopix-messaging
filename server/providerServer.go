@@ -120,7 +120,7 @@ func (p *ProviderServer) ForwardPacket(sphinxPacket []byte, address string) erro
 	if err != nil{
 		return err
 	}
-	p.infoLogger.Println(fmt.Sprintf("%s: forwarded packet", p.Id))
+	p.infoLogger.Println(fmt.Sprintf("%s: Forwarded packet", p.Id))
 	return nil
 }
 
@@ -281,7 +281,7 @@ func (p *ProviderServer) FetchMessages(clientId string) error{
 		p.infoLogger.Println(dat)
 
 		address := p.assignedClients[clientId].Host + ":" + p.assignedClients[clientId].Port
-		p.infoLogger.Println(fmt.Sprintf("%s: got message for adrress %s", p.Id, address))
+		p.infoLogger.Println(fmt.Sprintf("%s: Found stored message for address %s", p.Id, address))
 	}
 	p.infoLogger.Println(fmt.Sprintf("%s: All messages for address fetched", p.Id))
 	return nil
