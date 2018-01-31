@@ -2,14 +2,14 @@
 
 echo "Press CTRL-C to stop."
 
-logDir="logs"
+logDir="$(PWD)/logs"
 
 if [ -d $logDir ]
 then
     echo "Logging directory already exists"
 else
     mkdir $logDir
-    echo "Created loggign directory"
+    echo "Created logging directory"
 fi
 
 go run main.go -typ=client -id=Client1 -host=localhost -port=9996 -provider=Provider > logging/bash.log &
