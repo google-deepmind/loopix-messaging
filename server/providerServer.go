@@ -50,6 +50,9 @@ type ClientRecord struct {
 	Token []byte
 }
 
+// Start function creates the loggers for capturing the info and error logs
+// and starts the listening server. Function returns an error
+// signaling whether any operation was unsuccessful
 func (p *ProviderServer) Start() error{
 	defer p.Run()
 
@@ -63,6 +66,7 @@ func (p *ProviderServer) Start() error{
 	return nil
 }
 
+// Function opens the listener to start listening on provider's host and port
 func (p *ProviderServer) Run() {
 
 	defer p.listener.Close()
@@ -76,6 +80,9 @@ func (p *ProviderServer) Run() {
 	<-finish
 }
 
+// Function processes the received sphinx packet, performs the
+// unwrapping operation and checks whether the packet should be
+// forwarded or stored. If the processing was unsuccessful and error is returned.
 func (p *ProviderServer) ReceivedPacket(packet []byte) error{
 	p.infoLogger.Println(fmt.Sprintf("%s: Received new packet", p.Id))
 
@@ -124,6 +131,9 @@ func (p *ProviderServer) ForwardPacket(sphinxPacket []byte, address string) erro
 	return nil
 }
 
+// Function opens a connection with selected network address
+// and send the passed packet. If connection failed or
+// the packet could not be send, an error is returned
 func (p *ProviderServer) Send(packet []byte, address string) error {
 
 	conn, err := net.Dial("tcp", address)
@@ -137,6 +147,11 @@ func (p *ProviderServer) Send(packet []byte, address string) error {
 }
 
 
+// Function responsible for running the listening process of the server;
+// The providers listener accepts incoming connections and
+// passes the incoming packets to the packet handler.
+// If the connection could not be accepted an error
+// is logged into the log files, but the function is not stopped
 func (p *ProviderServer) ListenForIncomingConnections() {
 	for {
 		conn, err := p.listener.Accept()
@@ -150,6 +165,9 @@ func (p *ProviderServer) ListenForIncomingConnections() {
 	}
 }
 
+// Function handles the received packets; it checks the flag of the
+// packet and schedules a corresponding process function;
+// The potential errors are logged into the log files.
 func (p *ProviderServer) HandleConnection(conn net.Conn) {
 
 	buff := make([]byte, 1024)
@@ -187,6 +205,9 @@ func (p *ProviderServer) HandleConnection(conn net.Conn) {
 	conn.Close()
 }
 
+// Function generates a fresh authentication token and saves it together with client's public configuration data
+// in the list of all registered clients. After the client is registered the function creates an inbox directory
+// for the client's inbox, in which clients messages will be stored.
 func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, error){
 	clientConf, err := config.ClientPubsFromBytes(clientBytes)
 	if err != nil{
@@ -212,6 +233,10 @@ func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, 
 	return token, address, nil
 }
 
+
+// Function is responsible for handling the registration request from the client.
+// it registers the client in the list of all registered clients and send
+// an authentication token back to the client.
 func (p *ProviderServer) HandleAssignRequest(packet []byte) error {
 	p.infoLogger.Println(fmt.Sprintf("%s : Received assign request from the client.", p.Id))
 
@@ -233,6 +258,10 @@ func (p *ProviderServer) HandleAssignRequest(packet []byte) error {
 	return nil
 }
 
+// Function is responsible for handling the pull request received from the client.
+// It first authenticates the client, by checking if the received token is valid.
+// If yes, the function triggers the function for checking client's inbox
+// and sending buffered messages. Otherwise, an error is returned.
 func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 	request, err := config.PullRequestFromBytes(rqsBytes)
 	if err != nil {
@@ -254,6 +283,9 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 	return nil
 }
 
+// Function compares the authentication token received from the client with
+// the one stored by the provider. If tokens are the same, it returns true
+// and false otherwise.
 func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) bool{
 
 	if bytes.Compare(p.assignedClients[clientId].Token, clientToken) == 0 {
@@ -262,6 +294,10 @@ func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) b
 	return false
 }
 
+// Function fetches messages from the requested inbox.
+// If inbox contains any stored messages, all of them
+// are send to the client one by one. Function
+// returns an error in case any operation went wrong.
 func (p *ProviderServer) FetchMessages(clientId string) error{
 
 
@@ -299,6 +335,9 @@ func (p *ProviderServer) FetchMessages(clientId string) error{
 	return nil
 }
 
+// Function saves the given message in the inbox defined by the given id.
+// If the inbox address does not exist or writing into the inbox was unsuccessful
+// the function returns an error
 func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId string) error {
 	path := fmt.Sprintf("./inboxes/%s", inboxId)
 	fileName := path + "/" + messageId
@@ -318,6 +357,8 @@ func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId 
 	return nil
 }
 
+// The constructor function to create an new provider object.
+// Function returns a new provider object or an error, if occurred.
 func NewProviderServer(id string, host string, port string, pubKey []byte, prvKey []byte, pkiPath string) (*ProviderServer, error) {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	providerServer := ProviderServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}

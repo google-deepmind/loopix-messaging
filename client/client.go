@@ -372,7 +372,7 @@ func (c *Client) ReadInClientsPKI(pkiName string) error {
 
 
 // The constructor function to create an new client object.
-// Function returns a new client object or an error, if occured.
+// Function returns a new client object or an error, if occurred.
 func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixPubs) (*Client, error) {
 	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224()}
 
