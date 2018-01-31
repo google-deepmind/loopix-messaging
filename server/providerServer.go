@@ -56,7 +56,7 @@ type ClientRecord struct {
 func (p *ProviderServer) Start() error{
 	defer p.Run()
 
-	f, err := os.OpenFile("./logging/network_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
+	f, err := os.OpenFile("./logs/network_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
 	if err != nil{
 		return err
 	}

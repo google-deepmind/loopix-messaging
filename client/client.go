@@ -206,7 +206,7 @@ func (c *Client) ProcessPacket(packet []byte) ([]byte, error) {
 // signaling whenther any operation was unsuccessful
 func (c *Client) Start() error {
 
-	f, err := os.OpenFile("./logging/client_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
+	f, err := os.OpenFile("./logs/client_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
 
 	if err != nil{
 		return err

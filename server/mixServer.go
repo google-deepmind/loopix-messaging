@@ -93,7 +93,7 @@ func (m *MixServer) Send(packet []byte, address string) error{
 func (m *MixServer) Start() error {
 	defer m.Run()
 
-	f, err := os.OpenFile("./logging/network_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
+	f, err := os.OpenFile("./logs/network_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
 	if err != nil{
 		return err
 	}
