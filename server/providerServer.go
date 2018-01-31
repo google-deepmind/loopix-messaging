@@ -221,6 +221,9 @@ func (p *ProviderServer) HandleAssignRequest(packet []byte) error {
 	}
 	tokenPacket := config.GeneralPacket{Flag: TOKEN_FLAG, Data: token}
 	tokenBytes, err := config.GeneralPacketToBytes(tokenPacket)
+	if err != nil {
+		return err
+	}
 
 	err = p.Send(tokenBytes, adr)
 	if err != nil {
@@ -278,10 +281,19 @@ func (p *ProviderServer) FetchMessages(clientId string) error{
 		if err !=nil {
 			return err
 		}
-		p.infoLogger.Println(dat)
 
 		address := p.assignedClients[clientId].Host + ":" + p.assignedClients[clientId].Port
 		p.infoLogger.Println(fmt.Sprintf("%s: Found stored message for address %s", p.Id, address))
+		msg := config.GeneralPacket{Flag: COMM_FLAG, Data: dat}
+		msgBytes, err := config.GeneralPacketToBytes(msg)
+		if err !=nil {
+			return err
+		}
+		err = p.Send(msgBytes, address)
+		if err !=nil {
+			return err
+		}
+
 	}
 	p.infoLogger.Println(fmt.Sprintf("%s: All messages for address fetched", p.Id))
 	return nil

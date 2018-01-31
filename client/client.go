@@ -178,7 +178,7 @@ func (c *Client) HandleConnection(conn net.Conn) {
 		if err != nil {
 			c.errorLogger.Println(err)
 		}
-		c.infoLogger.Println(fmt.Sprintf("%s: Received message: %s", c.Id, newPkt))
+		c.infoLogger.Println(fmt.Sprintf("%s: Received message: %s", c.Id, string(newPkt)))
 	default:
 		c.infoLogger.Println(fmt.Sprintf("%s: Packet flag not recognised. Packet dropped.", c.Id))
 	}
@@ -195,7 +195,7 @@ func (c *Client) RegisterToken(token []byte) {
 // encapsulated message or error in case the processing
 // was unsuccessful
 func (c *Client) ProcessPacket(packet []byte) ([]byte, error) {
-	c.infoLogger.Println("%s: Processing packet: %s", c.Id, packet )
+	c.infoLogger.Println("%s: Processing packet", c.Id)
 	return packet, nil
 }
 
