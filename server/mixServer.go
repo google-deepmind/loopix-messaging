@@ -122,9 +122,10 @@ func (m *MixServer) ListenForIncomingConnections() {
 
 		if err != nil {
 			m.errorLogger.Println(err)
+		} else {
+			m.infoLogger.Println(fmt.Sprintf("%s: Received connection from %s", m.Id, conn.RemoteAddr()))
+			go m.HandleConnection(conn)
 		}
-		m.infoLogger.Println(fmt.Sprintf("%s: Received connection from %s", m.Id, conn.RemoteAddr()))
-		go m.HandleConnection(conn)
 	}
 }
 

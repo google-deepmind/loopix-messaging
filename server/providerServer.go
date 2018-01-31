@@ -143,10 +143,10 @@ func (p *ProviderServer) ListenForIncomingConnections() {
 
 		if err != nil {
 			p.errorLogger.Println(err)
+		} else {
+			p.infoLogger.Println(fmt.Sprintf("%s: Received new connection from %s", p.Id, conn.RemoteAddr()))
+			go p.HandleConnection(conn)
 		}
-
-		p.infoLogger.Println(fmt.Sprintf("%s: Received new connection from %s", p.Id, conn.RemoteAddr()))
-		go p.HandleConnection(conn)
 	}
 }
 

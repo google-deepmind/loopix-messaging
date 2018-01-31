@@ -59,6 +59,14 @@ type Client struct {
 
 }
 
+
+// Function responsible for sending a real message. Takes as input the message string
+// and the public information about the destination.
+// The function generates a random path and a set of random values from exponential distribution.
+// Given those values it triggeres the encode function, which packs the message into the
+// sphinx cryptographic packet format. Next, the encoded packet is combined with a
+// flag signaling that this is a usual network packet, and passed to be send.
+// The function returns an error if any issues occured.
 func (c *Client) SendMessage(message string, recipient config.ClientPubs) error {
 
 
@@ -84,6 +92,9 @@ func (c *Client) SendMessage(message string, recipient config.ClientPubs) error 
 	return nil
 }
 
+// Function build a path containing the sender's provider,
+// a sequence (of length pre-defined in a config file) of randomly
+// selected mixes and the recipient's provider
 func (c *Client) buildPath(recipient config.ClientPubs) config.E2EPath {
 	var path config.E2EPath
 
@@ -96,13 +107,15 @@ func (c *Client) buildPath(recipient config.ClientPubs) config.E2EPath {
 	return path
 }
 
+// Function opens a connection with selected network address
+// and send the passed packet. If connection failed or
+// the packet could not be send, an error is returned
 func (c *Client) Send(packet []byte, host string, port string) error {
 
 	conn, err := net.Dial("tcp", host+":"+port)
 
 	if err != nil {
-		c.errorLogger.Println(err)
-		os.Exit(1)
+		return err
 	} else {
 		defer conn.Close()
 	}
@@ -111,21 +124,30 @@ func (c *Client) Send(packet []byte, host string, port string) error {
 	return err
 }
 
+// Function responsible for running the listening process of the server;
+// The clients listener accepts incoming connections and
+// passes the incoming packets to the packet handler.
+// If the connection could not be accepted an error
+// is logged into the log files, but the function is not stopped
 func (c *Client) ListenForIncomingConnections() {
 	for {
 		conn, err := c.listener.Accept()
 
 		if err != nil {
 			c.errorLogger.Println(err)
-			os.Exit(1)
+		} else {
+			go c.HandleConnection(conn)
 		}
-		go c.HandleConnection(conn)
 	}
 }
 
+// Function handles the received packets; it checks the flag of the
+// packet and schedules a corresponding process function;
+// The potential errors are logged into the log files.
 func (c *Client) HandleConnection(conn net.Conn) {
 
 	buff := make([]byte, 1024)
+	defer conn.Close()
 
 	reqLen, err := conn.Read(buff)
 	if err != nil {
@@ -160,20 +182,27 @@ func (c *Client) HandleConnection(conn net.Conn) {
 	default:
 		c.infoLogger.Println(fmt.Sprintf("%s: Packet flag not recognised. Packet dropped.", c.Id))
 	}
-
-	conn.Close()
 }
 
+
+// Function stores the authentication token received from the provider
 func (c *Client) RegisterToken(token []byte) {
 	c.token = token
 	c.infoLogger.Println(fmt.Sprintf("%s: Registered token %s", c.Id, c.token))
 }
 
+// Function processes the sphinx packet and returns the
+// encapsulated message or error in case the processing
+// was unsuccessful
 func (c *Client) ProcessPacket(packet []byte) ([]byte, error) {
 	c.infoLogger.Println("%s: Processing packet: %s", c.Id, packet )
 	return packet, nil
 }
 
+// Start function creates the loggers for capturing the info and error logs;
+// it reads the network and users information from the PKI database
+// and starts the listening server. Function returns an error
+// signaling whenther any operation was unsuccessful
 func (c *Client) Start() error {
 
 	f, err := os.OpenFile("./logging/client_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
@@ -204,6 +233,9 @@ func (c *Client) Start() error {
 	return nil
 }
 
+// Function allows the client to register with the selected provider.
+// The client sends a special assignment packet, with its public information, to the provider
+// or returns an error
 func (c *Client) RegisterToProvider() error{
 
 	c.infoLogger.Println(fmt.Sprintf("%s: Sending to provider", c.Id))
@@ -219,10 +251,16 @@ func (c *Client) RegisterToProvider() error{
 		return err
 	}
 
-	c.Send(pktBytes, c.Provider.Host, c.Provider.Port)
+	err = c.Send(pktBytes, c.Provider.Host, c.Provider.Port)
+	if err != nil{
+		return err
+	}
 	return nil
 }
 
+// Function allows to fetch messages from the inbox stored by the
+// provider. The client sends a pull packet to the provider, along with
+// the authentication token. An error is returned if occurred.
 func (c *Client) GetMessagesFromProvider() error {
 	pullRqs := config.PullRequest{Id: c.Id, Token: c.token}
 	pullRqsBytes, err := config.PullRequestToBytes(pullRqs)
@@ -244,6 +282,7 @@ func (c *Client) GetMessagesFromProvider() error {
 	return nil
 }
 
+// Function opens the listener to start listening on clients host and port
 func (c *Client) Run() {
 	defer c.listener.Close()
 	finish := make(chan bool)
@@ -256,6 +295,10 @@ func (c *Client) Run() {
 	<-finish
 }
 
+// Function reads in the public information about active mixes
+// from the PKI database and stores them locally. In case
+// the connection or fetching data from the PKI went wrong,
+// an error is returned.
 func (c *Client) ReadInMixnetPKI(pkiName string) error {
 	c.infoLogger.Println(fmt.Sprintf("%s: Reading network information from the PKI: %s", c.Id, pkiName))
 
@@ -290,6 +333,10 @@ func (c *Client) ReadInMixnetPKI(pkiName string) error {
 	return nil
 }
 
+// Function reads in the public information about users
+// from the PKI database and stores them locally. In case
+// the connection or fetching data from the PKI went wrong,
+// an error is returned.
 func (c *Client) ReadInClientsPKI(pkiName string) error {
 	c.infoLogger.Println(fmt.Sprintf("%s: Reading network users information from the PKI: %s", c.Id, pkiName))
 
@@ -324,6 +371,8 @@ func (c *Client) ReadInClientsPKI(pkiName string) error {
 }
 
 
+// The constructor function to create an new client object.
+// Function returns a new client object or an error, if occured. 
 func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixPubs) (*Client, error) {
 	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224()}
 
