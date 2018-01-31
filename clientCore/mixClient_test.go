@@ -60,7 +60,10 @@ func TestMixClientEncode(t *testing.T) {
 func TestMixClientDecode(t *testing.T) {
 	packet := sphinx.SphinxPacket{Hdr: &sphinx.Header{}, Pld: []byte("Message")}
 
-	decoded := cryptoClient.DecodeMessage(packet)
+	decoded, err := cryptoClient.DecodeMessage(packet)
+	if err != nil{
+		t.Error(err)
+	}
 	expected := packet
 
 	assert.Equal(t, expected, decoded)

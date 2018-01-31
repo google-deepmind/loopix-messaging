@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 
 func TestMixProcessPacket(t *testing.T) {
 	ch := make(chan []byte, 1)
-	chHop := make(chan string, 1)
+	chHop := make(chan sphinx.Hop, 1)
 	cAdr := make(chan string, 1)
 	errCh := make(chan error, 1)
 

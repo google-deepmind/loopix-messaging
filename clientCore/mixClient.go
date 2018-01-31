@@ -30,8 +30,8 @@ func (c *CryptoClient) EncodeMessage(message string, path config.E2EPath, delays
 	return packet.Bytes()
 }
 
-func (c *CryptoClient) DecodeMessage(packet sphinx.SphinxPacket) sphinx.SphinxPacket {
-	return packet
+func (c *CryptoClient) DecodeMessage(packet sphinx.SphinxPacket) (sphinx.SphinxPacket, error) {
+	return packet, nil
 }
 
 func (c *CryptoClient) GenerateDelaySequence(desiredRateParameter float64, length int) []float64{

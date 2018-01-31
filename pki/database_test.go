@@ -141,7 +141,10 @@ func TestInsertIntoTable(t *testing.T) {
 	params["Typ"] = "TEXT"
 	params["Config"] = "BLOB"
 
-	CreateTable(db, "InsertTestTable", params)
+	err = CreateTable(db, "InsertTestTable", params)
+	if err != nil{
+		t.Error(err)
+	}
 
 	err = InsertIntoTable(db, "InsertTestTable", "MyId", "MyTyp", []byte("Some bytes"))
 
