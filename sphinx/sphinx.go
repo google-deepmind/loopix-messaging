@@ -1,3 +1,8 @@
+/*	Package sphinx implements the library of a cryptographic packet format,
+	which can be used to secure the content as well as the metadata of the transported
+    messages.
+ */
+
 package sphinx
 
 import (
@@ -24,6 +29,7 @@ const (
 
 var curve = elliptic.P224()
 
+// Bytes parses the sphinx packet into byte array using the proto Marshal serialization.
 func (p *SphinxPacket) Bytes() ([]byte, error) {
 	b, err := proto.Marshal(p)
 	if err != nil {
@@ -32,6 +38,10 @@ func (p *SphinxPacket) Bytes() ([]byte, error) {
 	return b, nil
 }
 
+/* PacketFromBytes converts the byte representation of a Sphinx packet,
+serialized by Bytes, into the Sphinx packet struct. If the byte representation
+does not match the struct an error is returned.
+*/
 func PacketFromBytes(bytes []byte) (SphinxPacket, error) {
 	var packet SphinxPacket
 	err := proto.Unmarshal(bytes, &packet)
@@ -43,6 +53,7 @@ func PacketFromBytes(bytes []byte) (SphinxPacket, error) {
 	return packet, nil
 }
 
+// Bytes parses the RoutingInfo struct into byte array using the proto Marshal serialization.
 func (r *RoutingInfo) Bytes() ([]byte, error) {
 	b, err := proto.Marshal(r)
 	if err != nil{
@@ -52,6 +63,10 @@ func (r *RoutingInfo) Bytes() ([]byte, error) {
 }
 
 
+/* RoutingInfoFromBytes converts the byte representation of a RoutingInformation,
+serialized by Bytes, into the RoutingInformation struct. If the byte representation
+does not match the struct an error is returned.
+*/
 func RoutingInfoFromBytes(bytes []byte) (RoutingInfo, error) {
 
 	var finalHopReconstruct RoutingInfo
@@ -66,6 +81,15 @@ func RoutingInfoFromBytes(bytes []byte) (RoutingInfo, error) {
 }
 
 
+/*
+	PackForwardMessage encapsulates the given message into the cryptographic Sphinx packet format.
+	As arguments the function takes the path, consisting of the sequence of nodes the packet should traverse
+	and the destination of the message, a set of delays and the information about the curve used to perform cryptographic
+	operations.
+    In order to encapsulate the message PackForwardMessage computes two parts of the packet - the header and
+	the encrypted payload. If creating of any of the packet block failed, an error is returned. Otherwise,
+	a Sphinx packet format is returned.
+ */
 func PackForwardMessage(curve elliptic.Curve, path config.E2EPath, delays []float64, message string) (SphinxPacket, error){
 	nodes := []config.MixPubs{path.IngressProvider}
 	nodes = append(nodes, path.Mixes...)
@@ -86,6 +110,16 @@ func PackForwardMessage(curve elliptic.Curve, path config.E2EPath, delays []floa
 }
 
 
+/*
+	createHeader builds the Sphinx packet header, consisting of three parts: the public element, the encapsulated routing information
+	and the message authentication code. createHeader layer encapsulates the routing information for each given node. The routing information
+    contains information where the packet should be forwarded next, how long it should be delayed by the node, and if relevant additional
+    auxiliary information. The message authentication code allows to detect tagging attacks.
+	createHeader computes the secret shared key between sender and the nodes and destination, which are used as keys for encryption.
+
+	createHeader returns the header and a list of the initial elements, used for creating the header. If any operation was unsuccessful
+	createHeader returns an error.
+ */
 func createHeader(curve elliptic.Curve, nodes []config.MixPubs, delays []float64, dest config.ClientPubs) ([]HeaderInitials, Header, error){
 
 	x, err := randomBigInt(curve.Params())
@@ -119,22 +153,13 @@ func createHeader(curve elliptic.Curve, nodes []config.MixPubs, delays []float64
 
 }
 
+/*
+	encapsulateHeader layer encrypts the meta-data of the packet, containing information about the
+    sequence of nodes the packet should traverse before reaching the destination, and message authentication codes,
+	given the pre-computed shared keys which are used for encryption.
 
-func encapsulateContent(asb []HeaderInitials, message string) ([]byte, error) {
-
-	enc := []byte(message)
-	err := error(nil)
-	for i := len(asb) - 1; i >= 0; i-- {
-		sharedKey := KDF(asb[i].SecretHash)
-		enc, err = AES_CTR(sharedKey, enc)
-		if err != nil{
-			return nil, err
-		}
-
-	}
-	return enc, nil
-}
-
+	encapsulateHeader returns the Header, or an error if any internal cryptographic of parsing operation failed.
+ */
 
 func encapsulateHeader(asb []HeaderInitials, nodes []config.MixPubs, commands []Commands, destination config.ClientPubs) (Header, error){
 
@@ -179,7 +204,33 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixPubs, commands []
 
 }
 
+/*
+	encapsulateContent layer encrypts the given messages using a set of shared keys
+	and the AES_CTR encryption.
+	encapsulateContent returns the encrypted payload in byte representation. If the AES_CTR
+	encryption failed encapsulateContent returns an error.
+ */
+func encapsulateContent(asb []HeaderInitials, message string) ([]byte, error) {
 
+	enc := []byte(message)
+	err := error(nil)
+	for i := len(asb) - 1; i >= 0; i-- {
+		sharedKey := KDF(asb[i].SecretHash)
+		enc, err = AES_CTR(sharedKey, enc)
+		if err != nil{
+			return nil, err
+		}
+
+	}
+	return enc, nil
+}
+
+/*
+	getSharedSecrets computes a sequence of HeaderInitial values, containing the initial elements,
+    shared secrets and blinding factors for each node on the path. As input getSharedSecrets takes the initial
+	secret value, the list of nodes, and the curve in which the cryptographic operations are performed.
+    getSharedSecrets returns the list of computed HeaderInitials or an error.
+ */
 func getSharedSecrets(curve elliptic.Curve, nodes []config.MixPubs, initialVal big.Int) ([]HeaderInitials, error){
 
 	blindFactors := []big.Int{initialVal}
@@ -205,6 +256,9 @@ func getSharedSecrets(curve elliptic.Curve, nodes []config.MixPubs, initialVal b
 }
 
 
+/*
+	TO DO: computeFillers needs to be fixed
+ */
 func computeFillers(nodes []config.MixPubs, tuples []HeaderInitials) (string, error) {
 
 	filler := ""
@@ -232,6 +286,13 @@ func computeFillers(nodes []config.MixPubs, tuples []HeaderInitials) (string, er
 
 }
 
+/*
+	computeBlindingFactor computes the blinding factor extracted from the
+	shared secrets. Blinding factors allow both the sender and intermediate nodes
+	recompute the shared keys used at each hop of the message processing.
+
+	computeBlindingFactor returns a value of a blinding factor or an error.
+ */
 
 func computeBlindingFactor(curve elliptic.Curve, key []byte) (*big.Int, error) {
 	iv := []byte("initialvector000")
@@ -245,6 +306,9 @@ func computeBlindingFactor(curve elliptic.Curve, key []byte) (*big.Int, error) {
 }
 
 
+/*
+
+ */
 func computeSharedSecretHash(key []byte, iv []byte) ([]byte, error) {
 	aesCipher, err := aes.NewCipher(key)
 
@@ -262,6 +326,13 @@ func computeSharedSecretHash(key []byte, iv []byte) ([]byte, error) {
 }
 
 
+/*
+	ProcessSphinxPacket processes the sphinx packet using the given private key.
+	ProcessSphinxPacket unwraps one layer of both the header and the payload encryption.
+	ProcessSphinxPacket returns a new packet and the routing information which should
+    be used by the processing node. If any cryptographic or parsing operation failed ProcessSphinxPacket
+	returns an error.
+ */
 func ProcessSphinxPacket(packetBytes []byte, privKey []byte) (Hop, Commands, []byte, error) {
 
 	packet, err := PacketFromBytes(packetBytes)
@@ -289,6 +360,14 @@ func ProcessSphinxPacket(packetBytes []byte, privKey []byte) (Hop, Commands, []b
 	return hop, commands, newPacketBytes, nil
 }
 
+/*
+	ProcessSphinxHeader unwraps one layer of encryption from the header of a sphinx packet.
+    ProcessSphinxHeader recomputes the shared key and checks whether the message authentication code is valid.
+	If not, the packet is dropped and error is returned. If MAC checking was passed successfully ProcessSphinxHeader
+	performs the AES_CTR decryption, recomputes the blinding factor and updates the init public element from the header.
+	Next, ProcessSphinxHeader extracts the routing information from the decrypted packet and returns it, together with the
+    updated init public element. If any crypto or parsing operation failed ProcessSphinxHeader returns an error.
+ */
 
 func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, error) {
 
@@ -334,6 +413,9 @@ func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, 
 }
 
 
+/*
+	readBeta extracts all the fields from the RoutingInfo structure
+ */
 func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte){
 	nextHop := *beta.NextHop
 	commands := *beta.RoutingCommands
@@ -343,6 +425,11 @@ func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte){
 	return nextHop, commands, nextBeta, nextMac
 }
 
+/*
+	ProcessSphinxPayload unwraps a single layer of the encryption from the sphinx packet payload.
+	ProcessSphinxPayload first recomputes the shared secret which is used to perform the AES_CTR decryption.
+	ProcessSphinxPayload returnes the new packet payload or an error if the decryption failed.
+ */
 
 func ProcessSphinxPayload(alpha []byte, payload []byte, privKey []byte) ([]byte, error) {
 
