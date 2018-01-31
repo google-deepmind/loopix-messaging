@@ -143,6 +143,10 @@ func (c *Client) HandleConnection(conn net.Conn) {
 		c.RegisterToken(packet.Data)
 		go func() {
 			c.SendMessage("Hello world, this is me", c.OtherClients[0])
+			err = c.GetMessagesFromProvider()
+			if err != nil {
+				c.errorLogger.Println(err)
+			}
 		}()
 	case COMM_FLAG:
 		c.ProcessPacket(packet.Data)
@@ -198,6 +202,27 @@ func (c *Client) RegisterToProvider() error{
 	}
 
 	c.Send(pktBytes, c.Provider.Host, c.Provider.Port)
+	return nil
+}
+
+func (c *Client) GetMessagesFromProvider() error {
+	pullRqs := config.PullRequest{Id: c.Id, Token: c.token}
+	pullRqsBytes, err := config.PullRequestToBytes(pullRqs)
+	if err != nil{
+		return err
+	}
+
+	pkt := config.GeneralPacket{Flag: PULL_FLAG, Data: pullRqsBytes}
+	pktBytes, err := config.GeneralPacketToBytes(pkt)
+	if err != nil{
+		return err
+	}
+
+	err = c.Send(pktBytes, c.Provider.Host, c.Provider.Port)
+	if err != nil{
+		return err
+	}
+
 	return nil
 }
 

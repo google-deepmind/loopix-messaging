@@ -16,7 +16,7 @@ type Mix struct {
 	PrvKey []byte
 }
 
-func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan <- string, cFlag chan <- string, errCh chan <- error){
+func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan <- sphinx.Hop, cFlag chan <- string, errCh chan <- error){
 
 	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.PrvKey)
 	if err != nil {
@@ -31,7 +31,7 @@ func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan <- string,
 	}(newPacket, commands.Delay)
 
 	c <- <-timeoutCh
-	cAdr <- nextHop.Address
+	cAdr <- nextHop
 	cFlag <- commands.Flag
 	errCh <- nil
 

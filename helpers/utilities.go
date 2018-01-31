@@ -11,6 +11,7 @@ import (
 	"anonymous-messaging/config"
 	"net"
 	"anonymous-messaging/pki"
+	"os"
 )
 
 func Permute(slice []config.MixPubs) []config.MixPubs {
@@ -53,4 +54,15 @@ func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte ) er
 		return err
 	}
 	return nil
+}
+
+func DirExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

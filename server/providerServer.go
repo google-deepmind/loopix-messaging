@@ -12,6 +12,8 @@ import (
 	"anonymous-messaging/helpers"
 	"anonymous-messaging/logging"
 	"log"
+	"errors"
+	"anonymous-messaging/sphinx"
 )
 
 const (
@@ -75,11 +77,11 @@ func (p *ProviderServer) Run() {
 }
 
 func (p *ProviderServer) ReceivedPacket(packet []byte) error{
-	p.infoLogger.Println(fmt.Sprintf("%s: received new packet", p.Id))
+	p.infoLogger.Println(fmt.Sprintf("%s: Received new packet", p.Id))
 
 	c := make(chan []byte)
-	cAdr := make(chan string)
-	cFlag := make(chan string)
+	cAdr := make(chan sphinx.Hop)
+	cFlag := make(chan string) // CHANGE BACK TO HOP, BECAUSE YOU NEED IT
 	errCh := make(chan error)
 
 	go p.ProcessPacket(packet, c, cAdr, cFlag, errCh)
@@ -94,15 +96,17 @@ func (p *ProviderServer) ReceivedPacket(packet []byte) error{
 
 	switch flag {
 	case "\xF1":
-		err = p.ForwardPacket(dePacket, nextHop)
+		err = p.ForwardPacket(dePacket, nextHop.Address)
 		if err != nil{
 			return err
 		}
 	case "\xF0":
-		err = p.StoreMessage(dePacket, nextHop, "TMP_MESSAGE_ID")
+		err = p.StoreMessage(dePacket, nextHop.Id, "TMP_MESSAGE_ID")
 		if err != nil{
 			return err
 		}
+	default:
+		p.infoLogger.Println(fmt.Sprintf("%s: Sphinx packet flag not recognised", p.Id))
 	}
 
 	return nil
@@ -188,10 +192,23 @@ func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, 
 	if err != nil{
 		return nil, "", err
 	}
-	token := []byte("tmptoken")
+
+	token := []byte("TMP_Token" + clientConf.Id)
 	record := ClientRecord{Id: clientConf.Id, Host: clientConf.Host, Port: clientConf.Port, PubKey: clientConf.PubKey, Token: token}
 	p.assignedClients[clientConf.Id] = record
 	address := clientConf.Host + ":" + clientConf.Port
+
+	path := fmt.Sprintf("./inboxes/%s", clientConf.Id)
+	exists, err := helpers.DirExists(path)
+	if err != nil{
+		return nil, "", err
+	}
+	if exists == false {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return nil, "", err
+		}
+	}
+
 	return token, address, nil
 }
 
@@ -219,9 +236,18 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 		return err
 	}
 
-	p.infoLogger.Println(fmt.Sprintf("%s : Hangling a pull request.", p.Id))
+	p.infoLogger.Println(fmt.Sprintf("%s : Handling a pull request.", p.Id))
 	p.infoLogger.Println(fmt.Sprintf("%s : Request: %s %s", p.Id, request.Id, string(request.Token)))
 
+	if p.AuthenticateUser(request.Id, request.Token) == true{
+		err = p.FetchMessages(request.Id)
+		if err != nil {
+			return err
+		}
+	} else {
+		p.infoLogger.Println(fmt.Sprintf("%s: Authentication went wrong", p.Id))
+		return errors.New("Authentication went wrong! ")
+	}
 	return nil
 }
 
@@ -235,40 +261,35 @@ func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) b
 
 func (p *ProviderServer) FetchMessages(clientId string) error{
 
-	path := fmt.Sprintf("./inboxes/%s", clientId)
 
+	path := fmt.Sprintf("./inboxes/%s", clientId)
 	_, err := os.Stat(path)
 	if err != nil{
 		return err
 	}
 
 	files, err := ioutil.ReadDir(path)
+	if err != nil{
+		return err
+	}
 
 	for _, f := range files {
 		dat, err := ioutil.ReadFile(path + "/" + f.Name())
 		if err !=nil {
 			return err
 		}
-		fmt.Println(dat)
+		p.infoLogger.Println(dat)
 
 		address := p.assignedClients[clientId].Host + ":" + p.assignedClients[clientId].Port
-		p.infoLogger.Println(fmt.Sprintf("%s: fetch message for adrress %s", p.Id, address))
-		//	p.SendPacket(dat, address)
+		p.infoLogger.Println(fmt.Sprintf("%s: got message for adrress %s", p.Id, address))
 	}
+	p.infoLogger.Println(fmt.Sprintf("%s: All messages for address fetched", p.Id))
 	return nil
 }
 
 func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId string) error {
-
 	path := fmt.Sprintf("./inboxes/%s", inboxId)
 	fileName := path + "/" + messageId
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err := os.MkdirAll(path, 0755); err != nil {
-			return err
-		}
-
-	}
 
 	file, err := os.Create(fileName)
 	if err != nil {
@@ -281,7 +302,7 @@ func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId 
 		return err
 	}
 
-	p.infoLogger.Println(fmt.Sprintf("%s: stored message for client %s", p.Id, inboxId))
+	p.infoLogger.Println(fmt.Sprintf("%s: stored message for %s", p.Id, inboxId))
 	return nil
 }
 

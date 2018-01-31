@@ -14,6 +14,7 @@ import (
 	"anonymous-messaging/helpers"
 	"log"
 	"anonymous-messaging/logging"
+	"anonymous-messaging/sphinx"
 )
 
 type MixServerIt interface {
@@ -38,13 +39,13 @@ func (m *MixServer) ReceivedPacket(packet []byte) error{
 	m.infoLogger.Println(fmt.Sprintf("%s: Received new packet", m.Id))
 
 	c := make(chan []byte)
-	cAdr := make(chan string)
+	cAdr := make(chan sphinx.Hop)
 	cFlag := make(chan string)
 	errCh := make(chan error)
 
 	go m.ProcessPacket(packet, c, cAdr, cFlag, errCh)
 	dePacket := <-c
-	nextHopAdr := <- cAdr
+	nextHop := <- cAdr
 	flag := <- cFlag
 	err := <- errCh
 
@@ -53,7 +54,7 @@ func (m *MixServer) ReceivedPacket(packet []byte) error{
 	}
 
 	if flag == "\xF1" {
-		m.ForwardPacket(dePacket, nextHopAdr)
+		m.ForwardPacket(dePacket, nextHop.Address)
 	} else  {
 		m.infoLogger.Println(fmt.Sprintf("%s: Packet has non-forward flag", m.Id))
 	}
