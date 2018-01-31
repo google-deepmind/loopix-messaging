@@ -12,7 +12,6 @@ import (
 	"anonymous-messaging/networker"
 	"anonymous-messaging/pki"
 	"anonymous-messaging/config"
-	"github.com/jmoiron/sqlx"
 	"crypto/elliptic"
 	"anonymous-messaging/helpers"
 	"anonymous-messaging/logging"
@@ -37,7 +36,6 @@ type ClientIt interface {
 	Start()
 	ReadInMixnetPKI()
 	ReadInClientsPKI()
-	ConnectToPKI(dbName string) *sqlx.DB
 }
 
 type Client struct {
@@ -61,7 +59,7 @@ type Client struct {
 
 }
 
-func (c *Client) SendMessage(message string, recipient config.ClientPubs) {
+func (c *Client) SendMessage(message string, recipient config.ClientPubs) error {
 
 
 	path := c.buildPath(recipient)
@@ -69,21 +67,21 @@ func (c *Client) SendMessage(message string, recipient config.ClientPubs) {
 
 	sphinxPacket, err := c.EncodeMessage(message, path, delays)
 	if err != nil{
-		panic(err)
+		return err
 	}
 
 	packet := config.GeneralPacket{Flag: COMM_FLAG, Data: sphinxPacket}
 	packetBytes, err := config.GeneralPacketToBytes(packet)
 	if err != nil{
-		c.errorLogger.Println(err)
-		panic(err)
+		return err
 	}
 
 	err = c.Send(packetBytes, path.IngressProvider.Host, path.IngressProvider.Port)
-	if err != nil{
-		c.errorLogger.Println(err)
-		panic(err)
+	if err != nil {
+		return err
 	}
+
+	return nil
 }
 
 func (c *Client) buildPath(recipient config.ClientPubs) config.E2EPath {
@@ -138,18 +136,27 @@ func (c *Client) HandleConnection(conn net.Conn) {
 	if err != nil {
 		c.errorLogger.Println(err)
 	}
+
 	switch packet.Flag {
 	case TOKEN_FLAG:
 		c.RegisterToken(packet.Data)
 		go func() {
-			c.SendMessage("Hello world, this is me", c.OtherClients[0])
+			err = c.SendMessage("Hello world, this is me", c.OtherClients[0])
+			if err != nil {
+				c.errorLogger.Println(err)
+			}
+
 			err = c.GetMessagesFromProvider()
 			if err != nil {
 				c.errorLogger.Println(err)
 			}
 		}()
 	case COMM_FLAG:
-		c.ProcessPacket(packet.Data)
+		newPkt, err := c.ProcessPacket(packet.Data)
+		if err != nil {
+			c.errorLogger.Println(err)
+		}
+		c.infoLogger.Println(fmt.Sprintf("%s: Received message: %s", c.Id, newPkt))
 	default:
 		c.infoLogger.Println(fmt.Sprintf("%s: Packet flag not recognised. Packet dropped.", c.Id))
 	}
@@ -162,17 +169,17 @@ func (c *Client) RegisterToken(token []byte) {
 	c.infoLogger.Println(fmt.Sprintf("%s: Registered token %s", c.Id, c.token))
 }
 
-func (c *Client) ProcessPacket(packet []byte) []byte {
+func (c *Client) ProcessPacket(packet []byte) ([]byte, error) {
 	c.infoLogger.Println("%s: Processing packet: %s", c.Id, packet )
-	return packet
+	return packet, nil
 }
 
-func (c *Client) Start() {
+func (c *Client) Start() error {
 
 	f, err := os.OpenFile("./logging/client_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
 
 	if err != nil{
-		panic(err)
+		return err
 	}
 
 	c.infoLogger = logging.NewInitLogger(f)
@@ -180,10 +187,21 @@ func (c *Client) Start() {
 
 	defer c.Run()
 
-	c.ReadInClientsPKI(c.pkiDir)
-	c.ReadInMixnetPKI(c.pkiDir)
-	c.RegisterToProvider()
+	err = c.ReadInClientsPKI(c.pkiDir)
+	if err != nil{
+		return err
+	}
 
+	err = c.ReadInMixnetPKI(c.pkiDir)
+	if err != nil{
+		return err
+	}
+
+	err = c.RegisterToProvider()
+	if err != nil{
+		return err
+	}
+	return nil
 }
 
 func (c *Client) RegisterToProvider() error{
@@ -238,21 +256,19 @@ func (c *Client) Run() {
 	<-finish
 }
 
-func (c *Client) ReadInMixnetPKI(pkiName string) {
+func (c *Client) ReadInMixnetPKI(pkiName string) error {
 	c.infoLogger.Println(fmt.Sprintf("%s: Reading network information from the PKI: %s", c.Id, pkiName))
 
-	db, err := c.ConnectToPKI(pkiName)
+	db, err := pki.OpenDatabase(pkiName, "sqlite3")
 
 	if err != nil{
-		c.errorLogger.Println(err)
-		panic(err)
+		return err
 	}
 
 	records, err := pki.QueryDatabase(db, "Mixes")
 
 	if err != nil{
-		c.errorLogger.Println(err)
-		panic(err)
+		return err
 	}
 
 	for records.Next() {
@@ -260,37 +276,33 @@ func (c *Client) ReadInMixnetPKI(pkiName string) {
 		err := records.MapScan(result)
 
 		if err != nil {
-			c.errorLogger.Println(err)
-			panic(err)
-
+			return err
 		}
+
 		pubs, err := config.MixPubsFromBytes(result["Config"].([]byte))
 		if err != nil {
-			c.errorLogger.Println(err)
-			panic(err)
+			return err
 		}
 
 		c.ActiveMixes = append(c.ActiveMixes, pubs)
 	}
 	c.infoLogger.Println(fmt.Sprintf("%s: Network information uploaded", c.Id))
-
+	return nil
 }
 
-func (c *Client) ReadInClientsPKI(pkiName string) {
+func (c *Client) ReadInClientsPKI(pkiName string) error {
 	c.infoLogger.Println(fmt.Sprintf("%s: Reading network users information from the PKI: %s", c.Id, pkiName))
 
-	db, err := c.ConnectToPKI(pkiName)
+	db, err := pki.OpenDatabase(pkiName, "sqlite3")
 
 	if err != nil{
-		c.errorLogger.Println(err)
-		panic(err)
+		return err
 	}
 
 	records, err := pki.QueryDatabase(db, "Clients")
 
 	if err != nil {
-		c.errorLogger.Println(err)
-		panic(err)
+		return err
 	}
 
 	for records.Next() {
@@ -298,22 +310,17 @@ func (c *Client) ReadInClientsPKI(pkiName string) {
 		err := records.MapScan(result)
 
 		if err != nil {
-			c.errorLogger.Println(err)
-			panic(err)
+			return err
 		}
 
 		pubs, err := config.ClientPubsFromBytes(result["Config"].([]byte))
 		if err != nil {
-			c.errorLogger.Println(err)
-			panic(err)
+			return err
 		}
 		c.OtherClients = append(c.OtherClients, pubs)
 	}
 	c.infoLogger.Println(fmt.Sprintf("%s: Network users information uploaded", c.Id))
-}
-
-func (c *Client) ConnectToPKI(dbName string) (*sqlx.DB, error) {
-	return pki.OpenDatabase(dbName, "sqlite3")
+	return nil
 }
 
 

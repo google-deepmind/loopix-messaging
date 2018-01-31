@@ -84,7 +84,11 @@ func main() {
 			panic(err)
 		}
 
-		client.Start()
+		err = client.Start()
+		if err != nil{
+			panic(err)
+		}
+
 	case "mix":
 		pubM, privM, err := sphinx.GenerateKeyPair()
 		if err != nil{
@@ -96,7 +100,10 @@ func main() {
 			panic(err)
 		}
 
-		mixServer.Start()
+		err = mixServer.Start()
+		if err != nil{
+			panic(err)
+		}
 	case "provider":
 		pubP, privP, err := sphinx.GenerateKeyPair()
 		if err != nil{

@@ -3,6 +3,16 @@
 echo "Press CTRL-C to stop."
 rm -rf pki/database.db
 
+logDir="logs"
+
+if [ -d $logDir ]
+then
+    echo "Logging directory already exists"
+else
+    mkdir $logDir
+    echo "Created loggign directory"
+fi
+
 #NUMMIXES=$1
 #echo $NUMMIXES
 
@@ -11,9 +21,9 @@ rm -rf pki/database.db
 #    go run main.go -typ=mix -id="Mix$j" -host=localhost -port=$((9990+$j)) > logs/"Mix$j".log &
 #done
 
-go run main.go -typ=mix -id=Mix1 -host=localhost -port=9998 > logs/Mix1.log &
-go run main.go -typ=mix -id=Mix2 -host=localhost -port=9999 > logs/Mix2.log &
-go run main.go -typ=provider -id=Provider -host=localhost -port=9997 > logs/Provider.log ;
+go run main.go -typ=mix -id=Mix1 -host=localhost -port=9998 > logs/bash.log &
+go run main.go -typ=mix -id=Mix2 -host=localhost -port=9999 > logs/bash.log &
+go run main.go -typ=provider -id=Provider -host=localhost -port=9997 > logs/bash.log ;
 
 # trap call ctrl_c()
 trap ctrl_c SIGINT SIGTERM SIGTSTP

@@ -61,38 +61,46 @@ func (m *MixServer) ReceivedPacket(packet []byte) error{
 	return nil
 }
 
-func (m *MixServer) ForwardPacket(sphinxPacket []byte, address string) {
+func (m *MixServer) ForwardPacket(sphinxPacket []byte, address string) error{
 	packet := config.GeneralPacket{Flag:COMM_FLAG, Data: sphinxPacket}
 	packetBytes, err := config.GeneralPacketToBytes(packet)
 	if err != nil{
-		panic(err)
+		return err
 	}
-	m.Send(packetBytes, address)
+	err = m.Send(packetBytes, address)
+	if err != nil{
+		return err
+	}
+
+	return nil
 }
 
-func (m *MixServer) Send(packet []byte, address string) {
+func (m *MixServer) Send(packet []byte, address string) error{
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		m.errorLogger.Println(err)
-		os.Exit(1)
+		return err
 	}
-
-	conn.Write(packet)
 	defer conn.Close()
+
+	_, err = conn.Write(packet)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (m *MixServer) Start() {
+func (m *MixServer) Start() error {
 	defer m.Run()
 
 	f, err := os.OpenFile("./logging/network_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
-
 	if err != nil{
-		panic(err)
+		return err
 	}
 
 	m.infoLogger = logging.NewInitLogger(f)
 	m.errorLogger = logging.NewErrorLogger(f)
+	return nil
 }
 
 func (m *MixServer) Run() {
@@ -114,7 +122,6 @@ func (m *MixServer) ListenForIncomingConnections() {
 
 		if err != nil {
 			m.errorLogger.Println(err)
-			os.Exit(1)
 		}
 		m.infoLogger.Println(fmt.Sprintf("%s: Received connection from %s", m.Id, conn.RemoteAddr()))
 		go m.HandleConnection(conn)
@@ -122,10 +129,10 @@ func (m *MixServer) ListenForIncomingConnections() {
 }
 
 func (m *MixServer) HandleConnection(conn net.Conn) {
+	defer conn.Close()
 
 	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
-
 	if err != nil {
 		m.errorLogger.Println(err)
 	}
@@ -144,8 +151,6 @@ func (m *MixServer) HandleConnection(conn net.Conn) {
 	default:
 		m.infoLogger.Println(fmt.Sprintf("%s : Packet flag not recognised. Packet dropped.", m.Id))
 	}
-
-	conn.Close()
 }
 
 func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath string) (*MixServer, error) {
