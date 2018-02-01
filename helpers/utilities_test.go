@@ -122,9 +122,7 @@ func TestRandomSample_Pass_SmallerLen(t *testing.T) {
 	if err != nil{
 		t.Fatal(err)
 	}
-
 	assert.Equal(t, 5, len(sample), " RandomSample should return a sample of given size")
-
 }
 
 func TestRandomSample_Pass_EqualLen(t *testing.T) {
@@ -136,12 +134,11 @@ func TestRandomSample_Pass_EqualLen(t *testing.T) {
 }
 
 
-
 func TestRandomSample_Fail(t *testing.T) {
 	_, err := RandomSample(mixes, 20)
 	assert.EqualError(t, errors.New(" cannot take a sample larger than the given list"), err.Error(), " RandomSample cannot take a sample larger than the given slice")
 }
 
 func TestResolveTCPAddress(t *testing.T) {
-	// TO DO: How this should be tested ? And should I even test it if it uses a build in function?
+	// TO DO: How this should be tested ? And should it even be tested it if it uses a build in function?
 }

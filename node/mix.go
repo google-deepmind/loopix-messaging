@@ -4,8 +4,6 @@
 package node
 
 import (
-	"fmt"
-
 	sphinx "anonymous-messaging/sphinx"
 	"time"
 )
@@ -35,11 +33,6 @@ func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan <- sphinx.
 	cFlag <- commands.Flag
 	errCh <- nil
 
-}
-
-func (m *Mix) SendLoopMessage() {
-	// TO DO: this function is currently not used
-	fmt.Println("> Sending loop message")
 }
 
 func NewMix(id string, pubKey []byte, prvKey []byte) *Mix {
