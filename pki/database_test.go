@@ -6,31 +6,51 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/stretchr/testify/assert"
 	"database/sql"
+	"github.com/stretchr/testify/assert"
 )
 
-func Setup() {
 
-	f, err := os.Create("./testDatabase2.db")
+const (
+	TESTDATABASE = "./testDatabase.db"
+)
+
+
+var db *sqlx.DB
+
+func Setup() (*sqlx.DB, error) {
+
+	Clean()
+
+	db, err := sqlx.Connect("sqlite3", TESTDATABASE)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	defer f.Close()
+	query := `CREATE TABLE TableXX (
+		idx INTEGER PRIMARY KEY,
+    	Id TEXT,
+    	Typ TEXT,
+    	Config BLOB);`
+
+	_, err = db.Exec(query)
+	if err != nil {
+		return nil, err
+	}
+
+	insertQuery := `INSERT INTO TableXX (Id, Typ, Config) VALUES (?, ?, ?)`
+
+	_, err = db.Exec(insertQuery, "ABC", "DEF", []byte("GHI"))
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 func Clean() {
 
-	if _, err := os.Stat("./testDatabase.db"); err == nil {
-		errRemove := os.Remove("./testDatabase.db")
-		if errRemove != nil {
-			panic(err)
-		}
-	}
-
-	if _, err := os.Stat("./testDatabase2.db"); err == nil {
-		errRemove := os.Remove("./testDatabase2.db")
+	if _, err := os.Stat(TESTDATABASE); err == nil {
+		errRemove := os.Remove(TESTDATABASE)
 		if errRemove != nil {
 			panic(err)
 		}
@@ -39,35 +59,24 @@ func Clean() {
 
 func TestMain(m *testing.M) {
 
-	Setup()
+	var err error
+	db, err = Setup()
+	if err != nil {
+		fmt.Println(err)
+		panic(m)
+	}
+	defer db.Close()
+
 	code := m.Run()
 	Clean()
 	os.Exit(code)
 }
 
-func TestCreateDatabase(t *testing.T) {
-	_, err := OpenDatabase("./testDatabase.db", "sqlite3")
-	if err != nil{
-		t.Error(err)
-	}
-
-	_, err = os.Stat("testDatabase.db")
-	if err != nil{
-		t.Error(err)
-	}
-	assert.False(t, os.IsNotExist(err), "The database file does not exist")
-}
-
 func TestCreateTable(t *testing.T) {
-	db, err := sqlx.Connect("sqlite3", "./testDatabase2.db")
-
-	if err != nil {
-		panic(err)
-	}
 
 	params := map[string]string{"Id": "TEXT", "Typ": "TEXT", "Config": "BLOB"}
-	err = CreateTable(db, "TestTable", params)
-	if err != nil{
+	err := CreateTable(db, "TestTable", params)
+	if err != nil {
 		t.Error(err)
 	}
 
@@ -80,14 +89,8 @@ func TestCreateTable(t *testing.T) {
 }
 
 func TestInsertToTable(t *testing.T) {
-	db, err := sqlx.Connect("sqlite3", "./testDatabase2.db")
 
-	if err != nil {
-		t.Error(err)
-	}
-
-	err = InsertIntoTable(db, "TestTable", "TestVal1", "TestVal2", []byte("TestVal3"))
-
+	err := InsertIntoTable(db, "TestTable", "TestVal1", "TestVal2", []byte("TestVal3"))
 	if err != nil{
 		t.Error(err)
 	}
@@ -98,76 +101,40 @@ func TestInsertToTable(t *testing.T) {
 	if err != nil && err != sql.ErrNoRows {
 		t.Error(err)
 	}
-
 	assert.True(t, exists, "Row was not added to the database")
 }
 
 func TestQueryDatabase(t *testing.T) {
-	db, err := OpenDatabase("./testDatabase2.db", "sqlite3")
+	rows, err := QueryDatabase(db, "TableXX")
 
 	if err != nil{
 		t.Error(err)
 	}
 
-	rows, err := QueryDatabase(db, "TestTable")
-
-	if err != nil{
-		t.Error(err)
-	}
-
+	results := make(map[string]interface{})
 	for rows.Next() {
-		results := make(map[string]interface{})
 		err := rows.MapScan(results)
 
 		if err != nil {
 			fmt.Printf("Error %v \n", err)
 		}
-
-		assert.Equal(t, "TestVal1", string(results["Id"].([]byte)), "Values should be equal")
-		assert.Equal(t, "TestVal2", string(results["Typ"].([]byte)), "Values should be equal")
-		assert.Equal(t, []byte("TestVal3"), results["Config"].([]byte), "Values should be equal")
 	}
+	assert.Equal(t, "ABC", string(results["Id"].([]byte)), "Should be equal")
+	assert.Equal(t, "DEF", string(results["Typ"].([]byte)), "Should be equal")
+	assert.Equal(t, []byte("GHI"), results["Config"].([]byte), "Should be equal")
+
 }
 
 func TestInsertIntoTable(t *testing.T) {
-	db, err := OpenDatabase("./testDatabase2.db", "sqlite3")
 
-	if err != nil{
-		t.Error(err)
-	}
-
-	params := make(map[string]string)
-	params["Id"] = "TEXT"
-	params["Typ"] = "TEXT"
-	params["Config"] = "BLOB"
-
-	err = CreateTable(db, "InsertTestTable", params)
-	if err != nil{
-		t.Error(err)
-	}
-
-	err = InsertIntoTable(db, "InsertTestTable", "MyId", "MyTyp", []byte("Some bytes"))
-
+	err := InsertIntoTable(db, "TableXX", "TestInsertId", "TestInsertTyp", []byte("TestInsertBytes"))
 	if err != nil {
 		t.Error(err)
 	}
 
-	rows, err := db.Queryx("SELECT * FROM InsertTestTable")
+	exists, err := rowExists(db,"SELECT * FROM TableXX WHERE Id=$1 AND Typ=$2 AND Config=$3", "TestInsertId", "TestInsertTyp", []byte("TestInsertBytes"))
 	if err != nil {
 		t.Error(err)
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		results := make(map[string]interface{})
-		err := rows.MapScan(results)
-
-		if err != nil {
-			t.Error(err)
-		}
-		assert.Equal(t, "MyId", string(results["Id"].([]byte)), "Should be equal")
-		assert.Equal(t, "MyTyp", string(results["Typ"].([]byte)), "Should be equal")
-		assert.Equal(t, []byte("Some bytes"), results["Config"].([]byte), "Should be equal")
-	}
-
+	assert.True(t, exists, "The inserted row was not found in the database")
 }

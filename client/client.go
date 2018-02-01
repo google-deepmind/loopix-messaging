@@ -18,6 +18,7 @@ import (
 
 	"log"
 	"fmt"
+	"bufio"
 )
 
 const (
@@ -215,8 +216,6 @@ func (c *Client) Start() error {
 	c.infoLogger = logging.NewInitLogger(f)
 	c.errorLogger = logging.NewErrorLogger(f)
 
-	defer c.Run()
-
 	err = c.ReadInClientsPKI(c.pkiDir)
 	if err != nil{
 		return err
@@ -231,6 +230,8 @@ func (c *Client) Start() error {
 	if err != nil{
 		return err
 	}
+
+	c.Run()
 	return nil
 }
 

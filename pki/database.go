@@ -11,6 +11,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"database/sql"
 )
 
 func OpenDatabase(dataSourceName, dbDriver string) (*sqlx.DB, error) {
@@ -63,4 +64,14 @@ func QueryDatabase(db *sqlx.DB, tableName string) (*sqlx.Rows, error) {
 		return nil, err
 	}
 	return rows, nil
+}
+
+func rowExists(db *sqlx.DB, query string, args ...interface{}) (bool, error) {
+	var exists bool
+	query = fmt.Sprintf("SELECT exists (%s)", query)
+	err := db.QueryRow(query, args...).Scan(&exists)
+	if err != nil && err != sql.ErrNoRows {
+		return false, err
+	}
+	return exists, nil
 }
