@@ -26,6 +26,44 @@ func Setup() error {
 		}
 		mixes = append(mixes, config.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub))
 	}
+
+
+	// Create a mixClient
+	pubC, privC, err := sphinx.GenerateKeyPair()
+	if err != nil{
+		return err
+	}
+	cryptoClient = CryptoClient{Id: "MixClient", PubKey: pubC, PrvKey: privC, Curve: elliptic.P224()}
+
+	//Client a pair of mix configs, a single provider and a recipient
+	pub1, _, err := sphinx.GenerateKeyPair()
+	if err != nil{
+		return err
+	}
+
+	pub2, _, err := sphinx.GenerateKeyPair()
+	if err != nil{
+		return err
+	}
+
+	m1 := config.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
+	m2 := config.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
+
+	pubP, _, err := sphinx.GenerateKeyPair()
+	if err != nil{
+		return err
+	}
+
+	pubD, _, err := sphinx.GenerateKeyPair()
+	if err != nil{
+		return err
+	}
+	provider := config.MixPubs{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP}
+	recipient := config.ClientPubs{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD, Provider: &provider}
+
+	// Creating a test path
+	path = config.E2EPath{IngressProvider: provider, Mixes: []config.MixPubs{m1, m2}, EgressProvider: provider, Recipient: recipient}
+
 	return nil
 }
 
@@ -35,32 +73,13 @@ func TestMain(m *testing.M) {
 	err := Setup()
 	if err != nil {
 		panic(m)
+
 	}
-
-	pubC, privC, err := sphinx.GenerateKeyPair()
-	pub1, _, _ := sphinx.GenerateKeyPair()
-	pub2, _, _ := sphinx.GenerateKeyPair()
-	pubP, _, _ := sphinx.GenerateKeyPair()
-	pubD, _, _ := sphinx.GenerateKeyPair()
-	if err != nil{
-		panic(err)
-	}
-
-	cryptoClient = CryptoClient{Id: "MixClient", PubKey: pubC, PrvKey: privC, Curve: elliptic.P224()}
-
-	m1 := config.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
-	m2 := config.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
-	provider := config.MixPubs{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP}
-	recipient := config.ClientPubs{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD, Provider: &provider}
-
-	path = config.E2EPath{IngressProvider: provider, Mixes: []config.MixPubs{m1, m2}, EgressProvider: provider, Recipient: recipient}
-
 	os.Exit(m.Run())
 }
 
 func TestCryptoClient_EncodeMessage(t *testing.T) {
 
-	message := "Hello world"
 	delays := []float64{1.4, 2.5, 2.3, 3.5, 6.7}
 
 	var commands []sphinx.Commands
@@ -68,9 +87,9 @@ func TestCryptoClient_EncodeMessage(t *testing.T) {
 		c := sphinx.Commands{Delay: v, Flag: "Flag"}
 		commands = append(commands, c)
 	}
-	encoded, err := cryptoClient.EncodeMessage(message, path, delays)
+	encoded, err := cryptoClient.EncodeMessage("Hello world", path, delays)
 	if err != nil{
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	assert.Equal(t, reflect.TypeOf([]byte{}), reflect.TypeOf(encoded))
