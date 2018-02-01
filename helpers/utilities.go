@@ -15,24 +15,36 @@ import (
 	"errors"
 )
 
-func Permute(slice []config.MixPubs) []config.MixPubs {
+func Permute(slice []config.MixPubs) ([]config.MixPubs, error) {
+	if len(slice) == 0 {
+		return nil, errors.New(" cannot permute an empty list of mixes")
+	}
+
 	rand.Seed(time.Now().UTC().UnixNano())
 	permutedData := make([]config.MixPubs, len(slice))
 	permutation := rand.Perm(len(slice))
 	for i, v := range permutation {
 		permutedData[v] = slice[i]
 	}
-	return permutedData
+	return permutedData, nil
 }
 
-func RandomSample(slice []config.MixPubs, length int) []config.MixPubs {
-	permuted := Permute(slice)
-	return permuted[:length]
+func RandomSample(slice []config.MixPubs, length int) ([]config.MixPubs, error) {
+	if len(slice) < length{
+		return nil, errors.New(" cannot take a sample larger than the given list")
+	}
+
+	permuted, err := Permute(slice)
+	if err != nil{
+		return nil, err
+	}
+
+	return permuted[:length], err
 }
 
 func RandomExponential(expParam float64) (float64, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	if expParam == 0.0 {
+	if expParam <= 0.0 {
 		return 0.0, errors.New("the parameter of exponential distribution has to be larger than zero")
 	}
 	return rand.ExpFloat64() / expParam, nil
@@ -46,7 +58,10 @@ func ResolveTCPAddress(host, port string) (*net.TCPAddr, error) {
 	return addr, nil
 }
 
-func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte ) error {
+
+// TO DO: This function is useless; remove it and change the code
+
+func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte) error {
 	db, err := pki.OpenDatabase(pkiPath, "sqlite3")
 	if err != nil {
 		return err
@@ -62,11 +77,11 @@ func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte ) er
 
 func DirExists(path string) (bool, error) {
 	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
 	if os.IsNotExist(err) {
 		return false, nil
+	}
+	if err == nil {
+		return true, nil
 	}
 	return false, err
 }

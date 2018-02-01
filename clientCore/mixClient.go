@@ -54,7 +54,10 @@ func (c *CryptoClient) GetRandomMixSequence(mixes []config.MixPubs, length int) 
 	if length > len(mixes) {
 		return mixes, nil
 	} else {
-		randomSeq := helpers.RandomSample(mixes, length)
+		randomSeq, err := helpers.RandomSample(mixes, length)
+		if err != nil{
+			return nil, err
+		}
 		return randomSeq, nil
 	}
 }
