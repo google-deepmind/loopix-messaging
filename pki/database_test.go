@@ -16,6 +16,7 @@ const (
 )
 
 
+var dbDir string
 var db *sqlx.DB
 
 func Setup() (*sqlx.DB, error) {

@@ -12,6 +12,7 @@ import (
 	"net"
 	"anonymous-messaging/pki"
 	"os"
+	"errors"
 )
 
 func Permute(slice []config.MixPubs) []config.MixPubs {
@@ -29,9 +30,12 @@ func RandomSample(slice []config.MixPubs, length int) []config.MixPubs {
 	return permuted[:length]
 }
 
-func RandomExponential(expParam float64) float64 {
+func RandomExponential(expParam float64) (float64, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	return rand.ExpFloat64() / expParam
+	if expParam == 0.0 {
+		return 0.0, errors.New("the parameter of exponential distribution has to be larger than zero")
+	}
+	return rand.ExpFloat64() / expParam, nil
 }
 
 func ResolveTCPAddress(host, port string) (*net.TCPAddr, error) {
