@@ -13,15 +13,16 @@ import (
 	"anonymous-messaging/pki"
 	"os"
 	"errors"
+	"crypto/md5"
 )
 
-func Permute(slice []config.MixPubs) ([]config.MixPubs, error) {
+func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
 	if len(slice) == 0 {
 		return nil, errors.New(" cannot permute an empty list of mixes")
 	}
 
 	rand.Seed(time.Now().UTC().UnixNano())
-	permutedData := make([]config.MixPubs, len(slice))
+	permutedData := make([]config.MixConfig, len(slice))
 	permutation := rand.Perm(len(slice))
 	for i, v := range permutation {
 		permutedData[v] = slice[i]
@@ -29,7 +30,7 @@ func Permute(slice []config.MixPubs) ([]config.MixPubs, error) {
 	return permutedData, nil
 }
 
-func RandomSample(slice []config.MixPubs, length int) ([]config.MixPubs, error) {
+func RandomSample(slice []config.MixConfig, length int) ([]config.MixConfig, error) {
 	if len(slice) < length{
 		return nil, errors.New(" cannot take a sample larger than the given list")
 	}
@@ -84,4 +85,10 @@ func DirExists(path string) (bool, error) {
 		return true, nil
 	}
 	return false, err
+}
+
+func MD5Hash(data []byte) []byte{
+	h := md5.New()
+	h.Write(data)
+	return h.Sum(nil)
 }

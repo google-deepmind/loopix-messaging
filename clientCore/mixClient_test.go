@@ -16,7 +16,7 @@ import (
 
 var cryptoClient CryptoClient
 var path config.E2EPath
-var mixes []config.MixPubs
+var mixes []config.MixConfig
 
 func Setup() error {
 	for i := 0; i < 10; i++ {
@@ -24,7 +24,7 @@ func Setup() error {
 		if err != nil{
 			return err
 		}
-		mixes = append(mixes, config.NewMixPubs(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub))
+		mixes = append(mixes, config.NewMixConfig(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub))
 	}
 
 
@@ -46,8 +46,8 @@ func Setup() error {
 		return err
 	}
 
-	m1 := config.MixPubs{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
-	m2 := config.MixPubs{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
+	m1 := config.MixConfig{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
+	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
 
 	pubP, _, err := sphinx.GenerateKeyPair()
 	if err != nil{
@@ -58,11 +58,11 @@ func Setup() error {
 	if err != nil{
 		return err
 	}
-	provider := config.MixPubs{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP}
-	recipient := config.ClientPubs{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD, Provider: &provider}
+	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP}
+	recipient := config.ClientConfig{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD, Provider: &provider}
 
 	// Creating a test path
-	path = config.E2EPath{IngressProvider: provider, Mixes: []config.MixPubs{m1, m2}, EgressProvider: provider, Recipient: recipient}
+	path = config.E2EPath{IngressProvider: provider, Mixes: []config.MixConfig{m1, m2}, EgressProvider: provider, Recipient: recipient}
 
 	return nil
 }
@@ -108,7 +108,7 @@ func TestCryptoClient_DecodeMessage(t *testing.T) {
 }
 
 func TestCryptoClient_GenerateDelaySequence_Pass(t *testing.T) {
-	delays, err := cryptoClient.GenerateDelaySequence(100, 5)
+	delays, err := cryptoClient.generateDelaySequence(100, 5)
 	if err != nil{
 		t.Fatal(err)
 	}
@@ -117,13 +117,13 @@ func TestCryptoClient_GenerateDelaySequence_Pass(t *testing.T) {
 }
 
 func TestCryptoClient_GenerateDelaySequence_Fail(t *testing.T) {
-	_, err := cryptoClient.GenerateDelaySequence(0, 5)
+	_, err := cryptoClient.generateDelaySequence(0, 5)
 	assert.EqualError(t, errors.New("the parameter of exponential distribution has to be larger than zero"), err.Error(), "")
 }
 
 func Test_GetRandomMixSequence_TooFewMixes(t *testing.T) {
 
-	sequence, err := cryptoClient.GetRandomMixSequence(mixes, 20)
+	sequence, err := cryptoClient.getRandomMixSequence(mixes, 20)
 	if err != nil{
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func Test_GetRandomMixSequence_TooFewMixes(t *testing.T) {
 
 func Test_GetRandomMixSequence_MoreMixes(t *testing.T) {
 
-	sequence, err := cryptoClient.GetRandomMixSequence(mixes, 3)
+	sequence, err := cryptoClient.getRandomMixSequence(mixes, 3)
 	if err != nil{
 		t.Fatal(err)
 	}
@@ -143,11 +143,11 @@ func Test_GetRandomMixSequence_MoreMixes(t *testing.T) {
 }
 
 func Test_GetRandomMixSequence_FailEmptyList(t *testing.T) {
-	_, err := cryptoClient.GetRandomMixSequence([]config.MixPubs{}, 6)
+	_, err := cryptoClient.getRandomMixSequence([]config.MixConfig{}, 6)
 	assert.EqualError(t, errors.New("cannot take a mix sequence from an empty list"), err.Error(), "")
 }
 
 func Test_GetRandomMixSequence_FailNonList(t *testing.T) {
-	_, err := cryptoClient.GetRandomMixSequence(nil, 6)
+	_, err := cryptoClient.getRandomMixSequence(nil, 6)
 	assert.EqualError(t, errors.New("cannot take a mix sequence from an empty list"), err.Error(), "")
 }

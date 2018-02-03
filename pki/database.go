@@ -41,7 +41,11 @@ func CreateTable(db *sqlx.DB, tableName string, params map[string]string) error{
 	if err != nil{
 		return err
 	}
-	statement.Exec()
+	_, err = statement.Exec()
+	if err != nil{
+		return err
+	}
+
 	return nil
 
 }
@@ -51,14 +55,20 @@ func InsertIntoTable(db *sqlx.DB, tableName string, id, typ string, config []byt
 	query :="INSERT INTO " + tableName + " (Id, Typ, Config) VALUES (?, ?, ?)"
 
 	stmt, err := db.Prepare(query)
-	stmt.Exec(id, typ, config)
+	if err != nil{
+		return err
+	}
+	_, err = stmt.Exec(id, typ, config)
+	if err != nil{
+		return err
+	}
 
-	return err
+	return nil
 }
 
-func QueryDatabase(db *sqlx.DB, tableName string) (*sqlx.Rows, error) {
-	query := fmt.Sprintf("SELECT * FROM %s", tableName)
-	rows, err := db.Queryx(query)
+func QueryDatabase(db *sqlx.DB, tableName string, condition string) (*sqlx.Rows, error) {
+	query := fmt.Sprintf("SELECT * FROM %s WHERE Typ = ?", tableName)
+	rows, err := db.Queryx(query, condition)
 
 	if err != nil {
 		return nil, err

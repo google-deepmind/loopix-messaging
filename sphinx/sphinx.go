@@ -91,7 +91,7 @@ func RoutingInfoFromBytes(bytes []byte) (RoutingInfo, error) {
 	a Sphinx packet format is returned.
  */
 func PackForwardMessage(curve elliptic.Curve, path config.E2EPath, delays []float64, message string) (SphinxPacket, error){
-	nodes := []config.MixPubs{path.IngressProvider}
+	nodes := []config.MixConfig{path.IngressProvider}
 	nodes = append(nodes, path.Mixes...)
 	nodes = append(nodes, path.EgressProvider)
 	dest := path.Recipient
@@ -120,7 +120,7 @@ func PackForwardMessage(curve elliptic.Curve, path config.E2EPath, delays []floa
 	createHeader returns the header and a list of the initial elements, used for creating the header. If any operation was unsuccessful
 	createHeader returns an error.
  */
-func createHeader(curve elliptic.Curve, nodes []config.MixPubs, delays []float64, dest config.ClientPubs) ([]HeaderInitials, Header, error){
+func createHeader(curve elliptic.Curve, nodes []config.MixConfig, delays []float64, dest config.ClientConfig) ([]HeaderInitials, Header, error){
 
 	x, err := randomBigInt(curve.Params())
 
@@ -161,7 +161,7 @@ func createHeader(curve elliptic.Curve, nodes []config.MixPubs, delays []float64
 	encapsulateHeader returns the Header, or an error if any internal cryptographic of parsing operation failed.
  */
 
-func encapsulateHeader(asb []HeaderInitials, nodes []config.MixPubs, commands []Commands, destination config.ClientPubs) (Header, error){
+func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands []Commands, destination config.ClientConfig) (Header, error){
 
 	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: &commands[len(commands) - 1], NextHopMetaData: []byte{}, Mac: []byte{}}
 
@@ -231,7 +231,7 @@ func encapsulateContent(asb []HeaderInitials, message string) ([]byte, error) {
 	secret value, the list of nodes, and the curve in which the cryptographic operations are performed.
     getSharedSecrets returns the list of computed HeaderInitials or an error.
  */
-func getSharedSecrets(curve elliptic.Curve, nodes []config.MixPubs, initialVal big.Int) ([]HeaderInitials, error){
+func getSharedSecrets(curve elliptic.Curve, nodes []config.MixConfig, initialVal big.Int) ([]HeaderInitials, error){
 
 	blindFactors := []big.Int{initialVal}
 	var tuples []HeaderInitials
@@ -259,7 +259,7 @@ func getSharedSecrets(curve elliptic.Curve, nodes []config.MixPubs, initialVal b
 /*
 	TO DO: computeFillers needs to be fixed
  */
-func computeFillers(nodes []config.MixPubs, tuples []HeaderInitials) (string, error) {
+func computeFillers(nodes []config.MixConfig, tuples []HeaderInitials) (string, error) {
 
 	filler := ""
 	minLen := HEADERLENGTH - 32

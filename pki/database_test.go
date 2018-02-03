@@ -106,7 +106,7 @@ func TestInsertToTable(t *testing.T) {
 }
 
 func TestQueryDatabase(t *testing.T) {
-	rows, err := QueryDatabase(db, "TableXX")
+	rows, err := QueryDatabase(db, "TableXX", "DEF")
 
 	if err != nil{
 		t.Error(err)

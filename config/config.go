@@ -1,5 +1,5 @@
 /*
-	Package publics implements struct for easy processing and storing of all public information
+	Package config implements struct for easy processing and storing of all public information
 	of the network participants.
  */
 
@@ -9,17 +9,17 @@ import (
 	"github.com/protobuf/proto"
 )
 
-func NewMixPubs(mixId, host, port string, pubKey []byte) MixPubs {
-	mixPubs := MixPubs{Id: mixId, Host: host, Port: port, PubKey: pubKey}
-	return mixPubs
+func NewMixConfig(mixId, host, port string, pubKey []byte) MixConfig {
+	MixConfig := MixConfig{Id: mixId, Host: host, Port: port, PubKey: pubKey}
+	return MixConfig
 }
 
-func NewClientPubs(clientId, host, port string, pubKey []byte, providerInfo MixPubs) ClientPubs {
-	client := ClientPubs{Id: clientId, Host: host, Port: port, PubKey: pubKey, Provider : &providerInfo}
+func NewClientConfig(clientId, host, port string, pubKey []byte, providerInfo MixConfig) ClientConfig {
+	client := ClientConfig{Id: clientId, Host: host, Port: port, PubKey: pubKey, Provider : &providerInfo}
 	return client
 }
 
-func MixPubsToBytes(pubs MixPubs) ([]byte, error) {
+func MixConfigToBytes(pubs MixConfig) ([]byte, error) {
 	data, err := proto.Marshal(&pubs)
 
 	if err != nil {
@@ -28,8 +28,8 @@ func MixPubsToBytes(pubs MixPubs) ([]byte, error) {
 	return data, nil
 }
 
-func MixPubsFromBytes(b []byte) (MixPubs, error) {
-	var pubs MixPubs
+func MixConfigFromBytes(b []byte) (MixConfig, error) {
+	var pubs MixConfig
 	err := proto.Unmarshal(b, &pubs)
 	if err != nil {
 		return pubs, err
@@ -37,7 +37,7 @@ func MixPubsFromBytes(b []byte) (MixPubs, error) {
 	return pubs, nil
 }
 
-func ClientPubsToBytes(pubs ClientPubs) ([]byte, error) {
+func ClientConfigToBytes(pubs ClientConfig) ([]byte, error) {
 	data, err := proto.Marshal(&pubs)
 
 	if err != nil {
@@ -46,8 +46,8 @@ func ClientPubsToBytes(pubs ClientPubs) ([]byte, error) {
 	return data, nil
 }
 
-func ClientPubsFromBytes(b []byte) (ClientPubs, error) {
-	var pubs ClientPubs
+func ClientConfigFromBytes(b []byte) (ClientConfig, error) {
+	var pubs ClientConfig
 	err := proto.Unmarshal(b, &pubs)
 	if err != nil {
 		return pubs, err
@@ -73,6 +73,15 @@ func GeneralPacketFromBytes(b []byte) (GeneralPacket, error) {
 	return pkt, nil
 }
 
+func WrapWithFlag(flag string, data []byte) ([]byte, error){
+	m := GeneralPacket{Flag: flag, Data: data}
+	mBytes, err := GeneralPacketToBytes(m)
+	if err !=nil {
+		return nil, err
+	}
+	return mBytes, nil
+}
+
 func PullRequestToBytes(r PullRequest) ([]byte, error) {
 	data, err := proto.Marshal(&r)
 	if err != nil {
@@ -92,10 +101,10 @@ func PullRequestFromBytes(b []byte) (PullRequest, error) {
 
 
 type E2EPath struct {
-	IngressProvider MixPubs
-	Mixes []MixPubs
-	EgressProvider MixPubs
-	Recipient ClientPubs
+	IngressProvider MixConfig
+	Mixes []MixConfig
+	EgressProvider MixConfig
+	Recipient ClientConfig
 }
 
 func (p *E2EPath) Len() int {

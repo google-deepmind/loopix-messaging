@@ -6,15 +6,13 @@ package server
 import (
 	"fmt"
 	"net"
-	"os"
 
 	"anonymous-messaging/networker"
 	"anonymous-messaging/node"
 	"anonymous-messaging/config"
 	"anonymous-messaging/helpers"
-	"log"
-	"anonymous-messaging/logging"
 	"anonymous-messaging/sphinx"
+	log "github.com/sirupsen/logrus"
 )
 
 type MixServerIt interface {
@@ -29,14 +27,11 @@ type MixServer struct {
 	listener *net.TCPListener
 	node.Mix
 
-	Config config.MixPubs
-
-	infoLogger *log.Logger
-	errorLogger *log.Logger
+	Config config.MixConfig
 }
 
 func (m *MixServer) ReceivedPacket(packet []byte) error{
-	m.infoLogger.Println(fmt.Sprintf("%s: Received new packet", m.Id))
+	log.WithFields(log.Fields{"id" : m.Id}).Info("Received new sphinx packet")
 
 	c := make(chan []byte)
 	cAdr := make(chan sphinx.Hop)
@@ -56,14 +51,13 @@ func (m *MixServer) ReceivedPacket(packet []byte) error{
 	if flag == "\xF1" {
 		m.ForwardPacket(dePacket, nextHop.Address)
 	} else  {
-		m.infoLogger.Println(fmt.Sprintf("%s: Packet has non-forward flag", m.Id))
+		log.WithFields(log.Fields{"id" : m.Id}).Info("Packet has non-forward flag. Packet dropped")
 	}
 	return nil
 }
 
 func (m *MixServer) ForwardPacket(sphinxPacket []byte, address string) error{
-	packet := config.GeneralPacket{Flag:COMM_FLAG, Data: sphinxPacket}
-	packetBytes, err := config.GeneralPacketToBytes(packet)
+	packetBytes, err := config.WrapWithFlag(COMM_FLAG, sphinxPacket)
 	if err != nil{
 		return err
 	}
@@ -93,13 +87,6 @@ func (m *MixServer) Send(packet []byte, address string) error{
 func (m *MixServer) Start() error {
 	defer m.Run()
 
-	f, err := os.OpenFile("./logs/network_logs.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0755)
-	if err != nil{
-		return err
-	}
-
-	m.infoLogger = logging.NewInitLogger(f)
-	m.errorLogger = logging.NewErrorLogger(f)
 	return nil
 }
 
@@ -109,7 +96,7 @@ func (m *MixServer) Run() {
 	finish := make(chan bool)
 
 	go func() {
-		m.infoLogger.Println(fmt.Sprintf("%s: Listening on %s", m.Id, m.Host + ":" + m.Port))
+		log.WithFields(log.Fields{"id" : m.Id}).Info(fmt.Sprintf("Listening on %s", m.Host + ":" + m.Port))
 		m.ListenForIncomingConnections()
 	}()
 
@@ -121,9 +108,9 @@ func (m *MixServer) ListenForIncomingConnections() {
 		conn, err := m.listener.Accept()
 
 		if err != nil {
-			m.errorLogger.Println(err)
+			log.WithFields(log.Fields{"id" : m.Id}).Error(err)
 		} else {
-			m.infoLogger.Println(fmt.Sprintf("%s: Received connection from %s", m.Id, conn.RemoteAddr()))
+			log.WithFields(log.Fields{"id" : m.Id}).Info(fmt.Sprintf("Received connection from %s", conn.RemoteAddr()))
 			go m.HandleConnection(conn)
 		}
 	}
@@ -135,35 +122,35 @@ func (m *MixServer) HandleConnection(conn net.Conn) {
 	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
 	if err != nil {
-		m.errorLogger.Println(err)
+		log.WithFields(log.Fields{"id" : m.Id}).Error(err)
 	}
 
 	packet, err := config.GeneralPacketFromBytes(buff[:reqLen])
 	if err != nil {
-		m.errorLogger.Println(err)
+		log.WithFields(log.Fields{"id" : m.Id}).Error(err)
 	}
 
 	switch packet.Flag {
 	case COMM_FLAG:
 		err = m.ReceivedPacket(packet.Data)
 		if err != nil{
-			m.errorLogger.Println(err)
+			log.WithFields(log.Fields{"id" : m.Id}).Error(err)
 		}
 	default:
-		m.infoLogger.Println(fmt.Sprintf("%s : Packet flag not recognised. Packet dropped.", m.Id))
+		log.WithFields(log.Fields{"id" : m.Id}).Info("Packet flag not recognised. Packet dropped.")
 	}
 }
 
 func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath string) (*MixServer, error) {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 	mixServer := MixServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
-	mixServer.Config = config.MixPubs{Id : mixServer.Id, Host: mixServer.Host, Port: mixServer.Port, PubKey: mixServer.PubKey}
+	mixServer.Config = config.MixConfig{Id : mixServer.Id, Host: mixServer.Host, Port: mixServer.Port, PubKey: mixServer.PubKey}
 
-	configBytes, err := config.MixPubsToBytes(mixServer.Config)
+	configBytes, err := config.MixConfigToBytes(mixServer.Config)
 	if err != nil{
 		return nil, err
 	}
-	err = helpers.AddToDatabase(pkiPath, "Mixes", mixServer.Id, "Mix", configBytes)
+	err = helpers.AddToDatabase(pkiPath, "Pki", mixServer.Id, "Mix", configBytes)
 	if err != nil{
 		return nil, err
 	}

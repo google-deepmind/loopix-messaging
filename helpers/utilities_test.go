@@ -11,18 +11,18 @@ import (
 	"fmt"
 )
 
-var mixes []config.MixPubs
+var mixes []config.MixConfig
 var testDir string
 
 // ById implements the sort interface and sorts based on the id of the nodes
-type ById []config.MixPubs
+type ById []config.MixConfig
 func (v ById) Len() int           { return len(v) }
 func (v ById) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
 func (v ById) Less(i, j int) bool { return v[i].Id < v[j].Id }
 
 func Setup() error{
 	for i := 0; i < 10; i++ {
-		mixes = append(mixes, config.MixPubs{Id: fmt.Sprintf("Mix%d", i),
+		mixes = append(mixes, config.MixConfig{Id: fmt.Sprintf("Mix%d", i),
 											Host: fmt.Sprintf("Host%d", i),
 											Port: fmt.Sprintf("Port%d", i),
 											PubKey: nil})
@@ -94,7 +94,7 @@ func TestPermute_Pass(t *testing.T) {
 }
 
 func TestPermute_Fail(t *testing.T) {
-	_, err := Permute([]config.MixPubs{})
+	_, err := Permute([]config.MixConfig{})
 	assert.EqualError(t, errors.New(" cannot permute an empty list of mixes"), err.Error(), " Permute should return an error for an empty slice")
 }
 

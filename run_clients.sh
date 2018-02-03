@@ -12,8 +12,8 @@ else
     echo "Created logging directory"
 fi
 
-go run main.go -typ=client -id=Client1 -host=localhost -port=9996 -provider=Provider > logging/bash.log ;
-#go run main.go -typ=client -id=Client2 -host=localhost -port=9995 -provider=Provider > logging/bash.log ;
+go run main.go -typ=client -id=Client1 -host=localhost -port=9996 -provider=Provider > logs/bash.log ;
+#go run main.go -typ=client -id=Client2 -host=localhost -port=9995 -provider=Provider > logs/bash.log ;
 
 trap ctrl_c SIGINT SIGTERM SIGTSTP
 function ctrl_c() {

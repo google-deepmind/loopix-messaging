@@ -23,17 +23,7 @@ func pkiPreSetting(pkiDir string) error {
 	params["Typ"] = "TEXT"
 	params["Config"] = "BLOB"
 
-	err = pki.CreateTable(db, "Clients", params)
-	if err != nil {
-		return err
-	}
-
-	err = pki.CreateTable(db, "Mixes", params)
-	if err != nil {
-		return err
-	}
-
-	err = pki.CreateTable(db, "Providers", params)
+	err = pki.CreateTable(db, "Pki", params)
 	if err != nil {
 		return err
 	}
@@ -65,14 +55,14 @@ func main() {
 		}
 
 
-		row := db.QueryRow("SELECT Config FROM Providers WHERE Id = ?", providerId)
+		row := db.QueryRow("SELECT Config FROM Pki WHERE Id = ? AND Typ = ?", providerId, "Provider")
 
 		var results []byte
 		err = row.Scan(&results)
 		if err != nil {
 			fmt.Println(err)
 		}
-		providerInfo, err := config.MixPubsFromBytes(results)
+		providerInfo, err := config.MixConfigFromBytes(results)
 
 		pubC, privC, err := sphinx.GenerateKeyPair()
 		if err != nil{
