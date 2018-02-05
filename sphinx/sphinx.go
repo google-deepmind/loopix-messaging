@@ -31,11 +31,7 @@ var curve = elliptic.P224()
 
 // Bytes parses the sphinx packet into byte array using the proto Marshal serialization.
 func (p *SphinxPacket) Bytes() ([]byte, error) {
-	b, err := proto.Marshal(p)
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
+	return proto.Marshal(p)
 }
 
 /* PacketFromBytes converts the byte representation of a Sphinx packet,
@@ -55,11 +51,7 @@ func PacketFromBytes(bytes []byte) (SphinxPacket, error) {
 
 // Bytes parses the RoutingInfo struct into byte array using the proto Marshal serialization.
 func (r *RoutingInfo) Bytes() ([]byte, error) {
-	b, err := proto.Marshal(r)
-	if err != nil{
-		return nil, err
-	}
-	return b, nil
+	return proto.Marshal(r)
 }
 
 

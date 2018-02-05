@@ -38,12 +38,7 @@ func MixConfigFromBytes(b []byte) (MixConfig, error) {
 }
 
 func ClientConfigToBytes(pubs ClientConfig) ([]byte, error) {
-	data, err := proto.Marshal(&pubs)
-
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	return proto.Marshal(&pubs)
 }
 
 func ClientConfigFromBytes(b []byte) (ClientConfig, error) {
@@ -56,12 +51,7 @@ func ClientConfigFromBytes(b []byte) (ClientConfig, error) {
 }
 
 func GeneralPacketToBytes(pkt GeneralPacket) ([]byte, error) {
-	data, err := proto.Marshal(&pkt)
-
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	return proto.Marshal(&pkt)
 }
 
 func GeneralPacketFromBytes(b []byte) (GeneralPacket, error) {
@@ -83,11 +73,7 @@ func WrapWithFlag(flag string, data []byte) ([]byte, error){
 }
 
 func PullRequestToBytes(r PullRequest) ([]byte, error) {
-	data, err := proto.Marshal(&r)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	return proto.Marshal(&r)
 }
 
 func PullRequestFromBytes(b []byte) (PullRequest, error) {
@@ -98,7 +84,6 @@ func PullRequestFromBytes(b []byte) (PullRequest, error) {
 	}
 	return r, nil
 }
-
 
 type E2EPath struct {
 	IngressProvider MixConfig
