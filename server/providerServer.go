@@ -154,7 +154,8 @@ func (p *ProviderServer) ListenForIncomingConnections() {
 			log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf(" Received new connection from %s", conn.RemoteAddr()))
 			errs := make(chan error, 1)
 			go p.HandleConnection(conn, errs)
-			if <-errs != nil{
+			err = <- errs
+			if err != nil{
 				log.WithFields(log.Fields{"id" : p.Id}).Error(err)
 			}
 		}
@@ -269,7 +270,7 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 		return err
 	}
 
-	log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf(" Handle pull request: %s %s", request.Id, string(request.Token)))
+	log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf(" Processing pull request: %s %s", request.Id, string(request.Token)))
 
 	if p.AuthenticateUser(request.Id, request.Token) == true{
 		signal, err := p.FetchMessages(request.Id)
@@ -286,7 +287,7 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 		}
 	} else {
 		log.WithFields(log.Fields{"id" : p.Id}).Warning("Authentication went wrong")
-		return errors.New("Authentication went wrong! ")
+		return errors.New("authentication went wrong")
 	}
 	return nil
 }

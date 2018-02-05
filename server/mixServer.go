@@ -24,7 +24,7 @@ type MixServer struct {
 	Id   string
 	Host string
 	Port string
-	listener *net.TCPListener
+	Listener *net.TCPListener
 	node.Mix
 
 	Config config.MixConfig
@@ -92,7 +92,7 @@ func (m *MixServer) Start() error {
 
 func (m *MixServer) Run() {
 
-	defer m.listener.Close()
+	defer m.Listener.Close()
 	finish := make(chan bool)
 
 	go func() {
@@ -105,36 +105,41 @@ func (m *MixServer) Run() {
 
 func (m *MixServer) ListenForIncomingConnections() {
 	for {
-		conn, err := m.listener.Accept()
+		conn, err := m.Listener.Accept()
 
 		if err != nil {
 			log.WithFields(log.Fields{"id" : m.Id}).Error(err)
 		} else {
 			log.WithFields(log.Fields{"id" : m.Id}).Info(fmt.Sprintf("Received connection from %s", conn.RemoteAddr()))
-			go m.HandleConnection(conn)
+			errs := make(chan error, 1)
+			go m.HandleConnection(conn, errs)
+			err = <-errs
+			if err != nil{
+				log.WithFields(log.Fields{"id" : m.Id}).Error(err)
+			}
 		}
 	}
 }
 
-func (m *MixServer) HandleConnection(conn net.Conn) {
+func (m *MixServer) HandleConnection(conn net.Conn, errs chan<- error) {
 	defer conn.Close()
 
 	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
 	if err != nil {
-		log.WithFields(log.Fields{"id" : m.Id}).Error(err)
+		errs <- err
 	}
 
 	packet, err := config.GeneralPacketFromBytes(buff[:reqLen])
 	if err != nil {
-		log.WithFields(log.Fields{"id" : m.Id}).Error(err)
+		errs <- err
 	}
 
 	switch packet.Flag {
 	case COMM_FLAG:
 		err = m.ReceivedPacket(packet.Data)
 		if err != nil{
-			log.WithFields(log.Fields{"id" : m.Id}).Error(err)
+			errs <- err
 		}
 	default:
 		log.WithFields(log.Fields{"id" : m.Id}).Info("Packet flag not recognised. Packet dropped.")
@@ -143,7 +148,7 @@ func (m *MixServer) HandleConnection(conn net.Conn) {
 
 func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath string) (*MixServer, error) {
 	node := node.Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
-	mixServer := MixServer{Id: id, Host: host, Port: port, Mix: node, listener: nil}
+	mixServer := MixServer{Id: id, Host: host, Port: port, Mix: node, Listener: nil}
 	mixServer.Config = config.MixConfig{Id : mixServer.Id, Host: mixServer.Host, Port: mixServer.Port, PubKey: mixServer.PubKey}
 
 	configBytes, err := config.MixConfigToBytes(mixServer.Config)
@@ -160,7 +165,7 @@ func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath s
 	if err != nil {
 		return nil, err
 	}
-	mixServer.listener, err = net.ListenTCP("tcp", addr)
+	mixServer.Listener, err = net.ListenTCP("tcp", addr)
 
 	if err != nil {
 		return nil, err

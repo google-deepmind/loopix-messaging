@@ -1,19 +1,19 @@
 syntax = "proto3";
 package config;
 
-message MixPubs {
+message MixConfig {
     string Id = 1;
     string Host = 2;
     string Port = 3;
     bytes PubKey = 4;
 }
 
-message ClientPubs {
+message ClientConfig {
     string Id = 1;
     string Host = 2;
     string Port = 3;
     bytes PubKey = 4;
-    MixPubs Provider = 5;
+    MixConfig Provider = 5;
 }
 
 message GeneralPacket {
