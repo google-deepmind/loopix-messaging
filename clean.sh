@@ -21,3 +21,15 @@ then
 else
     echo "Nothing to remove. The logs directory does not exist."
 fi
+
+function kill_port() {
+    PID=$(lsof -t -i:$1)
+    echo "$PID"
+    kill -TERM ${PID} || kill -KILL ${PID}
+}
+
+for var in "$@"
+do
+    echo ${var}
+    kill_port ${var}
+done

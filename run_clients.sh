@@ -12,14 +12,27 @@ else
     echo "Created logging directory"
 fi
 
-go run main.go -typ=client -id=Client1 -host=localhost -port=9996 -provider=Provider > logs/bash.log ;
-#go run main.go -typ=client -id=Client2 -host=localhost -port=9995 -provider=Provider > logs/bash.log ;
+#go run main.go -typ=client -id=Client1 -host=localhost -port=9996 -provider=Provider > logs/bash.log ;
+
+NUMCLIENTS=$1
+
+for (( j=0; j<NUMCLIENTS; j++ ));
+do
+    go run main.go -typ=mix -id=Client1 -host=localhost -port=$((9990+$j)) -provider=Provider > logs/bash.log &
+    sleep 1
+done
+
+sleep 1
+
 
 trap ctrl_c SIGINT SIGTERM SIGTSTP
 function ctrl_c() {
         echo "** Trapped SIGINT, SIGTERM and SIGTSTP"
         kill_port 9996
-#        kill_port 9995
+#        for (( j=0; j<NUMCLIENTS; j++ ));
+#        do
+#            kill_port $((9980+$j))
+#        done
 }
 
 function kill_port() {
