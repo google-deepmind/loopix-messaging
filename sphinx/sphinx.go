@@ -29,50 +29,6 @@ const (
 
 var curve = elliptic.P224()
 
-// Bytes parses the sphinx packet into byte array using the proto Marshal serialization.
-func (p *SphinxPacket) Bytes() ([]byte, error) {
-	return proto.Marshal(p)
-}
-
-/* PacketFromBytes converts the byte representation of a Sphinx packet,
-serialized by Bytes, into the Sphinx packet struct. If the byte representation
-does not match the struct an error is returned.
-*/
-func PacketFromBytes(bytes []byte) (SphinxPacket, error) {
-	var packet SphinxPacket
-	err := proto.Unmarshal(bytes, &packet)
-
-	if err != nil {
-		return SphinxPacket{}, err
-	}
-
-	return packet, nil
-}
-
-// Bytes parses the RoutingInfo struct into byte array using the proto Marshal serialization.
-func (r *RoutingInfo) Bytes() ([]byte, error) {
-	return proto.Marshal(r)
-}
-
-
-/* RoutingInfoFromBytes converts the byte representation of a RoutingInformation,
-serialized by Bytes, into the RoutingInformation struct. If the byte representation
-does not match the struct an error is returned.
-*/
-func RoutingInfoFromBytes(bytes []byte) (RoutingInfo, error) {
-
-	var finalHopReconstruct RoutingInfo
-
-	err := proto.Unmarshal(bytes, &finalHopReconstruct)
-
-	if err != nil {
-		return RoutingInfo{}, err
-	}
-
-	return finalHopReconstruct, nil
-}
-
-
 /*
 	PackForwardMessage encapsulates the given message into the cryptographic Sphinx packet format.
 	As arguments the function takes the path, consisting of the sequence of nodes the packet should traverse
@@ -100,7 +56,6 @@ func PackForwardMessage(curve elliptic.Curve, path config.E2EPath, delays []floa
 
 	return SphinxPacket{Hdr: &header, Pld: payload}, nil
 }
-
 
 /*
 	createHeader builds the Sphinx packet header, consisting of three parts: the public element, the encapsulated routing information
@@ -157,7 +112,7 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 
 	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: &commands[len(commands) - 1], NextHopMetaData: []byte{}, Mac: []byte{}}
 
-	finalHopBytes, err := finalHop.Bytes()
+	finalHopBytes, err := proto.Marshal(&finalHop)
 	if err != nil{
 		return Header{}, err
 	}
@@ -177,7 +132,7 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		routing := RoutingInfo{NextHop: &Hop{Id: nextNode.Id, Address: nextNode.Host+":"+nextNode.Port, PubKey: nodes[i+1].PubKey}, RoutingCommands: &commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
 
 		encKey := KDF(asb[i].SecretHash)
-		routingBytes, err := routing.Bytes()
+		routingBytes, err := proto.Marshal(&routing)
 
 		if err != nil{
 			return Header{}, err
@@ -327,7 +282,8 @@ func computeSharedSecretHash(key []byte, iv []byte) ([]byte, error) {
  */
 func ProcessSphinxPacket(packetBytes []byte, privKey []byte) (Hop, Commands, []byte, error) {
 
-	packet, err := PacketFromBytes(packetBytes)
+	var packet SphinxPacket
+	err := proto.Unmarshal(packetBytes, &packet)
 
 	if err != nil {
 		return Hop{}, Commands{}, nil, err
@@ -344,7 +300,7 @@ func ProcessSphinxPacket(packetBytes []byte, privKey []byte) (Hop, Commands, []b
 	}
 
 	newPacket := SphinxPacket{Hdr: &newHeader, Pld: newPayload}
-	newPacketBytes, err := newPacket.Bytes()
+	newPacketBytes, err := proto.Marshal(&newPacket)
 	if err != nil{
 		return Hop{}, Commands{}, nil, err
 	}
@@ -395,7 +351,8 @@ func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, 
 		return Hop{}, Commands{}, Header{}, err
 	}
 
-	routingInfo, err := RoutingInfoFromBytes(decBeta)
+	var routingInfo RoutingInfo
+	err = proto.Unmarshal(decBeta, &routingInfo)
 	if err != nil{
 		return Hop{}, Commands{}, Header{}, err
 	}

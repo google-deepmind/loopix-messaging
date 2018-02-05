@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"crypto/aes"
 	"anonymous-messaging/config"
+	"github.com/protobuf/proto"
 )
 
 
@@ -271,7 +272,7 @@ func TestEncapsulateHeader(t *testing.T){
 	routing1 := RoutingInfo{NextHop: &Hop{"DestinationId", "DestinationAddress:9998", []byte{}}, RoutingCommands: &c3,
 							NextHopMetaData: []byte{}, Mac: []byte{}}
 
-	routing1Bytes, err := routing1.Bytes()
+	routing1Bytes, err := proto.Marshal(&routing1)
 	if err != nil{
 		t.Error(err)
 	}
@@ -286,7 +287,7 @@ func TestEncapsulateHeader(t *testing.T){
 	routing2 := RoutingInfo{NextHop: &Hop{"Node3", "localhost:3333", pub3}, RoutingCommands : &c2,
 							NextHopMetaData: enc_routing1, Mac: mac1}
 
-	routing2Bytes, err := routing2.Bytes()
+	routing2Bytes, err := proto.Marshal(&routing2)
 	if err != nil{
 		t.Error(err)
 	}
@@ -301,7 +302,7 @@ func TestEncapsulateHeader(t *testing.T){
 	expectedRouting := RoutingInfo{NextHop: &Hop{"Node2", "localhost:3332", pub2}, RoutingCommands: &c1,
 									NextHopMetaData: enc_routing2, Mac: mac2}
 
-	expectedRoutingBytes, err := expectedRouting.Bytes()
+	expectedRoutingBytes, err := proto.Marshal(&expectedRouting)
 	if err != nil{
 		t.Error(err)
 	}
@@ -348,7 +349,7 @@ func TestProcessSphinxHeader(t *testing.T) {
 	routing1 := RoutingInfo{NextHop: &Hop{"DestinationId", "DestinationAddress", []byte{}}, RoutingCommands: &c3,
 		NextHopMetaData: []byte{}, Mac: []byte{}}
 
-	routing1Bytes, err := routing1.Bytes()
+	routing1Bytes, err := proto.Marshal(&routing1)
 	if err != nil{
 		t.Error(err)
 	}
@@ -363,7 +364,7 @@ func TestProcessSphinxHeader(t *testing.T) {
 	routing2 := RoutingInfo{NextHop: &Hop{"Node3", "localhost:3333", pub3}, RoutingCommands : &c2,
 		NextHopMetaData: enc_routing1, Mac: mac1}
 
-	routing2Bytes, err := routing2.Bytes()
+	routing2Bytes, err := proto.Marshal(&routing2)
 	if err != nil{
 		t.Error(err)
 	}
@@ -378,7 +379,7 @@ func TestProcessSphinxHeader(t *testing.T) {
 	routing3 := RoutingInfo{NextHop: &Hop{"Node2", "localhost:3332", pub2}, RoutingCommands: &c1,
 		NextHopMetaData: enc_routing2, Mac: mac2}
 
-	routing3Bytes, err := routing3.Bytes()
+	routing3Bytes, err := proto.Marshal(&routing3)
 	if err != nil{
 		t.Error(err)
 	}

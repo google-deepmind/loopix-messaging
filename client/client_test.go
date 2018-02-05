@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"anonymous-messaging/helpers"
 	"net"
+	"github.com/protobuf/proto"
 )
 
 var providerPubs config.MixConfig
@@ -63,7 +64,7 @@ func SetupTestMixesInDatabase(t *testing.T) error{
 			Host: "localhost",
 			Port: strconv.Itoa(9980+i),
 			PubKey: pub}
-		mBytes, err := config.MixConfigToBytes(m)
+		mBytes, err := proto.Marshal(&m)
 		if err != nil{
 			return err
 		}
@@ -95,7 +96,7 @@ func SetupTestClientsInDatabase(t *testing.T) {
 			Host: "localhost",
 			Port: strconv.Itoa(9980+i),
 			PubKey: pub}
-		cBytes, err := config.ClientConfigToBytes(c)
+		cBytes, err := proto.Marshal(&c)
 		if err != nil{
 			t.Fatal(err)
 		}

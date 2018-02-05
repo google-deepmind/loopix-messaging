@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"github.com/stretchr/testify/assert"
+	"github.com/protobuf/proto"
 	"io/ioutil"
 	"anonymous-messaging/clientCore"
 	"crypto/elliptic"
@@ -219,7 +220,7 @@ func TestProviderServer_StoreMessage(t *testing.T) {
 func TestProviderServer_HandlePullRequest_Pass(t *testing.T) {
 	testPullRequest := config.PullRequest{ClientId: "PassTestId", Token: []byte("TestToken")}
 	providerServer.assignedClients["PassTestId"] = ClientRecord{Id: "TestId", Host: "localhost", Port: "1111", PubKey: nil, Token: []byte("TestToken")}
-	bTestPullRequest, err := config.PullRequestToBytes(testPullRequest)
+	bTestPullRequest, err := proto.Marshal(&testPullRequest)
 	if err != nil{
 		t.Error(err)
 	}
@@ -231,7 +232,7 @@ func TestProviderServer_HandlePullRequest_Pass(t *testing.T) {
 
 func TestProviderServer_HandlePullRequest_Fail(t *testing.T) {
 	testPullRequest := config.PullRequest{ClientId: "FailTestId", Token: []byte("TestToken")}
-	bTestPullRequest, err := config.PullRequestToBytes(testPullRequest)
+	bTestPullRequest, err := proto.Marshal(&testPullRequest)
 	if err != nil{
 		t.Error(err)
 	}
@@ -242,7 +243,7 @@ func TestProviderServer_HandlePullRequest_Fail(t *testing.T) {
 
 func TestProviderServer_RegisterNewClient(t *testing.T) {
 	newClient := config.ClientConfig{Id: "NewClient", Host: "localhost", Port: "9998", PubKey: nil}
-	bNewClient, err :=  config.ClientConfigToBytes(newClient)
+	bNewClient, err :=  proto.Marshal(&newClient)
 	if err != nil{
 		t.Fatal(err)
 	}
@@ -264,7 +265,7 @@ func TestProviderServer_RegisterNewClient(t *testing.T) {
 
 func TestProviderServer_HandleAssignRequest(t *testing.T) {
 	newClient := config.ClientConfig{Id: "ClientXYZ", Host: "localhost", Port: "9998", PubKey: nil}
-	bNewClient, err :=  config.ClientConfigToBytes(newClient)
+	bNewClient, err :=  proto.Marshal(&newClient)
 	if err != nil{
 		t.Fatal(err)
 	}
@@ -286,7 +287,7 @@ func createTestPacket(t *testing.T) *sphinx.SphinxPacket{
 
 func TestProviderServer_ReceivedPacket(t *testing.T) {
 	sphinxPacket := createTestPacket(t)
-	bSphinxPacket, err := sphinxPacket.Bytes()
+	bSphinxPacket, err := proto.Marshal(sphinxPacket)
 	if err != nil{
 		t.Fatal(err)
 	}

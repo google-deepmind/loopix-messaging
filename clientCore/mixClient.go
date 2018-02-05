@@ -9,6 +9,7 @@ import (
 	"anonymous-messaging/helpers"
 	"anonymous-messaging/config"
 	sphinx "anonymous-messaging/sphinx"
+	"github.com/protobuf/proto"
 	"crypto/elliptic"
 	"errors"
 )
@@ -104,7 +105,7 @@ func (c *CryptoClient) EncodeMessage(message string, path config.E2EPath, delays
 		return nil, err
 	}
 
-	return packet.Bytes()
+	return proto.Marshal(&packet)
 }
 
 func (c *CryptoClient) DecodeMessage(packet sphinx.SphinxPacket) (sphinx.SphinxPacket, error) {

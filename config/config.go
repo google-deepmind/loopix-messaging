@@ -19,70 +19,13 @@ func NewClientConfig(clientId, host, port string, pubKey []byte, providerInfo Mi
 	return client
 }
 
-func MixConfigToBytes(pubs MixConfig) ([]byte, error) {
-	data, err := proto.Marshal(&pubs)
-
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-func MixConfigFromBytes(b []byte) (MixConfig, error) {
-	var pubs MixConfig
-	err := proto.Unmarshal(b, &pubs)
-	if err != nil {
-		return pubs, err
-	}
-	return pubs, nil
-}
-
-func ClientConfigToBytes(pubs ClientConfig) ([]byte, error) {
-	return proto.Marshal(&pubs)
-}
-
-func ClientConfigFromBytes(b []byte) (ClientConfig, error) {
-	var pubs ClientConfig
-	err := proto.Unmarshal(b, &pubs)
-	if err != nil {
-		return pubs, err
-	}
-	return pubs, nil
-}
-
-func GeneralPacketToBytes(pkt GeneralPacket) ([]byte, error) {
-	return proto.Marshal(&pkt)
-}
-
-func GeneralPacketFromBytes(b []byte) (GeneralPacket, error) {
-	var pkt GeneralPacket
-	err := proto.Unmarshal(b, &pkt)
-	if err != nil {
-		return pkt, err
-	}
-	return pkt, nil
-}
-
 func WrapWithFlag(flag string, data []byte) ([]byte, error){
 	m := GeneralPacket{Flag: flag, Data: data}
-	mBytes, err := GeneralPacketToBytes(m)
+	mBytes, err := proto.Marshal(&m)
 	if err !=nil {
 		return nil, err
 	}
 	return mBytes, nil
-}
-
-func PullRequestToBytes(r PullRequest) ([]byte, error) {
-	return proto.Marshal(&r)
-}
-
-func PullRequestFromBytes(b []byte) (PullRequest, error) {
-	var r PullRequest
-	err := proto.Unmarshal(b, &r)
-	if err != nil {
-		return r, err
-	}
-	return r, nil
 }
 
 type E2EPath struct {

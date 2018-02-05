@@ -8,6 +8,7 @@ import (
 	"anonymous-messaging/pki"
 	"fmt"
 	"anonymous-messaging/config"
+	"github.com/protobuf/proto"
 )
 
 
@@ -66,7 +67,8 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		providerInfo, err := config.MixConfigFromBytes(results)
+		var providerInfo config.MixConfig
+		err = proto.Unmarshal(results, &providerInfo)
 
 		pubC, privC, err := sphinx.GenerateKeyPair()
 		if err != nil{

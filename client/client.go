@@ -12,6 +12,7 @@ import (
 	"anonymous-messaging/pki"
 	"anonymous-messaging/config"
 	"crypto/elliptic"
+	"github.com/protobuf/proto"
 
 	log "github.com/sirupsen/logrus"
 	"fmt"
@@ -162,7 +163,8 @@ func (c *Client) HandleConnection(conn net.Conn) {
 		log.WithFields(log.Fields{"id" : c.Id}).Error(err)
 		panic(err)
 	}
-	packet, err := config.GeneralPacketFromBytes(buff[:reqLen])
+	var packet config.GeneralPacket
+	err = proto.Unmarshal(buff[:reqLen], &packet)
 	if err != nil {
 		log.WithFields(log.Fields{"id" : c.Id}).Error(err)
 	}
@@ -221,7 +223,7 @@ func (c *Client) RegisterToProvider() error{
 
 	log.WithFields(log.Fields{"id" : c.Id}).Info(" Sending request to provider to register")
 
-	confBytes, err := config.ClientConfigToBytes(c.Config)
+	confBytes, err := proto.Marshal(&c.Config)
 	if err != nil{
 		return err
 	}
@@ -245,7 +247,7 @@ func (c *Client) RegisterToProvider() error{
 */
 func (c *Client) GetMessagesFromProvider() error {
 	pullRqs := config.PullRequest{ClientId: c.Id, Token: c.token}
-	pullRqsBytes, err := config.PullRequestToBytes(pullRqs)
+	pullRqsBytes, err := proto.Marshal(&pullRqs)
 	if err != nil{
 		return err
 	}
@@ -307,7 +309,8 @@ func (c *Client) ReadInMixnetPKI(pkiName string) error {
 			return err
 		}
 
-		pubs, err := config.MixConfigFromBytes(result["Config"].([]byte))
+		var pubs config.MixConfig
+		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
 		if err != nil {
 			return err
 		}
@@ -348,7 +351,8 @@ func (c *Client) ReadInClientsPKI(pkiName string) error {
 			return err
 		}
 
-		pubs, err := config.ClientConfigFromBytes(result["Config"].([]byte))
+		var pubs config.ClientConfig
+		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
 		if err != nil {
 			return err
 		}
@@ -369,7 +373,8 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 	c := Client{Host: host, Port: port, CryptoClient: core, PkiDir: pkiDir}
 	c.Config = config.ClientConfig{Id : c.Id, Host: c.Host, Port: c.Port, PubKey: c.PubKey, Provider: &c.Provider}
 
-	configBytes, err := config.ClientConfigToBytes(c.Config)
+	configBytes, err := proto.Marshal(&c.Config)
+
 	if err != nil{
 		return nil, err
 	}

@@ -8,6 +8,7 @@ import (
 	sphinx "anonymous-messaging/sphinx"
 	"crypto/elliptic"
 	"github.com/stretchr/testify/assert"
+	"github.com/protobuf/proto"
 	"reflect"
 )
 
@@ -77,7 +78,7 @@ func TestMixProcessPacket(t *testing.T) {
 	cAdr := make(chan string, 1)
 	errCh := make(chan error, 1)
 
-	testPacketBytes, err := testPacket.Bytes()
+	testPacketBytes, err := proto.Marshal(&testPacket)
 	if err != nil{
 		t.Fatal(err)
 	}

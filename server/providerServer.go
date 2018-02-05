@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"errors"
 	"anonymous-messaging/sphinx"
+	"github.com/protobuf/proto"
 )
 
 const (
@@ -176,7 +177,8 @@ func (p *ProviderServer) HandleConnection(conn net.Conn, errs chan<- error) {
 		errs <- err
 	}
 
-	packet, err := config.GeneralPacketFromBytes(buff[:reqLen])
+	var packet config.GeneralPacket
+	err = proto.Unmarshal(buff[:reqLen], &packet)
 	if err != nil {
 		errs <- err
 	}
@@ -211,7 +213,8 @@ func (p *ProviderServer) HandleConnection(conn net.Conn, errs chan<- error) {
  */
 
 func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, error){
-	clientConf, err := config.ClientConfigFromBytes(clientBytes)
+	var clientConf config.ClientConfig
+	err := proto.Unmarshal(clientBytes, &clientConf)
 	if err != nil{
 		return nil, "", err
 	}
@@ -265,7 +268,8 @@ func (p *ProviderServer) HandleAssignRequest(packet []byte) error {
 	and sending buffered messages. Otherwise, an error is returned.
 */
 func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
-	request, err := config.PullRequestFromBytes(rqsBytes)
+	var request config.PullRequest
+	err := proto.Unmarshal(rqsBytes, &request)
 	if err != nil {
 		return err
 	}
@@ -385,7 +389,7 @@ func NewProviderServer(id string, host string, port string, pubKey []byte, prvKe
 	providerServer.Config = config.MixConfig{Id: providerServer.Id, Host: providerServer.Host, Port: providerServer.Port, PubKey: providerServer.PubKey}
 	providerServer.assignedClients = make(map[string]ClientRecord)
 
-	configBytes, err := config.MixConfigToBytes(providerServer.Config)
+	configBytes, err := proto.Marshal(&providerServer.Config)
 	if err != nil{
 		return nil, err
 	}

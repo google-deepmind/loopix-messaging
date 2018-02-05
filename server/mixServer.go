@@ -13,6 +13,7 @@ import (
 	"anonymous-messaging/helpers"
 	"anonymous-messaging/sphinx"
 	log "github.com/sirupsen/logrus"
+	"github.com/protobuf/proto"
 )
 
 type MixServerIt interface {
@@ -130,7 +131,8 @@ func (m *MixServer) HandleConnection(conn net.Conn, errs chan<- error) {
 		errs <- err
 	}
 
-	packet, err := config.GeneralPacketFromBytes(buff[:reqLen])
+	var packet config.GeneralPacket
+	err = proto.Unmarshal(buff[:reqLen], &packet)
 	if err != nil {
 		errs <- err
 	}
@@ -151,7 +153,7 @@ func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath s
 	mixServer := MixServer{Id: id, Host: host, Port: port, Mix: node, Listener: nil}
 	mixServer.Config = config.MixConfig{Id : mixServer.Id, Host: mixServer.Host, Port: mixServer.Port, PubKey: mixServer.PubKey}
 
-	configBytes, err := config.MixConfigToBytes(mixServer.Config)
+	configBytes, err := proto.Marshal(&mixServer.Config)
 	if err != nil{
 		return nil, err
 	}
