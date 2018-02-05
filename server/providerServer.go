@@ -47,9 +47,11 @@ type ClientRecord struct {
 	Token []byte
 }
 
-// Start function creates the loggers for capturing the info and error logs
-// and starts the listening server. Function returns an error
-// signaling whether any operation was unsuccessful
+/*
+	Start function creates the loggers for capturing the info and error logs
+	and starts the listening server. Function returns an error
+	signaling whether any operation was unsuccessful
+ */
 func (p *ProviderServer) Start() error{
 
 	p.Run()
@@ -57,7 +59,9 @@ func (p *ProviderServer) Start() error{
 	return nil
 }
 
-// Function opens the listener to start listening on provider's host and port
+/*
+	Function opens the listener to start listening on provider's host and port
+ */
 func (p *ProviderServer) Run() {
 
 	defer p.listener.Close()
@@ -71,15 +75,17 @@ func (p *ProviderServer) Run() {
 	<-finish
 }
 
-// Function processes the received sphinx packet, performs the
-// unwrapping operation and checks whether the packet should be
-// forwarded or stored. If the processing was unsuccessful and error is returned.
+/*
+	Function processes the received sphinx packet, performs the
+	unwrapping operation and checks whether the packet should be
+	forwarded or stored. If the processing was unsuccessful and error is returned.
+ */
 func (p *ProviderServer) ReceivedPacket(packet []byte) error{
 	log.WithFields(log.Fields{"id" : p.Id}).Info("Received new sphinx packet")
 
 	c := make(chan []byte)
 	cAdr := make(chan sphinx.Hop)
-	cFlag := make(chan string) // CHANGE BACK TO HOP, BECAUSE YOU NEED IT
+	cFlag := make(chan string)
 	errCh := make(chan error)
 
 	go p.ProcessPacket(packet, c, cAdr, cFlag, errCh)
@@ -124,9 +130,11 @@ func (p *ProviderServer) ForwardPacket(sphinxPacket []byte, address string) erro
 	return nil
 }
 
-// Function opens a connection with selected network address
-// and send the passed packet. If connection failed or
-// the packet could not be send, an error is returned
+/*
+	Function opens a connection with selected network address
+	and send the passed packet. If connection failed or
+	the packet could not be send, an error is returned
+*/
 func (p *ProviderServer) Send(packet []byte, address string) error {
 
 	conn, err := net.Dial("tcp", address)
@@ -140,11 +148,13 @@ func (p *ProviderServer) Send(packet []byte, address string) error {
 }
 
 
-// Function responsible for running the listening process of the server;
-// The providers listener accepts incoming connections and
-// passes the incoming packets to the packet handler.
-// If the connection could not be accepted an error
-// is logged into the log files, but the function is not stopped
+/*
+	Function responsible for running the listening process of the server;
+	The providers listener accepts incoming connections and
+	passes the incoming packets to the packet handler.
+	If the connection could not be accepted an error
+	is logged into the log files, but the function is not stopped
+*/
 func (p *ProviderServer) ListenForIncomingConnections() {
 	for {
 		conn, err := p.listener.Accept()
@@ -238,10 +248,11 @@ func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, 
 	return token, address, nil
 }
 
-
-// Function is responsible for handling the registration request from the client.
-// it registers the client in the list of all registered clients and send
-// an authentication token back to the client.
+/*
+	Function is responsible for handling the registration request from the client.
+	it registers the client in the list of all registered clients and send
+	an authentication token back to the client.
+*/
 func (p *ProviderServer) HandleAssignRequest(packet []byte) error {
 	log.WithFields(log.Fields{"id" : p.Id}).Info("Received assign request from the client")
 
