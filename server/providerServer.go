@@ -270,10 +270,10 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 		return err
 	}
 
-	log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf(" Processing pull request: %s %s", request.Id, string(request.Token)))
+	log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf(" Processing pull request: %s %s", request.ClientId, string(request.Token)))
 
-	if p.AuthenticateUser(request.Id, request.Token) == true{
-		signal, err := p.FetchMessages(request.Id)
+	if p.AuthenticateUser(request.ClientId, request.Token) == true{
+		signal, err := p.FetchMessages(request.ClientId)
 		if err != nil {
 			return err
 		}

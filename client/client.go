@@ -244,7 +244,7 @@ func (c *Client) RegisterToProvider() error{
 	the authentication token. An error is returned if occurred.
 */
 func (c *Client) GetMessagesFromProvider() error {
-	pullRqs := config.PullRequest{Id: c.Id, Token: c.token}
+	pullRqs := config.PullRequest{ClientId: c.Id, Token: c.token}
 	pullRqsBytes, err := config.PullRequestToBytes(pullRqs)
 	if err != nil{
 		return err

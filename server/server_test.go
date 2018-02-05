@@ -217,7 +217,7 @@ func TestProviderServer_StoreMessage(t *testing.T) {
 }
 
 func TestProviderServer_HandlePullRequest_Pass(t *testing.T) {
-	testPullRequest := config.PullRequest{Id: "PassTestId", Token: []byte("TestToken")}
+	testPullRequest := config.PullRequest{ClientId: "PassTestId", Token: []byte("TestToken")}
 	providerServer.assignedClients["PassTestId"] = ClientRecord{Id: "TestId", Host: "localhost", Port: "1111", PubKey: nil, Token: []byte("TestToken")}
 	bTestPullRequest, err := config.PullRequestToBytes(testPullRequest)
 	if err != nil{
@@ -230,7 +230,7 @@ func TestProviderServer_HandlePullRequest_Pass(t *testing.T) {
 }
 
 func TestProviderServer_HandlePullRequest_Fail(t *testing.T) {
-	testPullRequest := config.PullRequest{Id: "FailTestId", Token: []byte("TestToken")}
+	testPullRequest := config.PullRequest{ClientId: "FailTestId", Token: []byte("TestToken")}
 	bTestPullRequest, err := config.PullRequestToBytes(testPullRequest)
 	if err != nil{
 		t.Error(err)
