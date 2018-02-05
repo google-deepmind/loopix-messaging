@@ -11,6 +11,10 @@ import (
 )
 
 
+const(
+	PKI_DIR = "pki/database.db"
+)
+
 func pkiPreSetting(pkiDir string) error {
 	db, err := pki.OpenDatabase(pkiDir, "sqlite3")
 	if err != nil {
@@ -40,7 +44,7 @@ func main() {
 	providerId := flag.String("provider", "", "The port on which the entity is running")
 	flag.Parse()
 
-	err := pkiPreSetting("pki/database.db")
+	err := pkiPreSetting(PKI_DIR)
 	if err != nil{
 		panic(err)
 	}
@@ -48,7 +52,7 @@ func main() {
 
 	switch *typ {
 	case "client":
-		db, err := pki.OpenDatabase("pki/database.db", "sqlite3")
+		db, err := pki.OpenDatabase(PKI_DIR, "sqlite3")
 
 		if err != nil{
 			panic(err)
@@ -69,7 +73,7 @@ func main() {
 			panic(err)
 		}
 
-		client, err := client.NewClient(*id, *host, *port, pubC, privC, "./pki/database.db", providerInfo)
+		client, err := client.NewClient(*id, *host, *port, pubC, privC, PKI_DIR, providerInfo)
 		if err != nil{
 			panic(err)
 		}
@@ -85,7 +89,7 @@ func main() {
 			panic(err)
 		}
 
-		mixServer, err := server.NewMixServer(*id, *host, *port, pubM, privM, "./pki/database.db")
+		mixServer, err := server.NewMixServer(*id, *host, *port, pubM, privM, PKI_DIR)
 		if err != nil{
 			panic(err)
 		}
@@ -100,7 +104,7 @@ func main() {
 			panic(err)
 		}
 
-		providerServer, err := server.NewProviderServer(*id, *host, *port, pubP, privP, "./pki/database.db")
+		providerServer, err := server.NewProviderServer(*id, *host, *port, pubP, privP, PKI_DIR)
 		if err != nil{
 			panic(err)
 		}

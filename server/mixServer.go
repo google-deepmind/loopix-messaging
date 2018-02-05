@@ -173,3 +173,4 @@ func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath s
 
 	return &mixServer, nil
 }
+

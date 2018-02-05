@@ -295,3 +295,19 @@ func TestProviderServer_ReceivedPacket(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestProviderServer_HandleConnection(t *testing.T) {
+	serverConn, _ := net.Pipe()
+	errs := make(chan error, 1)
+	// serverConn.Write([]byte("test"))
+	go func(){
+		providerServer.HandleConnection(serverConn, errs)
+		err := <- errs
+		if err != nil{
+			t.Fatal(err)
+		}
+		serverConn.Close()
+	}()
+	serverConn.Close()
+
+}

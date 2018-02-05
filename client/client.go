@@ -45,10 +45,8 @@ type Client struct {
 	Listener *net.TCPListener
 
 	PkiDir string
-	// ActiveMixes  []config.MixConfig
 	OtherClients []config.ClientConfig
 
-	// Provider config.MixConfig
 	Config config.ClientConfig
 
 	token []byte

@@ -199,7 +199,7 @@ func TestClient_SendMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client.listener, err = net.ListenTCP("tcp", addr)
+	client.Listener, err = net.ListenTCP("tcp", addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +208,7 @@ func TestClient_SendMessage(t *testing.T) {
 	if err != nil{
 		t.Fatal(err)
 	}
-	err = client.listener.Close()
+	err = client.Listener.Close()
 	if err != nil{
 		t.Fatal(err)
 	}
