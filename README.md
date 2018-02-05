@@ -26,13 +26,13 @@ This removes all log files and database
 
 To run the network, i.e., mixnodes and providers run
 
-    ```sheel
+    ```shell
         bash run_network.sh
     ```    
 This spins up 3 mixnodes and 1 provider
 
 To simulate the clients run
 
-    ``` shell
-            bash run_clients.sh
+    ```shell
+        bash run_clients.sh
     ```     
