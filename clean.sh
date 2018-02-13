@@ -5,7 +5,7 @@
 logDir="$(PWD)/logs"
 pkiDir="$(PWD)/pki/database.db"
 
-if [ -f $pkiDir ]
+if [ -d $pkiDir ]
 then
     echo "Removing the following directory" $pkiDir
     rm -f $pkiDir
