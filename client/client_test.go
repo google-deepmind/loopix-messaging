@@ -179,7 +179,7 @@ func TestClient_SendMessage(t *testing.T) {
 	if err != nil{
 		t.Fatal(err)
 	}
-	recipient := config.ClientConfig{"Recipient", "localhost", "9999", pubR, &providerPubs}
+	recipient := config.ClientConfig{Id:"Recipient", Host:"localhost", Port:"9999", PubKey: pubR, Provider: &providerPubs}
 	fmt.Println(recipient)
 	pubM1, _, err := sphinx.GenerateKeyPair()
 	if err != nil{
