@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"errors"
 
 	"github.com/jmoiron/sqlx"
 	"database/sql"
@@ -89,20 +90,12 @@ func TestCreateTable(t *testing.T) {
 	assert.True(t, exists, "Table was not added to the database")
 }
 
-func TestInsertToTable(t *testing.T) {
+func TestCreateTable_SQLInjection(t *testing.T) {
+	err := CreateTable(db, "TestTable;", nil)
+	assert.EqualError(t, errors.New("detected ; character. Possible SQL injection"), err.Error())
 
-	err := InsertIntoTable(db, "TestTable", "TestVal1", "TestVal2", []byte("TestVal3"))
-	if err != nil{
-		t.Error(err)
-	}
-
-	var exists bool
-	err = db.QueryRow("SELECT exists (SELECT * FROM TestTable WHERE Id=$1 AND Typ=$2 AND Config=$3)", "TestVal1", "TestVal2", []byte("TestVal3")).Scan(&exists)
-
-	if err != nil && err != sql.ErrNoRows {
-		t.Error(err)
-	}
-	assert.True(t, exists, "Row was not added to the database")
+	err = CreateTable(db, "TestTable'", nil)
+	assert.EqualError(t, errors.New("detected ' character. Possible SQL injection"), err.Error())
 }
 
 func TestQueryDatabase(t *testing.T) {
@@ -123,7 +116,21 @@ func TestQueryDatabase(t *testing.T) {
 	assert.Equal(t, "ABC", string(results["Id"].([]byte)), "Should be equal")
 	assert.Equal(t, "DEF", string(results["Typ"].([]byte)), "Should be equal")
 	assert.Equal(t, []byte("GHI"), results["Config"].([]byte), "Should be equal")
+}
 
+
+func TestQueryDatabase_SQLInjection(t *testing.T) {
+	_, err := QueryDatabase(db, "TableXX;", "DEF")
+	assert.EqualError(t, errors.New("detected ; character. Possible SQL injection"), err.Error())
+
+	_, err = QueryDatabase(db, "TableXX", "DEF;")
+	assert.EqualError(t, errors.New("detected ; character. Possible SQL injection"), err.Error())
+
+	_, err = QueryDatabase(db, "TableXX'", "DEF")
+	assert.EqualError(t, errors.New("detected ' character. Possible SQL injection"), err.Error())
+
+	_, err = QueryDatabase(db, "TableXX", "DEF'")
+	assert.EqualError(t, errors.New("detected ' character. Possible SQL injection"), err.Error())
 }
 
 func TestInsertIntoTable(t *testing.T) {
@@ -138,4 +145,13 @@ func TestInsertIntoTable(t *testing.T) {
 		t.Error(err)
 	}
 	assert.True(t, exists, "The inserted row was not found in the database")
+}
+
+func TestInsertIntoTable_SQLInjection(t *testing.T){
+	err := InsertIntoTable(db, "TableXX;", "TestInsertId", "TestInsertTyp", []byte("TestInsertBytes"))
+	assert.EqualError(t, errors.New("detected ; character. Possible SQL injection"), err.Error())
+
+	err = InsertIntoTable(db, "TableXX'", "TestInsertId", "TestInsertTyp", []byte("TestInsertBytes"))
+	assert.EqualError(t, errors.New("detected ' character. Possible SQL injection"), err.Error())
+
 }
