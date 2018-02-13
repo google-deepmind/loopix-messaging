@@ -1,264 +1,409 @@
-package anonymous_messaging
+/*
+	Package client implements the class of a network client which can interact with a mix network.
+*/
+
+package client
 
 import (
-	packet_format "anonymous-messaging/packet_format"
-	"fmt"
 	"net"
-	"os"
-	"math/rand"
-	"time"
-	"anonymous-messaging/publics"
+
+	"anonymous-messaging/clientCore"
+	"anonymous-messaging/networker"
 	"anonymous-messaging/pki"
-	"github.com/jmoiron/sqlx"
-	"reflect"
+	"anonymous-messaging/config"
+	"crypto/elliptic"
+	"github.com/protobuf/proto"
+
+	log "github.com/sirupsen/logrus"
+	"fmt"
+	"anonymous-messaging/helpers"
 )
 
 const (
 	desiredRateParameter = 5
-	pathLength = 2
+	pathLength           = 2
+	ASSIGNE_FLAG = "\xA2"
+	COMM_FLAG = "\xC6"
+	TOKEN_FLAG = "xA9"
+	PULL_FLAG = "\xFF"
 )
 
+type ClientIt interface {
+	networker.NetworkClient
+	networker.NetworkServer
+	SendMessage(message string, recipient config.MixConfig)
+	ProcessPacket(packet []byte)
+	Start()
+	ReadInMixnetPKI()
+	ReadInClientsPKI()
+}
+
 type Client struct {
-	Id string
 	Host string
 	Port string
-	PubKey int
-	PrvKey int
-	ActiveMixes []publics.MixPubs
-	OtherClients []publics.MixPubs
+	clientCore.CryptoClient
 
-	listener *net.TCPListener
+	Listener *net.TCPListener
+
+	PkiDir string
+	OtherClients []config.ClientConfig
+
+	Config config.ClientConfig
+
+	token []byte
+
 }
 
+/*
+	Start function creates the loggers for capturing the info and error logs;
+	it reads the network and users information from the PKI database
+	and starts the listening server. Function returns an error
+	signaling whenever any operation was unsuccessful.
+*/
+func (c *Client) Start() error {
 
-type ClientOperations interface {
-	EncodeMessage(message string) string
-	DecodeMessage(message string) string
-}
 
-func (c *Client) EncodeMessage(message string, path []publics.MixPubs, delays []float64) packet_format.Packet {
-	return packet_format.Encode(message, path, delays)
-}
-
-func (c *Client) DecodeMessage(packet packet_format.Packet) packet_format.Packet {
-	return packet_format.Decode(packet)
-}
-
-func (c *Client) SendMessage(message string, recipient publics.MixPubs) {
-	mixSeq := c.GetRandomMixSequence(c.ActiveMixes, pathLength)
-
-	var path []publics.MixPubs
-
-	fmt.Println("MixSeq: ", mixSeq)
-	for _, v := range mixSeq {
-		path = append(path, v)
+	err := c.ReadInClientsPKI(c.PkiDir)
+	if err != nil{
+		return err
 	}
-	path = append(path, recipient)
-	fmt.Println("PATH: ", path)
 
-	for _, v := range path {
-		fmt.Println(reflect.TypeOf(v))
+	err = c.ReadInMixnetPKI(c.PkiDir)
+	if err != nil{
+		return err
 	}
-	delays := c.GenerateDelaySequence(desiredRateParameter, pathLength)
 
+	err = c.RegisterToProvider()
+	if err != nil{
+		return err
+	}
 
-	packet := c.EncodeMessage(message, path, delays)
-	c.Send(packet_format.ToString(packet), path[0].Host, path[0].Port)
+	c.Run()
+	return nil
 }
 
-func (c *Client) GenerateDelaySequence(desiredRateParameter float64, length int) []float64{
-	rand.Seed(time.Now().UTC().UnixNano())
+/*
+	SendMessage responsible for sending a real message. Takes as input the message string
+	and the public information about the destination.
+	The function generates a random path and a set of random values from exponential distribution.
+	Given those values it triggers the encode function, which packs the message into the
+	sphinx cryptographic packet format. Next, the encoded packet is combined with a
+	flag signaling that this is a usual network packet, and passed to be send.
+	The function returns an error if any issues occured.
+*/
+func (c *Client) SendMessage(message string, recipient config.ClientConfig) error {
 
-	var delays []float64
-	for i := 0; i < length; i++{
-		sample := rand.ExpFloat64() / desiredRateParameter
-		delays = append(delays, sample)
+	sphinxPacket, err := c.CreateSphinxPacket(message, recipient)
+	if err != nil {
+		return err
 	}
-	return delays
+
+	packetBytes, err := config.WrapWithFlag(COMM_FLAG, sphinxPacket)
+	if err != nil{
+		return err
+	}
+
+	err = c.Send(packetBytes, c.Provider.Host, c.Provider.Port)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (c *Client) GetRandomMixSequence(mixes []publics.MixPubs, length int) []publics.MixPubs {
-	rand.Seed(time.Now().UTC().UnixNano())
 
-	fmt.Println("Len: ", length)
-	fmt.Println("Len of mixes: ", len(mixes))
-	if length > len(mixes) {
-		return mixes
-	} else {
-		permutedData := make([]publics.MixPubs, len(mixes))
-		permutation := rand.Perm(len(mixes))
+/*
+	Send opens a connection with selected network address
+	and send the passed packet. If connection failed or
+	the packet could not be send, an error is returned
+*/
+func (c *Client) Send(packet []byte, host string, port string) error {
 
-		for i, v := range permutation {
-			permutedData[v] = mixes[i]
-		}
-		fmt.Println("Permuted: ", permutedData)
+	conn, err := net.Dial("tcp", host+":"+port)
 
-		fmt.Println("Cut: ", permutedData[:length])
-		return permutedData[:length]
+	if err != nil {
+		return err
 	}
-}
-
-func (c *Client) Send(packet string, host string, port string) {
-	conn, err := net.Dial("tcp", host + ":" + port)
 	defer conn.Close()
 
-	if err != nil {
-		fmt.Print("Error in Client connect", err.Error())
-		os.Exit(1)
-	}
-
-	conn.Write([]byte(packet))
-
-	//buff := make([]byte, 1024)
-	//n, _ := conn.Read(buff)
-	//fmt.Println("Received answer: ", string(buff[:n]))
+	_, err = conn.Write(packet)
+	return err
 }
 
-
-
-func (c *Client) listenForConnections() {
+/*
+	ListenForIncomingConnections responsible for running the listening process of the server;
+	The clients listener accepts incoming connections and
+	passes the incoming packets to the packet handler.
+	If the connection could not be accepted an error
+	is logged into the log files, but the function is not stopped
+*/
+func (c *Client) ListenForIncomingConnections() {
 	for {
-		conn, err := c.listener.Accept()
+		conn, err := c.Listener.Accept()
 
 		if err != nil {
-			fmt.Println("Error in connection accepting:", err.Error())
-			os.Exit(1)
+			log.WithFields(log.Fields{"id" : c.Id}).Error(err)
+		} else {
+			go c.HandleConnection(conn)
 		}
-		fmt.Println(conn)
-		//fmt.Println("Received connection from : ", conn.RemoteAddr())
-		go c.handleConnection(conn)
 	}
 }
 
-func (c *Client) handleConnection(conn net.Conn) {
-	fmt.Println("> Handle Connection")
+/*
+	HandleConnection handles the received packets; it checks the flag of the
+	packet and schedules a corresponding process function;
+	The potential errors are logged into the log files.
+*/
+func (c *Client) HandleConnection(conn net.Conn) {
 
 	buff := make([]byte, 1024)
-	reqLen, err := conn.Read(buff)
+	defer conn.Close()
 
+	reqLen, err := conn.Read(buff)
 	if err != nil {
-		fmt.Println()
+		log.WithFields(log.Fields{"id" : c.Id}).Error(err)
+		panic(err)
+	}
+	var packet config.GeneralPacket
+	err = proto.Unmarshal(buff[:reqLen], &packet)
+	if err != nil {
+		log.WithFields(log.Fields{"id" : c.Id}).Error(err)
 	}
 
-	c.ProcessPacket(packet_format.FromString(string(buff[:reqLen])))
-	conn.Close()
+	switch packet.Flag {
+	case TOKEN_FLAG:
+		c.RegisterToken(packet.Data)
+		go func() {
+			err = c.SendMessage("Hello world, this is me", c.OtherClients[0])
+			if err != nil {
+				log.WithFields(log.Fields{"id" : c.Id}).Error(err)
+			}
+
+			err = c.GetMessagesFromProvider()
+			if err != nil {
+				log.WithFields(log.Fields{"id" : c.Id}).Error(err)
+			}
+		}()
+	case COMM_FLAG:
+		_, err := c.ProcessPacket(packet.Data)
+		if err != nil {
+			log.WithFields(log.Fields{"id" : c.Id}).Error(err)
+		}
+		log.WithFields(log.Fields{"id" : c.Id}).Info(" Received new message")
+	default:
+		log.WithFields(log.Fields{"id" : c.Id}).Info(" Packet flag not recognised. Packet dropped.")
+	}
 }
 
-func (c *Client) ProcessPacket(packet packet_format.Packet) string{
-	fmt.Println("Processing packet: ", packet)
-	return packet.Message
+
+
+/*
+	RegisterToken stores the authentication token received from the provider
+ */
+func (c *Client) RegisterToken(token []byte) {
+	c.token = token
+	log.WithFields(log.Fields{"id" : c.Id}).Info(fmt.Sprintf(" Registered token %s", c.token))
 }
 
-func (c *Client) Start() {
-
-	defer c.Run()
-
-	c.ReadInClientsPKI()
-	c.ReadInMixnetPKI()
-
+/*
+	ProcessPacket processes the received sphinx packet and returns the
+	encapsulated message or error in case the processing
+	was unsuccessful.
+ */
+func (c *Client) ProcessPacket(packet []byte) ([]byte, error) {
+	log.WithFields(log.Fields{"id" : c.Id}).Info(" Processing packet")
+	return packet, nil
 }
 
+/*
+	RegisterToProvider allows the client to register with the selected provider.
+	The client sends a special assignment packet, with its public information, to the provider
+	or returns an error.
+*/
+func (c *Client) RegisterToProvider() error{
+
+	log.WithFields(log.Fields{"id" : c.Id}).Info(" Sending request to provider to register")
+
+	confBytes, err := proto.Marshal(&c.Config)
+	if err != nil{
+		return err
+	}
+
+	pktBytes, err := config.WrapWithFlag(ASSIGNE_FLAG, confBytes)
+	if err != nil{
+		return err
+	}
+
+	err = c.Send(pktBytes, c.Provider.Host, c.Provider.Port)
+	if err != nil{
+		return err
+	}
+	return nil
+}
+
+/*
+	GetMessagesFromProvider allows to fetch messages from the inbox stored by the
+	provider. The client sends a pull packet to the provider, along with
+	the authentication token. An error is returned if occurred.
+*/
+func (c *Client) GetMessagesFromProvider() error {
+	pullRqs := config.PullRequest{ClientId: c.Id, Token: c.token}
+	pullRqsBytes, err := proto.Marshal(&pullRqs)
+	if err != nil{
+		return err
+	}
+
+	pktBytes, err := config.WrapWithFlag(PULL_FLAG, pullRqsBytes)
+	if err != nil{
+		return err
+	}
+
+	err = c.Send(pktBytes, c.Provider.Host, c.Provider.Port)
+	if err != nil{
+		return err
+	}
+
+	return nil
+}
+
+/*
+	Run opens the listener to start listening on clients host and port
+ */
 func (c *Client) Run() {
-	fmt.Println("> Client is running")
-
-	defer c.listener.Close()
+	defer c.Listener.Close()
 	finish := make(chan bool)
 
 	go func() {
-		fmt.Println("Listening on " + c.Host + ":" + c.Port)
-		c.listenForConnections()
-	}()
-
-	go func() {
-		c.SendMessage("Hello world, this is me", c.OtherClients[1])
+		log.WithFields(log.Fields{"id" : c.Id}).Info(fmt.Sprintf("Listening on address %s", c.Host + ":" + c.Port))
+		c.ListenForIncomingConnections()
 	}()
 
 	<-finish
 }
 
-func (c *Client) ReadInMixnetPKI() {
-	fmt.Println("Reading network")
+/*
+	ReadInMixnetPKI reads in the public information about active mixes
+	from the PKI database and stores them locally. In case
+	the connection or fetching data from the PKI went wrong,
+	an error is returned.
+*/
+func (c *Client) ReadInMixnetPKI(pkiName string) error {
+	log.WithFields(log.Fields{"id" : c.Id}).Info(fmt.Sprintf("Reading network information from the PKI: %s", pkiName))
 
-	db := c.ConnectToPKI()
-	records := pki.QueryDatabase(db,"Mixes")
+	db, err := pki.OpenDatabase(pkiName, "sqlite3")
+
+	if err != nil{
+		return err
+	}
+
+	records, err := pki.QueryDatabase(db, "Pki", "Mix")
+
+	if err != nil{
+		return err
+	}
 
 	for records.Next() {
-		results := make(map[string]interface{})
-		err := records.MapScan(results)
+		result := make(map[string]interface{})
+		err := records.MapScan(result)
 
 		if err != nil {
-			panic(err)
-
+			return err
 		}
 
-		pubs := publics.NewMixPubs(string(results["MixId"].([]byte)), string(results["Host"].([]byte)),
-									string(results["Port"].([]byte)), results["PubKey"].(int64))
+		var pubs config.MixConfig
+		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
+		if err != nil {
+			return err
+		}
 
 		c.ActiveMixes = append(c.ActiveMixes, pubs)
 	}
-	fmt.Println("> The mix network data is uploaded.")
+
+	log.WithFields(log.Fields{"id" : c.Id}).Info(" Network information uploaded")
+	return nil
 }
 
+/*
+	ReadInClientsPKI reads in the public information about users
+	from the PKI database and stores them locally. In case
+	the connection or fetching data from the PKI went wrong,
+	an error is returned.
+*/
+func (c *Client) ReadInClientsPKI(pkiName string) error {
+	log.WithFields(log.Fields{"id" : c.Id}).Info(fmt.Sprintf(" Reading network users information from the PKI: %s", pkiName))
 
-func (c *Client) ReadInClientsPKI() {
-	fmt.Println("Reading public information about clients")
+	db, err := pki.OpenDatabase(pkiName, "sqlite3")
 
-	db := c.ConnectToPKI()
-	records := pki.QueryDatabase(db,"Clients")
+	if err != nil{
+		return err
+	}
+
+	records, err := pki.QueryDatabase(db, "Pki", "Client")
+
+	if err != nil {
+		return err
+	}
 
 	for records.Next() {
-		results := make(map[string]interface{})
-		err := records.MapScan(results)
+		result := make(map[string]interface{})
+		err := records.MapScan(result)
 
 		if err != nil {
-			panic(err)
-
+			return err
 		}
-		pubs := publics.NewMixPubs(string(results["ClientId"].([]byte)), string(results["Host"].([]byte)),
-			string(results["Port"].([]byte)), results["PubKey"].(int64))
+
+		var pubs config.ClientConfig
+		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
+		if err != nil {
+			return err
+		}
 		c.OtherClients = append(c.OtherClients, pubs)
 	}
-	fmt.Println("> The clients data is uploaded.")
-}
-
-func (c *Client) ConnectToPKI() *sqlx.DB{
-	return pki.CreateAndOpenDatabase("./pki/database.db", "./pki/database.db", "sqlite3")
-}
-
-func SaveInPKI(c *Client, pkiDir string) {
-	fmt.Println("> Saving Client Public Info into Database")
-
-	db := pki.CreateAndOpenDatabase(pkiDir, pkiDir, "sqlite3")
-
-	params := make(map[string]string)
-	params["ClientId"] = "TEXT"
-	params["Host"] = "TEXT"
-	params["Port"] = "TEXT"
-	params["PubKey"] = "NUM"
-	pki.CreateTable(db, "Clients", params)
-
-	pubInfo := make(map[string]interface{})
-	pubInfo["ClientId"] = c.Id
-	pubInfo["Host"] = c.Host
-	pubInfo["Port"] = c.Port
-	pubInfo["PubKey"] = c.PubKey
-	pki.InsertToTable(db, "Clients", pubInfo)
-
-	fmt.Println("> Public info of the client saved in database")
-	db.Close()
+	log.WithFields(log.Fields{"id" : c.Id}).Info("  Information about other users uploaded")
+	return nil
 }
 
 
-func NewClient(id, host, port, pkiDir string, pubKey, prvKey int) Client{
-	c := Client{Id:id, Host:host, Port:port, PubKey:pubKey, PrvKey:prvKey}
+/*
+	The constructor function to create an new client object.
+	Function returns a new client object or an error, if occurred.
+*/
+func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*Client, error) {
+	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224(), Provider: provider}
 
-	SaveInPKI(&c, pkiDir)
+	c := Client{Host: host, Port: port, CryptoClient: core, PkiDir: pkiDir}
+	c.Config = config.ClientConfig{Id : c.Id, Host: c.Host, Port: c.Port, PubKey: c.PubKey, Provider: &c.Provider}
 
-	addr, err := net.ResolveTCPAddr("tcp", c.Host + ":" + c.Port)
-	if err != nil {
-		fmt.Println("Error listening:", err.Error())
-		os.Exit(1)
+	configBytes, err := proto.Marshal(&c.Config)
+
+	if err != nil{
+		return nil, err
 	}
-	c.listener, err = net.ListenTCP("tcp", addr)
-	return c
+	err = helpers.AddToDatabase(pkiDir, "Pki", c.Id, "Client", configBytes)
+	if err != nil{
+		return nil, err
+	}
+
+
+	addr, err := helpers.ResolveTCPAddress(c.Host, c.Port)
+	if err != nil {
+		return nil, err
+	}
+
+	c.Listener, err = net.ListenTCP("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+/*
+	NewTestClient constructs a client object, which can be used for testing. The object contains the crypto core
+	and the top-level of client, but does not involve networking and starting a listener.
+ */
+func NewTestClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*Client, error) {
+	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224(), Provider: provider}
+	c := Client{Host: host, Port: port, CryptoClient: core, PkiDir: pkiDir}
+	c.Config = config.ClientConfig{Id : c.Id, Host: c.Host, Port: c.Port, PubKey: c.PubKey, Provider: &c.Provider}
+
+	return &c, nil
 }

@@ -1,0 +1,39 @@
+syntax = "proto3";
+package sphinx;
+
+
+message SphinxPacket {
+    Header Hdr = 1;
+    bytes Pld = 2;
+}
+
+message Header {
+    bytes Alpha = 1;
+    bytes Beta = 2;
+    bytes Mac = 3;
+}
+
+message Hop {
+    string Id = 1;
+    string Address = 2;
+    bytes PubKey = 3;
+}
+
+message RoutingInfo {
+    Hop NextHop = 1;
+    Commands RoutingCommands = 2;
+    bytes NextHopMetaData = 3;
+    bytes Mac = 4;
+}
+
+message Commands {
+    double Delay = 1;
+    string Flag = 2;
+}
+
+message HeaderInitials {
+    bytes Alpha = 1;
+    bytes Secret = 2;
+    bytes Blinder = 3;
+    bytes SecretHash = 4;
+}

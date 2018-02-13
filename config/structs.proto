@@ -1,0 +1,27 @@
+syntax = "proto3";
+package config;
+
+message MixConfig {
+    string Id = 1;
+    string Host = 2;
+    string Port = 3;
+    bytes PubKey = 4;
+}
+
+message ClientConfig {
+    string Id = 1;
+    string Host = 2;
+    string Port = 3;
+    bytes PubKey = 4;
+    MixConfig Provider = 5;
+}
+
+message GeneralPacket {
+    string Flag = 1;
+    bytes Data = 2;
+}
+
+message PullRequest {
+    string ClientId = 1;
+    bytes Token = 2;
+}

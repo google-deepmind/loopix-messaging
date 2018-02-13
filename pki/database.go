@@ -1,70 +1,87 @@
+/*
+	Package pki implements basic functions for managing the pki
+	represented as a SQL database.
+*/
+
 package pki
 
 import (
-	_ "github.com/mattn/go-sqlite3"
 	"fmt"
 	"strings"
+
 	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3"
+	"database/sql"
 )
 
-
-func CreateAndOpenDatabase(dbName, dataSourceName, dbDriver string) *sqlx.DB{
+func OpenDatabase(dataSourceName, dbDriver string) (*sqlx.DB, error) {
 
 	var db *sqlx.DB
 	db, err := sqlx.Connect(dbDriver, dataSourceName)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return db
+	return db, err
 }
 
-
-func CreateTable(db *sqlx.DB, tableName string, params map[string]string) {
+func CreateTable(db *sqlx.DB, tableName string, params map[string]string) error{
 	paramsAndTypes := make([]string, 0, len(params))
 
-	for  key := range params {
-		paramsAndTypes = append(paramsAndTypes, key + " " + params[key])
+	for key := range params {
+		paramsAndTypes = append(paramsAndTypes, key+" "+params[key])
 	}
 
-	paramsText := "id INTEGER PRIMARY KEY, " + strings.Join(paramsAndTypes[:],", ")
+	paramsText := "idx INTEGER PRIMARY KEY, " + strings.Join(paramsAndTypes[:], ", ")
 	query := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s ( %s )", tableName, paramsText)
 
-	statement, _ := db.Prepare(query)
-	statement.Exec()
+	statement, err := db.Prepare(query)
+
+	if err != nil{
+		return err
+	}
+	_, err = statement.Exec()
+	if err != nil{
+		return err
+	}
+
+	return nil
 
 }
 
 
-func InsertToTable(db *sqlx.DB, tableName string, data map[string]interface{}) {
-	columns := make([]string, 0, len(data))
-	values := make([]interface{}, 0, len(data))
+func InsertIntoTable(db *sqlx.DB, tableName string, id, typ string, config []byte) error{
+	query :="INSERT INTO " + tableName + " (Id, Typ, Config) VALUES (?, ?, ?)"
 
-	for  key := range data {
-		columns = append(columns, key)
-		values = append(values, data[key])
-	}
-
-	columnsText := strings.Join(columns[:],", ")
-	valuesText := "?" + strings.Repeat(", ?", len(data)-1)
-
-	query := "INSERT INTO " + tableName + " ( " + columnsText + " ) VALUES ( " +  valuesText + " )"
 	stmt, err := db.Prepare(query)
-
-	if err != nil {
-		fmt.Println(err)
+	if err != nil{
+		return err
+	}
+	_, err = stmt.Exec(id, typ, config)
+	if err != nil{
+		return err
 	}
 
-	stmt.Exec(values...)
+	return nil
 }
 
-func QueryDatabase(db *sqlx.DB, tableName string) *sqlx.Rows{
-	query := fmt.Sprintf("SELECT * FROM %s", tableName)
-	rows, err := db.Queryx(query)
+func QueryDatabase(db *sqlx.DB, tableName string, condition string) (*sqlx.Rows, error) {
+	query := fmt.Sprintf("SELECT * FROM %s WHERE Typ = ?", tableName)
+	rows, err := db.Queryx(query, condition)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return rows
+	return rows, nil
+}
+
+func rowExists(db *sqlx.DB, query string, args ...interface{}) (bool, error) {
+	var exists bool
+	query = fmt.Sprintf("SELECT exists (%s)", query)
+	err := db.QueryRow(query, args...).Scan(&exists)
+	if err != nil && err != sql.ErrNoRows {
+		return false, err
+	}
+	return exists, nil
 }

@@ -1,40 +1,40 @@
-package anonymous_messaging
+/*
+	Package node implements the core functions for a mix node, which allow to process the received cryptographic packets.
+ */
+package node
 
 import (
-	"fmt"
-	packet_format "anonymous-messaging/packet_format"
+	sphinx "anonymous-messaging/sphinx"
 	"time"
 )
 
 type Mix struct {
-	Id string
-	PubKey int
-	PrvKey int
+	Id     string
+	PubKey []byte
+	PrvKey []byte
 }
 
+func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan <- sphinx.Hop, cFlag chan <- string, errCh chan <- error){
 
-func (m Mix) ProcessPacket(p packet_format.Packet, c chan<- packet_format.Packet){
-	fmt.Println("> Processing packet")
+	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.PrvKey)
+	if err != nil {
+		errCh <- err
+	}
 
-	dePacket:= packet_format.Decode(p)
+	timeoutCh := make(chan []byte, 1)
 
-	delay := dePacket.Steps[m.Id].Delay
-
-	timeoutCh := make(chan packet_format.Packet, 1)
-
-	go func(p packet_format.Packet, delay float64) {
+	go func(p []byte, delay float64) {
 		time.Sleep(time.Second * time.Duration(delay))
 		timeoutCh <- p
-	}(dePacket, delay)
+	}(newPacket, commands.Delay)
 
-	c <- <- timeoutCh
+	c <- <-timeoutCh
+	cAdr <- nextHop
+	cFlag <- commands.Flag
+	errCh <- nil
+
 }
 
-func (m Mix) SendLoopMessage() {
-	fmt.Println("> Sending loop message")
-	// TO DO
-}
-
-func NewMix(id string, pubKey, prvKey int ) Mix{
-	return Mix{Id:id, PubKey:pubKey, PrvKey:prvKey}
+func NewMix(id string, pubKey []byte, prvKey []byte) *Mix {
+	return &Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
 }

@@ -1,4 +1,4 @@
-package anonymous_messaging
+package node
 
 type Node interface {
 	ProcessPacket(packet string)
