@@ -112,7 +112,7 @@ func (c *Client) SendMessage(message string, recipient config.ClientConfig) erro
 
 
 /*
-	Function opens a connection with selected network address
+	Send opens a connection with selected network address
 	and send the passed packet. If connection failed or
 	the packet could not be send, an error is returned
 */
@@ -130,7 +130,7 @@ func (c *Client) Send(packet []byte, host string, port string) error {
 }
 
 /*
-	Function responsible for running the listening process of the server;
+	ListenForIncomingConnections responsible for running the listening process of the server;
 	The clients listener accepts incoming connections and
 	passes the incoming packets to the packet handler.
 	If the connection could not be accepted an error
@@ -149,7 +149,7 @@ func (c *Client) ListenForIncomingConnections() {
 }
 
 /*
-	Function handles the received packets; it checks the flag of the
+	HandleConnection handles the received packets; it checks the flag of the
 	packet and schedules a corresponding process function;
 	The potential errors are logged into the log files.
 */
@@ -197,7 +197,7 @@ func (c *Client) HandleConnection(conn net.Conn) {
 
 
 /*
-	Function stores the authentication token received from the provider
+	RegisterToken stores the authentication token received from the provider
  */
 func (c *Client) RegisterToken(token []byte) {
 	c.token = token
@@ -323,7 +323,7 @@ func (c *Client) ReadInMixnetPKI(pkiName string) error {
 }
 
 /*
-	Function reads in the public information about users
+	ReadInClientsPKI reads in the public information about users
 	from the PKI database and stores them locally. In case
 	the connection or fetching data from the PKI went wrong,
 	an error is returned.
@@ -396,6 +396,10 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 	return &c, nil
 }
 
+/*
+	NewTestClient constructs a client object, which can be used for testing. The object contains the crypto core
+	and the top-level of client, but does not involve networking and starting a listener.
+ */
 func NewTestClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*Client, error) {
 	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224(), Provider: provider}
 	c := Client{Host: host, Port: port, CryptoClient: core, PkiDir: pkiDir}
