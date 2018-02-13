@@ -27,12 +27,14 @@ fi
 
 function kill_port() {
     PID=$(lsof -t -i:$1)
-#    echo "$PID"
-    echo  kill -TERM ${PID} || kill -KILL ${PID}
+    echo "Killing process: $PID"
+#    kill -TERM ${PID}
+    kill -KILL ${PID}
+#    kill -TSTP ${PID}
+#    kill -CONT ${PID}
 }
 
 for var in "$@"
 do
-#    echo ${var}
     kill_port ${var}
 done
