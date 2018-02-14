@@ -249,4 +249,8 @@ func TestClient_ReadInClientsPKI(t *testing.T) {
 	assert.Equal(t, testClientSet, client.OtherClients)
 }
 
+func TestClient_CheckBufferQueue(t *testing.T) {
+	client := SetupTestClient(t)
+	client.CheckBufferQueue([]byte("Hello"))
+}
 

@@ -13,10 +13,13 @@ import (
 	"anonymous-messaging/config"
 	"crypto/elliptic"
 	"github.com/protobuf/proto"
+	"github.com/Workiva/go-datastructures/queue"
 
 	log "github.com/sirupsen/logrus"
 	"fmt"
 	"anonymous-messaging/helpers"
+	"time"
+	"math"
 )
 
 const (
@@ -26,6 +29,7 @@ const (
 	COMM_FLAG = "\xC6"
 	TOKEN_FLAG = "xA9"
 	PULL_FLAG = "\xFF"
+	MAX_BUFFERQUEUE_SIZE = 10000
 )
 
 type ClientIt interface {
@@ -49,8 +53,9 @@ type Client struct {
 	OtherClients []config.ClientConfig
 
 	Config config.ClientConfig
-
 	token []byte
+
+	BufferQueue queue.Queue
 
 }
 
@@ -61,6 +66,7 @@ type Client struct {
 	signaling whenever any operation was unsuccessful.
 */
 func (c *Client) Start() error {
+	c.BufferQueue = *queue.New(MAX_BUFFERQUEUE_SIZE)
 
 
 	err := c.ReadInClientsPKI(c.PkiDir)
@@ -103,7 +109,8 @@ func (c *Client) SendMessage(message string, recipient config.ClientConfig) erro
 		return err
 	}
 
-	err = c.Send(packetBytes, c.Provider.Host, c.Provider.Port)
+	//err = c.Send(packetBytes, c.Provider.Host, c.Provider.Port)
+	err = c.AddPacketToBufferQueue(packetBytes)
 	if err != nil {
 		return err
 	}
@@ -279,6 +286,28 @@ func (c *Client) Run() {
 
 	<-finish
 }
+
+
+/*
+	AddPacketToBufferQueue adds a given packet into the BufferQueue.
+	AddPacketToBufferQueue returns an error.
+ */
+func (c *Client) AddPacketToBufferQueue(packet []byte) error{
+	return c.BufferQueue.Put(packet)
+}
+
+func (c *Client) CheckBufferQueue(packet []byte) error{
+	expShift, err := helpers.RandomExponential(desiredRateParameter)
+	if err != nil{
+		return err
+	}
+	val := time.Duration(time.Duration(expShift * math.Pow10(9)))
+	err := c.BufferQueue.Poll(1, val)
+	if err 
+	return nil
+}
+
+
 
 /*
 	ReadInMixnetPKI reads in the public information about active mixes
