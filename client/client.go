@@ -109,8 +109,7 @@ func (c *Client) SendMessage(message string, recipient config.ClientConfig) erro
 		return err
 	}
 
-	//err = c.Send(packetBytes, c.Provider.Host, c.Provider.Port)
-	err = c.AddPacketToBufferQueue(packetBytes)
+	err = c.Send(packetBytes, c.Provider.Host, c.Provider.Port)
 	if err != nil {
 		return err
 	}
@@ -293,17 +292,6 @@ func (c *Client) Run() {
 	AddPacketToBufferQueue returns an error.
  */
 func (c *Client) AddPacketToBufferQueue(packet []byte) error{
-	return c.BufferQueue.Put(packet)
-}
-
-func (c *Client) CheckBufferQueue(packet []byte) error{
-	expShift, err := helpers.RandomExponential(desiredRateParameter)
-	if err != nil{
-		return err
-	}
-	val := time.Duration(time.Duration(expShift * math.Pow10(9)))
-	err := c.BufferQueue.Poll(1, val)
-	if err 
 	return nil
 }
 
