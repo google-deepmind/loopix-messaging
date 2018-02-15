@@ -13,7 +13,6 @@ import (
 	"anonymous-messaging/config"
 	"crypto/elliptic"
 	"github.com/protobuf/proto"
-	"github.com/Workiva/go-datastructures/queue"
 
 	log "github.com/sirupsen/logrus"
 	"fmt"
@@ -23,7 +22,7 @@ import (
 )
 
 const (
-	desiredRateParameter = 5
+	desiredRateParameter = 0.2
 	pathLength           = 2
 	ASSIGNE_FLAG = "\xA2"
 	COMM_FLAG = "\xC6"
@@ -55,7 +54,7 @@ type Client struct {
 	Config config.ClientConfig
 	token []byte
 
-	BufferQueue queue.Queue
+	OutQueue chan []byte
 
 }
 
@@ -66,8 +65,7 @@ type Client struct {
 	signaling whenever any operation was unsuccessful.
 */
 func (c *Client) Start() error {
-	c.BufferQueue = *queue.New(MAX_BUFFERQUEUE_SIZE)
-
+	c.OutQueue = make(chan []byte)
 
 	err := c.ReadInClientsPKI(c.PkiDir)
 	if err != nil{
@@ -95,7 +93,7 @@ func (c *Client) Start() error {
 	Given those values it triggers the encode function, which packs the message into the
 	sphinx cryptographic packet format. Next, the encoded packet is combined with a
 	flag signaling that this is a usual network packet, and passed to be send.
-	The function returns an error if any issues occured.
+	The function returns an error if any issues occurred.
 */
 func (c *Client) SendMessage(message string, recipient config.ClientConfig) error {
 
@@ -109,10 +107,11 @@ func (c *Client) SendMessage(message string, recipient config.ClientConfig) erro
 		return err
 	}
 
-	err = c.Send(packetBytes, c.Provider.Host, c.Provider.Port)
-	if err != nil {
-		return err
-	}
+	//err = c.Send(packetBytes, c.Provider.Host, c.Provider.Port)
+	//if err != nil {
+	//	return err
+	//}
+	c.OutQueue <- packetBytes
 	return nil
 }
 
@@ -279,22 +278,55 @@ func (c *Client) Run() {
 	finish := make(chan bool)
 
 	go func() {
+		c.ControlOutQueue()
+	}()
+
+	go func() {
+		c.FakeAdding()
+	}()
+
+
+	go func() {
 		log.WithFields(log.Fields{"id" : c.Id}).Info(fmt.Sprintf("Listening on address %s", c.Host + ":" + c.Port))
 		c.ListenForIncomingConnections()
 	}()
-
 	<-finish
 }
 
-
-/*
-	AddPacketToBufferQueue adds a given packet into the BufferQueue.
-	AddPacketToBufferQueue returns an error.
- */
-func (c *Client) AddPacketToBufferQueue(packet []byte) error{
-	return nil
+func (c *Client) FakeAdding(){
+	log.WithFields(log.Fields{"id" : c.Id}).Info("Started fake adding")
+	for {
+		packet := []byte("Hello world")
+		c.OutQueue <- packet
+		log.WithFields(log.Fields{"id" : c.Id}).Info("Added packet")
+		time.Sleep(10 * time.Second)
+	}
 }
 
+
+func (c *Client) ControlOutQueue() error{
+	log.WithFields(log.Fields{"id" : c.Id}).Info("Queue controller started")
+	for{
+		select{
+		case realPacket := <-c.OutQueue:
+			c.Send(realPacket, c.Provider.Host, c.Provider.Port)
+			log.WithFields(log.Fields{"id" : c.Id}).Info("Real packet was send")
+			delaySec, err := helpers.RandomExponential(desiredRateParameter)
+			if err != nil{
+				return err
+			}
+			time.Sleep(time.Duration(int64(delaySec * math.Pow10(9))) * time.Nanosecond)
+		default:
+			delaySec, err := helpers.RandomExponential(desiredRateParameter)
+			if err != nil{
+				return err
+			}
+			log.WithFields(log.Fields{"id" : c.Id}).Info("OutQueue empty. Dummy packet sent.")
+			time.Sleep(time.Duration(int64(delaySec * math.Pow10(9))) * time.Nanosecond)
+		}
+	}
+	return nil
+}
 
 
 /*
