@@ -1,4 +1,4 @@
-#Anonymous messaging using mix networks
+# Anonymous messaging using mix networks
 ## Using the Code
 To build and test the code you need:
 
