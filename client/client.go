@@ -94,6 +94,7 @@ func (c *Client) Start() error {
 	sphinx cryptographic packet format. Next, the encoded packet is combined with a
 	flag signaling that this is a usual network packet, and passed to be send.
 	The function returns an error if any issues occurred.
+	TODO change message type to []byte
 */
 func (c *Client) SendMessage(message string, recipient config.ClientConfig) error {
 
@@ -321,6 +322,11 @@ func (c *Client) ControlOutQueue() error{
 			if err != nil{
 				return err
 			}
+			dummyPacket, err := c.CreateCoverMessage()
+			if err != nil{
+				return err
+			}
+			c.Send(dummyPacket, c.Provider.Host, c.Provider.Port)
 			log.WithFields(log.Fields{"id" : c.Id}).Info("OutQueue empty. Dummy packet sent.")
 			time.Sleep(time.Duration(int64(delaySec * math.Pow10(9))) * time.Nanosecond)
 		}
@@ -328,6 +334,24 @@ func (c *Client) ControlOutQueue() error{
 	return nil
 }
 
+/*
+	CreateCoverMessage packs a dummy message into a Sphinx packet.
+	The dummy message is a loop message.
+	TODO: change to a drop cover message.
+ */
+func (c *Client) CreateCoverMessage() ([]byte, error) {
+	dummyLoad := "DummyPayloadMessage"
+	sphinxPacket, err := c.CreateSphinxPacket(dummyLoad, c.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	packetBytes, err := config.WrapWithFlag(COMM_FLAG, sphinxPacket)
+	if err != nil{
+		return nil, err
+	}
+	return packetBytes, nil
+}
 
 /*
 	ReadInMixnetPKI reads in the public information about active mixes
