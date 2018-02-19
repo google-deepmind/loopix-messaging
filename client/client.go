@@ -341,7 +341,7 @@ func (c *Client) ControlOutQueue() error{
 /*
 	CreateCoverMessage packs a dummy message into a Sphinx packet.
 	The dummy message is a loop message.
-	TODO: change to a drop cover message.
+	TODO: change to a drop cover message instead of a loop.
  */
 func (c *Client) CreateCoverMessage() ([]byte, error) {
 	dummyLoad := "DummyPayloadMessage"
@@ -423,48 +423,48 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 	return nil
 }
 
-/*
-	ReadInClientsPKI reads in the public information about users
-	from the PKI database and stores them locally. In case
-	the connection or fetching data from the PKI went wrong,
-	an error is returned.
-*/
-func (c *Client) ReadInClientsPKI(pkiName string) error {
-	log.WithFields(log.Fields{"id" : c.Id}).Info(fmt.Sprintf(" Reading network users information from the PKI: %s", pkiName))
-
-	db, err := pki.OpenDatabase(pkiName, "sqlite3")
-
-	if err != nil{
-		return err
-	}
-
-	records, err := pki.QueryDatabase(db, "Pki", "Client")
-
-	if err != nil {
-		log.WithFields(log.Fields{"id" : c.Id}).Error("Error during Querying the Clients PKI")
-		return err
-	}
-
-	for records.Next() {
-		result := make(map[string]interface{})
-		err := records.MapScan(result)
-
-		if err != nil {
-			log.WithFields(log.Fields{"id" : c.Id}).Error("Error in scanning table PKI record")
-			return err
-		}
-
-		var pubs config.ClientConfig
-		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
-		if err != nil {
-			log.WithFields(log.Fields{"id" : c.Id}).Error("Error during unmarshal function for client config")
-			return err
-		}
-		c.OtherClients = append(c.OtherClients, pubs)
-	}
-	log.WithFields(log.Fields{"id" : c.Id}).Info("  Information about other users uploaded")
-	return nil
-}
+///*
+//	ReadInClientsPKI reads in the public information about users
+//	from the PKI database and stores them locally. In case
+//	the connection or fetching data from the PKI went wrong,
+//	an error is returned.
+//*/
+//func (c *Client) ReadInClientsPKI(pkiName string) error {
+//	log.WithFields(log.Fields{"id" : c.Id}).Info(fmt.Sprintf(" Reading network users information from the PKI: %s", pkiName))
+//
+//	db, err := pki.OpenDatabase(pkiName, "sqlite3")
+//
+//	if err != nil{
+//		return err
+//	}
+//
+//	records, err := pki.QueryDatabase(db, "Pki", "Client")
+//
+//	if err != nil {
+//		log.WithFields(log.Fields{"id" : c.Id}).Error("Error during Querying the Clients PKI")
+//		return err
+//	}
+//
+//	for records.Next() {
+//		result := make(map[string]interface{})
+//		err := records.MapScan(result)
+//
+//		if err != nil {
+//			log.WithFields(log.Fields{"id" : c.Id}).Error("Error in scanning table PKI record")
+//			return err
+//		}
+//
+//		var pubs config.ClientConfig
+//		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
+//		if err != nil {
+//			log.WithFields(log.Fields{"id" : c.Id}).Error(" Error during unmarshal function for client config")
+//			return err
+//		}
+//		c.OtherClients = append(c.OtherClients, pubs)
+//	}
+//	log.WithFields(log.Fields{"id" : c.Id}).Info(" Information about other users uploaded")
+//	return nil
+//}
 
 
 /*

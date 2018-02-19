@@ -80,6 +80,10 @@ func createHeader(curve elliptic.Curve, nodes []config.MixConfig, delays []float
 		return nil, Header{}, err
 	}
 
+	if len(asb) != len(nodes){
+		return nil, Header{}, errors.New(" the number of shared secrets should be the same as the number of traversed nodes")
+	}
+
 
 	var commands []Commands
 	for i, _ := range nodes {
