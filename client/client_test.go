@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"strconv"
 	"github.com/stretchr/testify/assert"
-	"anonymous-messaging/helpers"
-	"net"
 	"github.com/protobuf/proto"
 )
 
@@ -230,8 +228,8 @@ func TestClient_ReadInMixnetPKI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(testMixSet), len(client.ActiveMixes))
-	assert.Equal(t, testMixSet, client.ActiveMixes)
+	assert.Equal(t, len(testMixSet), len(client.Network.Mixes))
+	assert.Equal(t, testMixSet, client.Network.Mixes)
 
 }
 

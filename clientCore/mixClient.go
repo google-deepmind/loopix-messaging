@@ -14,16 +14,21 @@ import (
 	"errors"
 )
 
+type NetworkPKI struct {
+	Mixes []config.MixConfig
+	Providers []config.MixConfig
+}
+
 type CryptoClient struct {
 	Id     string
 	PubKey []byte
 	PrvKey []byte
 	Curve elliptic.Curve
-	ActiveMixes  []config.MixConfig
-	ActiveProviders  []config.MixConfig
+	//ActiveMixes  []config.MixConfig
+	//ActiveProviders  []config.MixConfig
 	Provider config.MixConfig
 
-	Network config.NetworkPKI
+	Network NetworkPKI
 }
 
 const (
@@ -68,7 +73,7 @@ func (c *CryptoClient) CreateSphinxPacket(message string, recipient config.Clien
 	selected mixes and the recipient's provider
  */
 func (c *CryptoClient) buildPath(recipient config.ClientConfig) (config.E2EPath, error) {
-	mixSeq, err := c.getRandomMixSequence(c.ActiveMixes, pathLength)
+	mixSeq, err := c.getRandomMixSequence(c.Network.Mixes, pathLength)
 	if err != nil{
 		return config.E2EPath{}, err
 	}

@@ -25,8 +25,3 @@ message PullRequest {
     string ClientId = 1;
     bytes Token = 2;
 }
-
-message NetworkPKI {
-    repeated MixConfig Mixes = 1;
-    repeated MixConfig Providers = 2;
-}

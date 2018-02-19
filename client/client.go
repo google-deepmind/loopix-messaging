@@ -382,13 +382,12 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 			return err
 		}
 
-		var pubs config.MixConfig
-		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
+		var mixConfig config.MixConfig
+		err = proto.Unmarshal(result["Config"].([]byte), &mixConfig)
 		if err != nil {
 			return err
 		}
-
-		c.ActiveMixes = append(c.ActiveMixes, pubs)
+		c.Network.Mixes = append(c.Network.Mixes, mixConfig)
 	}
 
 	recordsProviders, err := pki.QueryDatabase(db, "Pki", "Provider")
@@ -403,13 +402,13 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 			return err
 		}
 
-		var pubs config.MixConfig
-		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
+		var prvConfig config.MixConfig
+		err = proto.Unmarshal(result["Config"].([]byte), &prvConfig)
 		if err != nil {
 			return err
 		}
 
-		c.ActiveProviders = append(c.ActiveProviders, pubs)
+		c.Network.Providers = append(c.Network.Providers, prvConfig)
 	}
 	log.WithFields(log.Fields{"id" : c.Id}).Info(" Network information uploaded")
 
