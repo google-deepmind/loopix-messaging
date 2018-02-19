@@ -67,18 +67,20 @@ type Client struct {
 func (c *Client) Start() error {
 	c.OutQueue = make(chan []byte)
 
-	err := c.ReadInClientsPKI(c.PkiDir)
-	if err != nil{
-		return err
-	}
+	//err := c.ReadInClientsPKI(c.PkiDir)
+	//if err != nil{
+	//	return err
+	//}
 
-	err = c.ReadInNetworkFromPKI(c.PkiDir)
+	err := c.ReadInNetworkFromPKI(c.PkiDir)
 	if err != nil{
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error during reading in network PKI")
 		return err
 	}
 
 	err = c.RegisterToProvider()
 	if err != nil{
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error during registration to provider")
 		return err
 	}
 
@@ -97,22 +99,17 @@ func (c *Client) Start() error {
 */
 func (c *Client) SendMessage(message string, recipient config.ClientConfig) error {
 
-
-
 	sphinxPacket, err := c.CreateSphinxPacket(message, recipient)
 	if err != nil {
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error in sending message - create sphinx packet returned an error")
 		return err
 	}
 
 	packetBytes, err := config.WrapWithFlag(COMM_FLAG, sphinxPacket)
 	if err != nil{
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error in sending message - wrap with flag returned an error")
 		return err
 	}
-
-	//err = c.Send(packetBytes, c.Provider.Host, c.Provider.Port)
-	//if err != nil {
-	//	return err
-	//}
 	c.OutQueue <- packetBytes
 	return nil
 }
@@ -128,6 +125,7 @@ func (c *Client) Send(packet []byte, host string, port string) error {
 	conn, err := net.Dial("tcp", host+":"+port)
 
 	if err != nil {
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error in send - dial returned an error")
 		return err
 	}
 	defer conn.Close()
@@ -232,16 +230,19 @@ func (c *Client) RegisterToProvider() error{
 
 	confBytes, err := proto.Marshal(&c.Config)
 	if err != nil{
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error in register provider - marshal of provider config returned an error")
 		return err
 	}
 
 	pktBytes, err := config.WrapWithFlag(ASSIGNE_FLAG, confBytes)
 	if err != nil{
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error in register provider - wrap with flag returned an error")
 		return err
 	}
 
 	err = c.Send(pktBytes, c.Provider.Host, c.Provider.Port)
 	if err != nil{
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error in register provider - send registration packet returned an error")
 		return err
 	}
 	return nil
@@ -256,11 +257,13 @@ func (c *Client) GetMessagesFromProvider() error {
 	pullRqs := config.PullRequest{ClientId: c.Id, Token: c.token}
 	pullRqsBytes, err := proto.Marshal(&pullRqs)
 	if err != nil{
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error in register provider - marshal of pull request returned an error")
 		return err
 	}
 
 	pktBytes, err := config.WrapWithFlag(PULL_FLAG, pullRqsBytes)
 	if err != nil{
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error in register provider - marshal of provider config returned an error")
 		return err
 	}
 
@@ -371,20 +374,22 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 
 	recordsMixes, err := pki.QueryDatabase(db, "Pki", "Mix")
 	if err != nil{
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error during querying the Mixes PKI")
 		return err
 	}
 
 	for recordsMixes.Next() {
 		result := make(map[string]interface{})
 		err := recordsMixes.MapScan(result)
-
 		if err != nil {
+			log.WithFields(log.Fields{"id" : c.Id}).Error("Error during mixes record mapping PKI")
 			return err
 		}
 
 		var mixConfig config.MixConfig
 		err = proto.Unmarshal(result["Config"].([]byte), &mixConfig)
 		if err != nil {
+			log.WithFields(log.Fields{"id" : c.Id}).Error("Error during unmarshal function for mix config")
 			return err
 		}
 		c.Network.Mixes = append(c.Network.Mixes, mixConfig)
@@ -392,6 +397,7 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 
 	recordsProviders, err := pki.QueryDatabase(db, "Pki", "Provider")
 	if err != nil{
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error during querying the Providers PKI")
 		return err
 	}
 	for recordsProviders.Next() {
@@ -399,12 +405,14 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 		err := recordsProviders.MapScan(result)
 
 		if err != nil {
+			log.WithFields(log.Fields{"id" : c.Id}).Error("Error during providers record mapping PKI")
 			return err
 		}
 
 		var prvConfig config.MixConfig
 		err = proto.Unmarshal(result["Config"].([]byte), &prvConfig)
 		if err != nil {
+			log.WithFields(log.Fields{"id" : c.Id}).Error("Error during unmarshal function for provider config")
 			return err
 		}
 
@@ -433,6 +441,7 @@ func (c *Client) ReadInClientsPKI(pkiName string) error {
 	records, err := pki.QueryDatabase(db, "Pki", "Client")
 
 	if err != nil {
+		log.WithFields(log.Fields{"id" : c.Id}).Error("Error during Querying the Clients PKI")
 		return err
 	}
 
@@ -441,12 +450,14 @@ func (c *Client) ReadInClientsPKI(pkiName string) error {
 		err := records.MapScan(result)
 
 		if err != nil {
+			log.WithFields(log.Fields{"id" : c.Id}).Error("Error in scanning table PKI record")
 			return err
 		}
 
 		var pubs config.ClientConfig
 		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
 		if err != nil {
+			log.WithFields(log.Fields{"id" : c.Id}).Error("Error during unmarshal function for client config")
 			return err
 		}
 		c.OtherClients = append(c.OtherClients, pubs)
