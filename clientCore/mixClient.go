@@ -63,7 +63,6 @@ func (c *CryptoClient) CreateSphinxPacket(message string, recipient config.Clien
 		log.WithFields(log.Fields{"id" : c.Id}).Error("Error in CreateSphinxPacket - encoding message failed")
 		return nil, err
 	}
-
 	return sphinxPacket, nil
 }
 
@@ -79,7 +78,6 @@ func (c *CryptoClient) buildPath(recipient config.ClientConfig) (config.E2EPath,
 		log.WithFields(log.Fields{"id" : c.Id}).Error("Error in buildPath - generating random mix path failed")
 		return config.E2EPath{}, err
 	}
-
 	path := config.E2EPath{IngressProvider: c.Provider, Mixes: mixSeq, EgressProvider: *recipient.Provider, Recipient: recipient}
 	return path, nil
 }
@@ -89,7 +87,6 @@ func (c *CryptoClient) buildPath(recipient config.ClientConfig) (config.E2EPath,
 	If the list of all active mixes is empty or the given length is larger than the set of active mixes,
 	an error is returned.
  */
-
 func (c *CryptoClient) getRandomMixSequence(mixes []config.MixConfig, length int) ([]config.MixConfig, error) {
 	if len(mixes) == 0 || mixes == nil {
 		return nil, errors.New("cannot take a mix sequence from an empty list")
@@ -137,7 +134,6 @@ func (c *CryptoClient) EncodeMessage(message string, path config.E2EPath, delays
 		log.WithFields(log.Fields{"id" : c.Id}).Error("Error in EncodeMessage - the pack procedure failed")
 		return nil, err
 	}
-
 	return proto.Marshal(&packet)
 }
 
