@@ -13,7 +13,7 @@ import (
 	"anonymous-messaging/pki"
 	"os"
 	"errors"
-	"crypto/md5"
+	"crypto/sha256"
 )
 
 func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
@@ -87,8 +87,11 @@ func DirExists(path string) (bool, error) {
 	return false, err
 }
 
-func MD5Hash(data []byte) []byte{
-	h := md5.New()
-	h.Write(data)
+/*
+	SHA256 computes the hash value of a given argument using SHA256 algorithm.
+ */
+func SHA256(arg []byte) []byte{
+	h := sha256.New()
+	h.Write([]byte(arg))
 	return h.Sum(nil)
 }

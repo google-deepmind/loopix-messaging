@@ -24,12 +24,10 @@ import (
 const (
 	desiredRateParameter = 0.2
 	fetchRate = 0.01
-	pathLength           = 2
 	ASSIGNE_FLAG = "\xA2"
 	COMM_FLAG = "\xC6"
 	TOKEN_FLAG = "xA9"
 	PULL_FLAG = "\xFF"
-	MAX_BUFFERQUEUE_SIZE = 10000
 )
 
 type ClientIt interface {
@@ -55,6 +53,7 @@ type Client struct {
 	token []byte
 
 	OutQueue chan []byte
+	registrationDone chan bool
 
 }
 
@@ -66,6 +65,7 @@ type Client struct {
 */
 func (c *Client) Start() error {
 	c.OutQueue = make(chan []byte)
+	c.registrationDone = make(chan bool)
 
 	err := c.ReadInNetworkFromPKI(c.PkiDir)
 	if err != nil{
@@ -73,11 +73,20 @@ func (c *Client) Start() error {
 		return err
 	}
 
-	err = c.RegisterToProvider()
-	if err != nil{
-		log.WithFields(log.Fields{"id" : c.Id}).Error("Error during registration to provider")
-		return err
-	}
+	go func() {
+		for {
+			select{
+			case <- c.registrationDone:
+				return
+			default:
+				err = c.RegisterToProvider()
+				if err != nil {
+					log.WithFields(log.Fields{"id": c.Id}).Error("Error during registration to provider", err)
+				}
+				time.Sleep(60 * time.Second)
+			}
+		}
+	}()
 
 	c.Run()
 	return nil
@@ -172,6 +181,13 @@ func (c *Client) HandleConnection(conn net.Conn) {
 	switch packet.Flag {
 	case TOKEN_FLAG:
 		c.RegisterToken(packet.Data)
+		go func() {
+			c.ControlOutQueue()
+		}()
+
+		go func() {
+			c.ControlMessagingFetching()
+		}()
 	case COMM_FLAG:
 		_, err := c.ProcessPacket(packet.Data)
 		if err != nil {
@@ -191,6 +207,7 @@ func (c *Client) HandleConnection(conn net.Conn) {
 func (c *Client) RegisterToken(token []byte) {
 	c.token = token
 	log.WithFields(log.Fields{"id" : c.Id}).Info(fmt.Sprintf(" Registered token %s", c.token))
+	c.registrationDone <- true
 }
 
 /*
@@ -267,29 +284,28 @@ func (c *Client) Run() {
 	finish := make(chan bool)
 
 	go func() {
-		c.ControlOutQueue()
-	}()
-
-	go func() {
-		c.ControlMessagingFetching()
-	}()
-
-	go func() {
 		c.FakeAdding()
 	}()
-
 
 	go func() {
 		log.WithFields(log.Fields{"id" : c.Id}).Info(fmt.Sprintf("Listening on address %s", c.Host + ":" + c.Port))
 		c.ListenForIncomingConnections()
 	}()
+
 	<-finish
 }
 
 func (c *Client) FakeAdding(){
 	log.WithFields(log.Fields{"id" : c.Id}).Info("Started fake adding")
 	for {
-		packet := []byte("Hello world")
+		sphinxPacket, err := c.CreateSphinxPacket("hello world", c.Config)
+		if err != nil{
+			log.WithFields(log.Fields{"id" : c.Id}).Info("Something went wrong")
+		}
+		packet, err := config.WrapWithFlag(COMM_FLAG, sphinxPacket)
+		if err != nil{
+			log.WithFields(log.Fields{"id" : c.Id}).Info("Something went wrong")
+		}
 		c.OutQueue <- packet
 		log.WithFields(log.Fields{"id" : c.Id}).Info("Added packet")
 		time.Sleep(10 * time.Second)

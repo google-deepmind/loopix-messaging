@@ -126,7 +126,7 @@ func (p *ProviderServer) ForwardPacket(sphinxPacket []byte, address string) erro
 	if err != nil{
 		return err
 	}
-	log.WithFields(log.Fields{"id" : p.Id}).Info(" Forwarded sphinx packet")
+	log.WithFields(log.Fields{"id" : p.Id}).Info("Forwarded sphinx packet")
 	return nil
 }
 
@@ -162,7 +162,7 @@ func (p *ProviderServer) ListenForIncomingConnections() {
 		if err != nil {
 			log.WithFields(log.Fields{"id" : p.Id}).Error(err)
 		} else {
-			log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf(" Received new connection from %s", conn.RemoteAddr()))
+			log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf("Received new connection from %s", conn.RemoteAddr()))
 			errs := make(chan error, 1)
 			go p.HandleConnection(conn, errs)
 			err = <- errs
@@ -230,7 +230,7 @@ func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, 
 		return nil, "", err
 	}
 
-	token := helpers.MD5Hash([]byte("TMP_Token" + clientConf.Id))
+	token := helpers.SHA256([]byte("TMP_Token" + clientConf.Id))
 	record := ClientRecord{Id: clientConf.Id, Host: clientConf.Host, Port: clientConf.Port, PubKey: clientConf.PubKey, Token: token}
 	p.assignedClients[clientConf.Id] = record
 	address := clientConf.Host + ":" + clientConf.Port
@@ -286,7 +286,7 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 		return err
 	}
 
-	log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf(" Processing pull request: %s %s", request.ClientId, string(request.Token)))
+	log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf("Processing pull request: %s %s", request.ClientId, string(request.Token)))
 
 	if p.AuthenticateUser(request.ClientId, request.Token) == true{
 		signal, err := p.FetchMessages(request.ClientId)
@@ -315,6 +315,8 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 */
 func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) bool{
 
+	fmt.Println("TOKEN VER: ", p.assignedClients[clientId].Token)
+	fmt.Println("TOKEN CHECK: ", clientToken)
 	if bytes.Compare(p.assignedClients[clientId].Token, clientToken) == 0 {
 		return true
 	}
@@ -388,7 +390,7 @@ func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId 
 		return err
 	}
 
-	log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf(" Stored message for %s", inboxId))
+	log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf("Stored message for %s", inboxId))
 	return nil
 }
 

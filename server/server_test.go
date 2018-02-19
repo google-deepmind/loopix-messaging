@@ -166,7 +166,7 @@ func TestProviderServer_FetchMessages_FullInbox(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Equal(t, "SI", signal, " For inbox containg messages the signal should be SI")
+	assert.Equal(t, "SI", signal, " For inbox containing messages the signal should be SI")
 }
 
 
@@ -184,7 +184,7 @@ func TestProviderServer_FetchMessages_NoInbox(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Equal(t, "NI", signal, " For a non-exisitng inbox id the function should return signal NI")
+	assert.Equal(t, "NI", signal, " For a non-existing inbox id the function should return signal NI")
 }
 
 func TestProviderServer_StoreMessage(t *testing.T) {
@@ -232,6 +232,7 @@ func TestProviderServer_HandlePullRequest_Pass(t *testing.T) {
 
 func TestProviderServer_HandlePullRequest_Fail(t *testing.T) {
 	testPullRequest := config.PullRequest{ClientId: "FailTestId", Token: []byte("TestToken")}
+	providerServer.assignedClients = map[string]ClientRecord{}
 	bTestPullRequest, err := proto.Marshal(&testPullRequest)
 	if err != nil{
 		t.Error(err)
@@ -252,7 +253,7 @@ func TestProviderServer_RegisterNewClient(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "localhost:9998", addr, "Returned address should be the same as registered client address")
-	assert.Equal(t, helpers.MD5Hash([]byte("TMP_Token" + "NewClient")), token, "Returned token should be equal to the hash of clients id")
+	assert.Equal(t, helpers.SHA256([]byte("TMP_Token" + "NewClient")), token, "Returned token should be equal to the hash of clients id")
 
 	path := fmt.Sprintf("./inboxes/%s", "NewClient")
 	exists, err := helpers.DirExists(path)
