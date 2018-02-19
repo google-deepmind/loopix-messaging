@@ -42,3 +42,4 @@ type E2EPath struct {
 func (p *E2EPath) Len() int {
 	return 3 + len(p.Mixes)
 }
+

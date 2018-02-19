@@ -37,7 +37,7 @@ type ClientIt interface {
 	SendMessage(message string, recipient config.MixConfig)
 	ProcessPacket(packet []byte)
 	Start()
-	ReadInMixnetPKI()
+	ReadInNetworkFromPKI()
 	ReadInClientsPKI()
 }
 
@@ -72,7 +72,7 @@ func (c *Client) Start() error {
 		return err
 	}
 
-	err = c.ReadInMixnetPKI(c.PkiDir)
+	err = c.ReadInNetworkFromPKI(c.PkiDir)
 	if err != nil{
 		return err
 	}
@@ -94,9 +94,10 @@ func (c *Client) Start() error {
 	sphinx cryptographic packet format. Next, the encoded packet is combined with a
 	flag signaling that this is a usual network packet, and passed to be send.
 	The function returns an error if any issues occurred.
-	TODO change message type to []byte
 */
 func (c *Client) SendMessage(message string, recipient config.ClientConfig) error {
+
+
 
 	sphinxPacket, err := c.CreateSphinxPacket(message, recipient)
 	if err != nil {
@@ -354,12 +355,12 @@ func (c *Client) CreateCoverMessage() ([]byte, error) {
 }
 
 /*
-	ReadInMixnetPKI reads in the public information about active mixes
+	ReadInNetworkFromPKI reads in the public information about active mixes
 	from the PKI database and stores them locally. In case
 	the connection or fetching data from the PKI went wrong,
 	an error is returned.
 */
-func (c *Client) ReadInMixnetPKI(pkiName string) error {
+func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 	log.WithFields(log.Fields{"id" : c.Id}).Info(fmt.Sprintf("Reading network information from the PKI: %s", pkiName))
 
 	db, err := pki.OpenDatabase(pkiName, "sqlite3")
@@ -368,15 +369,14 @@ func (c *Client) ReadInMixnetPKI(pkiName string) error {
 		return err
 	}
 
-	records, err := pki.QueryDatabase(db, "Pki", "Mix")
-
+	recordsMixes, err := pki.QueryDatabase(db, "Pki", "Mix")
 	if err != nil{
 		return err
 	}
 
-	for records.Next() {
+	for recordsMixes.Next() {
 		result := make(map[string]interface{})
-		err := records.MapScan(result)
+		err := recordsMixes.MapScan(result)
 
 		if err != nil {
 			return err
@@ -391,7 +391,28 @@ func (c *Client) ReadInMixnetPKI(pkiName string) error {
 		c.ActiveMixes = append(c.ActiveMixes, pubs)
 	}
 
+	recordsProviders, err := pki.QueryDatabase(db, "Pki", "Provider")
+	if err != nil{
+		return err
+	}
+	for recordsProviders.Next() {
+		result := make(map[string]interface{})
+		err := recordsProviders.MapScan(result)
+
+		if err != nil {
+			return err
+		}
+
+		var pubs config.MixConfig
+		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
+		if err != nil {
+			return err
+		}
+
+		c.ActiveProviders = append(c.ActiveProviders, pubs)
+	}
 	log.WithFields(log.Fields{"id" : c.Id}).Info(" Network information uploaded")
+
 	return nil
 }
 

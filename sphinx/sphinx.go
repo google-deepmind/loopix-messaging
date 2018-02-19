@@ -109,7 +109,6 @@ func createHeader(curve elliptic.Curve, nodes []config.MixConfig, delays []float
  */
 
 func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands []Commands, destination config.ClientConfig) (Header, error){
-
 	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: &commands[len(commands) - 1], NextHopMetaData: []byte{}, Mac: []byte{}}
 
 	finalHopBytes, err := proto.Marshal(&finalHop)

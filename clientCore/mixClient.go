@@ -20,7 +20,10 @@ type CryptoClient struct {
 	PrvKey []byte
 	Curve elliptic.Curve
 	ActiveMixes  []config.MixConfig
+	ActiveProviders  []config.MixConfig
 	Provider config.MixConfig
+
+	Network config.NetworkPKI
 }
 
 const (

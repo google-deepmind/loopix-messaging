@@ -168,52 +168,52 @@ func TestClient_RegisterToProvider(t *testing.T) {
 
 }
 
-func TestClient_SendMessage(t *testing.T) {
-	pubP, _, err := sphinx.GenerateKeyPair()
-	if err != nil{
-		t.Fatal(err)
-	}
-	providerPubs = config.MixConfig{Id: "Provider", Host: "localhost", Port: "9995", PubKey: pubP}
-
-	pubR, _, err := sphinx.GenerateKeyPair()
-	if err != nil{
-		t.Fatal(err)
-	}
-	recipient := config.ClientConfig{Id:"Recipient", Host:"localhost", Port:"9999", PubKey: pubR, Provider: &providerPubs}
-	fmt.Println(recipient)
-	pubM1, _, err := sphinx.GenerateKeyPair()
-	if err != nil{
-		t.Fatal(err)
-	}
-	pubM2, _, err := sphinx.GenerateKeyPair()
-	if err != nil{
-		t.Fatal(err)
-	}
-	m1 := config.MixConfig{Id: "Mix1", Host: "localhost", Port: strconv.Itoa(9980), PubKey: pubM1}
-	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: strconv.Itoa(9981), PubKey: pubM2}
-
-	client := SetupTestClient(t)
-	client.ActiveMixes = []config.MixConfig{m1, m2}
-
-	addr, err := helpers.ResolveTCPAddress(client.Host, client.Port)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	client.Listener, err = net.ListenTCP("tcp", addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = client.SendMessage("TestMessage", recipient)
-	if err != nil{
-		t.Fatal(err)
-	}
-	err = client.Listener.Close()
-	if err != nil{
-		t.Fatal(err)
-	}
-}
+//func TestClient_SendMessage(t *testing.T) {
+//	pubP, _, err := sphinx.GenerateKeyPair()
+//	if err != nil{
+//		t.Fatal(err)
+//	}
+//	providerPubs = config.MixConfig{Id: "Provider", Host: "localhost", Port: "9995", PubKey: pubP}
+//
+//	pubR, _, err := sphinx.GenerateKeyPair()
+//	if err != nil{
+//		t.Fatal(err)
+//	}
+//	recipient := config.ClientConfig{Id:"Recipient", Host:"localhost", Port:"9999", PubKey: pubR, Provider: &providerPubs}
+//	fmt.Println(recipient)
+//	pubM1, _, err := sphinx.GenerateKeyPair()
+//	if err != nil{
+//		t.Fatal(err)
+//	}
+//	pubM2, _, err := sphinx.GenerateKeyPair()
+//	if err != nil{
+//		t.Fatal(err)
+//	}
+//	m1 := config.MixConfig{Id: "Mix1", Host: "localhost", Port: strconv.Itoa(9980), PubKey: pubM1}
+//	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: strconv.Itoa(9981), PubKey: pubM2}
+//
+//	client := SetupTestClient(t)
+//	client.ActiveMixes = []config.MixConfig{m1, m2}
+//
+//	addr, err := helpers.ResolveTCPAddress(client.Host, client.Port)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	client.Listener, err = net.ListenTCP("tcp", addr)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	err = client.SendMessage("TestMessage", recipient)
+//	if err != nil{
+//		t.Fatal(err)
+//	}
+//	err = client.Listener.Close()
+//	if err != nil{
+//		t.Fatal(err)
+//	}
+//}
 
 func TestClient_ProcessPacket(t *testing.T) {
 
@@ -225,7 +225,7 @@ func TestClient_ReadInMixnetPKI(t *testing.T) {
 	SetupTestMixesInDatabase(t)
 
 	client := SetupTestClient(t)
-	err := client.ReadInMixnetPKI("testDatabase.db")
+	err := client.ReadInNetworkFromPKI("testDatabase.db")
 	if err != nil{
 		t.Fatal(err)
 	}
@@ -247,10 +247,5 @@ func TestClient_ReadInClientsPKI(t *testing.T) {
 
 	assert.Equal(t, len(testClientSet), len(client.OtherClients))
 	assert.Equal(t, testClientSet, client.OtherClients)
-}
-
-func TestClient_CheckBufferQueue(t *testing.T) {
-	client := SetupTestClient(t)
-	client.CheckBufferQueue([]byte("Hello"))
 }
 
