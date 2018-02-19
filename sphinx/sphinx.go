@@ -231,8 +231,8 @@ func computeFillers(nodes []config.MixConfig, tuples []HeaderInitials) (string, 
 		mx := strings.Repeat("\x00", minLen) + base
 
 		xorVal, err := AES_CTR([]byte(kx), []byte(mx))
-		log.Error("Error in computeFillers - AES_CTR failed")
 		if err != nil{
+			log.Error("Error in computeFillers - AES_CTR failed")
 			return "", err
 		}
 

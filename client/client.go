@@ -23,6 +23,7 @@ import (
 
 const (
 	desiredRateParameter = 0.2
+	fetchRate = 0.01
 	pathLength           = 2
 	ASSIGNE_FLAG = "\xA2"
 	COMM_FLAG = "\xC6"
@@ -44,12 +45,11 @@ type ClientIt interface {
 type Client struct {
 	Host string
 	Port string
-	clientCore.CryptoClient
 
+	clientCore.CryptoClient
 	Listener *net.TCPListener
 
 	PkiDir string
-	OtherClients []config.ClientConfig
 
 	Config config.ClientConfig
 	token []byte
@@ -66,11 +66,6 @@ type Client struct {
 */
 func (c *Client) Start() error {
 	c.OutQueue = make(chan []byte)
-
-	//err := c.ReadInClientsPKI(c.PkiDir)
-	//if err != nil{
-	//	return err
-	//}
 
 	err := c.ReadInNetworkFromPKI(c.PkiDir)
 	if err != nil{
@@ -177,17 +172,6 @@ func (c *Client) HandleConnection(conn net.Conn) {
 	switch packet.Flag {
 	case TOKEN_FLAG:
 		c.RegisterToken(packet.Data)
-		go func() {
-			err = c.SendMessage("Hello world, this is me", c.OtherClients[0])
-			if err != nil {
-				log.WithFields(log.Fields{"id" : c.Id}).Error(err)
-			}
-
-			err = c.GetMessagesFromProvider()
-			if err != nil {
-				log.WithFields(log.Fields{"id" : c.Id}).Error(err)
-			}
-		}()
 	case COMM_FLAG:
 		_, err := c.ProcessPacket(packet.Data)
 		if err != nil {
@@ -287,6 +271,10 @@ func (c *Client) Run() {
 	}()
 
 	go func() {
+		c.ControlMessagingFetching()
+	}()
+
+	go func() {
 		c.FakeAdding()
 	}()
 
@@ -336,6 +324,19 @@ func (c *Client) ControlOutQueue() error{
 		}
 	}
 	return nil
+}
+
+func (c *Client) ControlMessagingFetching() {
+	for {
+		c.GetMessagesFromProvider()
+		log.WithFields(log.Fields{"id" : c.Id}).Info("Sent request to provider to fetch messages")
+
+		timeout, err := helpers.RandomExponential(fetchRate)
+		if err != nil{
+			log.WithFields(log.Fields{"id" : c.Id}).Error("Error in ControlMessagingFetching - generating random exp. value failed")
+		}
+		time.Sleep(time.Duration(int64(timeout * math.Pow10(9))) * time.Nanosecond)
+	}
 }
 
 /*

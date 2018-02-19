@@ -210,6 +210,7 @@ func (p *ProviderServer) HandleConnection(conn net.Conn, errs chan<- error) {
 			errs <- err
 		}
 	default:
+		log.WithFields(log.Fields{"id" : p.Id}).Info(packet.Flag)
 		log.WithFields(log.Fields{"id" : p.Id}).Info("Packet flag not recognised. Packet dropped")
 		errs <- nil
 	}
@@ -317,6 +318,7 @@ func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) b
 	if bytes.Compare(p.assignedClients[clientId].Token, clientToken) == 0 {
 		return true
 	}
+	log.WithFields(log.Fields{"id" : p.Id}).Warning(fmt.Sprintf("Non matching token: %s, %s", p.assignedClients[clientId].Token, clientToken))
 	return false
 }
 

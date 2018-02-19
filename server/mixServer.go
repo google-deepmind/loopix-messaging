@@ -144,7 +144,7 @@ func (m *MixServer) HandleConnection(conn net.Conn, errs chan<- error) {
 			errs <- err
 		}
 	default:
-		log.WithFields(log.Fields{"id" : m.Id}).Info("Packet flag not recognised. Packet dropped.")
+		log.WithFields(log.Fields{"id" : m.Id}).Info(fmt.Sprintf("Packet flag %s not recognised. Packet dropped", packet.Flag))
 	}
 }
 
