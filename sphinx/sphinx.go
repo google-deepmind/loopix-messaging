@@ -268,7 +268,8 @@ func computeBlindingFactor(curve elliptic.Curve, key []byte) (*big.Int, error) {
 
 
 /*
-
+	computeSharedSecretHash computes the hash value of the shared secret key
+	using AES_CTR.
  */
 func computeSharedSecretHash(key []byte, iv []byte) ([]byte, error) {
 	aesCipher, err := aes.NewCipher(key)
@@ -399,7 +400,7 @@ func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte){
 /*
 	ProcessSphinxPayload unwraps a single layer of the encryption from the sphinx packet payload.
 	ProcessSphinxPayload first recomputes the shared secret which is used to perform the AES_CTR decryption.
-	ProcessSphinxPayload returnes the new packet payload or an error if the decryption failed.
+	ProcessSphinxPayload returns the new packet payload or an error if the decryption failed.
  */
 
 func ProcessSphinxPayload(alpha []byte, payload []byte, privKey []byte) ([]byte, error) {
