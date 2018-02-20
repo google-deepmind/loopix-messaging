@@ -315,8 +315,6 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 */
 func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) bool{
 
-	fmt.Println("TOKEN VER: ", p.assignedClients[clientId].Token)
-	fmt.Println("TOKEN CHECK: ", clientToken)
 	if bytes.Compare(p.assignedClients[clientId].Token, clientToken) == 0 {
 		return true
 	}
