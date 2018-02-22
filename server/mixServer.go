@@ -6,16 +6,17 @@ package server
 import (
 	"anonymous-messaging/config"
 	"anonymous-messaging/helpers"
+	"anonymous-messaging/logging"
 	"anonymous-messaging/networker"
 	"anonymous-messaging/node"
 	"anonymous-messaging/sphinx"
 
 	"github.com/protobuf/proto"
-	log "github.com/sirupsen/logrus"
 
-	"fmt"
 	"net"
 )
+
+var logLocal = logging.PackageLogger()
 
 type MixServerIt interface {
 	networker.NetworkServer
@@ -33,7 +34,7 @@ type MixServer struct {
 }
 
 func (m *MixServer) ReceivedPacket(packet []byte) error {
-	log.WithFields(log.Fields{"id": m.Id}).Info("Received new sphinx packet")
+	logLocal.Info("Received new sphinx packet")
 
 	c := make(chan []byte)
 	cAdr := make(chan sphinx.Hop)
@@ -53,7 +54,7 @@ func (m *MixServer) ReceivedPacket(packet []byte) error {
 	if flag == "\xF1" {
 		m.ForwardPacket(dePacket, nextHop.Address)
 	} else {
-		log.WithFields(log.Fields{"id": m.Id}).Info("Packet has non-forward flag. Packet dropped")
+		logLocal.Info("Packet has non-forward flag. Packet dropped")
 	}
 	return nil
 }
@@ -98,7 +99,7 @@ func (m *MixServer) Run() {
 	finish := make(chan bool)
 
 	go func() {
-		log.WithFields(log.Fields{"id": m.Id}).Info(fmt.Sprintf("Listening on %s", m.Host+":"+m.Port))
+		logLocal.Infof("Listening on %s", m.Host+":"+m.Port)
 		m.ListenForIncomingConnections()
 	}()
 
@@ -110,14 +111,14 @@ func (m *MixServer) ListenForIncomingConnections() {
 		conn, err := m.Listener.Accept()
 
 		if err != nil {
-			log.WithFields(log.Fields{"id": m.Id}).Error(err)
+			logLocal.WithError(err).Error(err)
 		} else {
-			log.WithFields(log.Fields{"id": m.Id}).Info(fmt.Sprintf("Received connection from %s", conn.RemoteAddr()))
+			logLocal.Infof("Received connection from %s", conn.RemoteAddr())
 			errs := make(chan error, 1)
 			go m.HandleConnection(conn, errs)
 			err = <-errs
 			if err != nil {
-				log.WithFields(log.Fields{"id": m.Id}).Error(err)
+				logLocal.WithError(err).Error(err)
 			}
 		}
 	}
@@ -145,7 +146,7 @@ func (m *MixServer) HandleConnection(conn net.Conn, errs chan<- error) {
 			errs <- err
 		}
 	default:
-		log.WithFields(log.Fields{"id": m.Id}).Info(fmt.Sprintf("Packet flag %s not recognised. Packet dropped", packet.Flag))
+		logLocal.Infof("Packet flag %s not recognised. Packet dropped", packet.Flag)
 	}
 }
 

@@ -8,18 +8,19 @@ import (
 	"anonymous-messaging/clientCore"
 	"anonymous-messaging/config"
 	"anonymous-messaging/helpers"
+	"anonymous-messaging/logging"
 	"anonymous-messaging/networker"
 	"anonymous-messaging/pki"
 
 	"github.com/protobuf/proto"
-	log "github.com/sirupsen/logrus"
 
 	"crypto/elliptic"
-	"fmt"
 	"math"
 	"net"
 	"time"
 )
+
+var logLocal = logging.PackageLogger()
 
 const (
 	desiredRateParameter = 0.2
@@ -63,12 +64,13 @@ type Client struct {
 	signaling whenever any operation was unsuccessful.
 */
 func (c *Client) Start() error {
+
 	c.OutQueue = make(chan []byte)
 	c.registrationDone = make(chan bool)
 
 	err := c.ReadInNetworkFromPKI(c.PkiDir)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error during reading in network PKI")
+		logLocal.WithError(err).Error("Error during reading in network PKI")
 		return err
 	}
 
@@ -80,7 +82,7 @@ func (c *Client) Start() error {
 			default:
 				err = c.RegisterToProvider()
 				if err != nil {
-					log.WithFields(log.Fields{"id": c.Id}).Error("Error during registration to provider", err)
+					logLocal.WithError(err).Error("Error during registration to provider", err)
 				}
 				time.Sleep(60 * time.Second)
 			}
@@ -104,13 +106,13 @@ func (c *Client) SendMessage(message string, recipient config.ClientConfig) erro
 
 	sphinxPacket, err := c.CreateSphinxPacket(message, recipient)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in sending message - create sphinx packet returned an error")
+		logLocal.WithError(err).Error("Error in sending message - create sphinx packet returned an error")
 		return err
 	}
 
 	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in sending message - wrap with flag returned an error")
+		logLocal.WithError(err).Error("Error in sending message - wrap with flag returned an error")
 		return err
 	}
 	c.OutQueue <- packetBytes
@@ -127,7 +129,7 @@ func (c *Client) Send(packet []byte, host string, port string) error {
 	conn, err := net.Dial("tcp", host+":"+port)
 
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in send - dial returned an error")
+		logLocal.WithError(err).Error("Error in send - dial returned an error")
 		return err
 	}
 	defer conn.Close()
@@ -148,7 +150,7 @@ func (c *Client) ListenForIncomingConnections() {
 		conn, err := c.Listener.Accept()
 
 		if err != nil {
-			log.WithFields(log.Fields{"id": c.Id}).Error(err)
+			logLocal.WithError(err).Error(err)
 		} else {
 			go c.HandleConnection(conn)
 		}
@@ -167,13 +169,13 @@ func (c *Client) HandleConnection(conn net.Conn) {
 
 	reqLen, err := conn.Read(buff)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error(err)
+		logLocal.WithError(err).Error("Error while reading incoming connection")
 		panic(err)
 	}
 	var packet config.GeneralPacket
 	err = proto.Unmarshal(buff[:reqLen], &packet)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error(err)
+		logLocal.WithError(err).Error("Error in unmarshal incoming packet")
 	}
 
 	switch packet.Flag {
@@ -189,11 +191,11 @@ func (c *Client) HandleConnection(conn net.Conn) {
 	case commFlag:
 		_, err := c.ProcessPacket(packet.Data)
 		if err != nil {
-			log.WithFields(log.Fields{"id": c.Id}).Error(err)
+			logLocal.WithError(err).Error("Error in processing received packet")
 		}
-		log.WithFields(log.Fields{"id": c.Id}).Info(" Received new message")
+		logLocal.Info(" Received new message")
 	default:
-		log.WithFields(log.Fields{"id": c.Id}).Info(" Packet flag not recognised. Packet dropped.")
+		logLocal.Info(" Packet flag not recognised. Packet dropped.")
 	}
 }
 
@@ -202,7 +204,7 @@ func (c *Client) HandleConnection(conn net.Conn) {
 */
 func (c *Client) RegisterToken(token []byte) {
 	c.token = token
-	log.WithFields(log.Fields{"id": c.Id}).Info(fmt.Sprintf(" Registered token %s", c.token))
+	logLocal.Infof(" Registered token %s", c.token)
 	c.registrationDone <- true
 }
 
@@ -212,7 +214,7 @@ func (c *Client) RegisterToken(token []byte) {
 	was unsuccessful.
 */
 func (c *Client) ProcessPacket(packet []byte) ([]byte, error) {
-	log.WithFields(log.Fields{"id": c.Id}).Info(" Processing packet")
+	logLocal.Info(" Processing packet")
 	return packet, nil
 }
 
@@ -223,23 +225,23 @@ func (c *Client) ProcessPacket(packet []byte) ([]byte, error) {
 */
 func (c *Client) RegisterToProvider() error {
 
-	log.WithFields(log.Fields{"id": c.Id}).Info(" Sending request to provider to register")
+	logLocal.Info(" Sending request to provider to register")
 
 	confBytes, err := proto.Marshal(&c.Config)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in register provider - marshal of provider config returned an error")
+		logLocal.WithError(err).Error("Error in register provider - marshal of provider config returned an error")
 		return err
 	}
 
 	pktBytes, err := config.WrapWithFlag(assignFlag, confBytes)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in register provider - wrap with flag returned an error")
+		logLocal.WithError(err).Error("Error in register provider - wrap with flag returned an error")
 		return err
 	}
 
 	err = c.Send(pktBytes, c.Provider.Host, c.Provider.Port)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in register provider - send registration packet returned an error")
+		logLocal.WithError(err).Error("Error in register provider - send registration packet returned an error")
 		return err
 	}
 	return nil
@@ -254,13 +256,13 @@ func (c *Client) GetMessagesFromProvider() error {
 	pullRqs := config.PullRequest{ClientId: c.Id, Token: c.token}
 	pullRqsBytes, err := proto.Marshal(&pullRqs)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in register provider - marshal of pull request returned an error")
+		logLocal.WithError(err).Error("Error in register provider - marshal of pull request returned an error")
 		return err
 	}
 
 	pktBytes, err := config.WrapWithFlag(pullFlag, pullRqsBytes)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in register provider - marshal of provider config returned an error")
+		logLocal.WithError(err).Error("Error in register provider - marshal of provider config returned an error")
 		return err
 	}
 
@@ -284,7 +286,7 @@ func (c *Client) Run() {
 	}()
 
 	go func() {
-		log.WithFields(log.Fields{"id": c.Id}).Info(fmt.Sprintf("Listening on address %s", c.Host+":"+c.Port))
+		logLocal.Infof("Listening on address %s", c.Host+":"+c.Port)
 		c.ListenForIncomingConnections()
 	}()
 
@@ -292,29 +294,29 @@ func (c *Client) Run() {
 }
 
 func (c *Client) FakeAdding() {
-	log.WithFields(log.Fields{"id": c.Id}).Info("Started fake adding")
+	logLocal.Info("Started fake adding")
 	for {
 		sphinxPacket, err := c.CreateSphinxPacket("hello world", c.Config)
 		if err != nil {
-			log.WithFields(log.Fields{"id": c.Id}).Info("Something went wrong")
+			logLocal.Info("Something went wrong")
 		}
 		packet, err := config.WrapWithFlag(commFlag, sphinxPacket)
 		if err != nil {
-			log.WithFields(log.Fields{"id": c.Id}).Info("Something went wrong")
+			logLocal.Info("Something went wrong")
 		}
 		c.OutQueue <- packet
-		log.WithFields(log.Fields{"id": c.Id}).Info("Added packet")
+		logLocal.Info("Added packet")
 		time.Sleep(10 * time.Second)
 	}
 }
 
 func (c *Client) ControlOutQueue() error {
-	log.WithFields(log.Fields{"id": c.Id}).Info("Queue controller started")
+	logLocal.Info("Queue controller started")
 	for {
 		select {
 		case realPacket := <-c.OutQueue:
 			c.Send(realPacket, c.Provider.Host, c.Provider.Port)
-			log.WithFields(log.Fields{"id": c.Id}).Info("Real packet was send")
+			logLocal.Info("Real packet was sent")
 			delaySec, err := helpers.RandomExponential(desiredRateParameter)
 			if err != nil {
 				return err
@@ -330,7 +332,7 @@ func (c *Client) ControlOutQueue() error {
 				return err
 			}
 			c.Send(dummyPacket, c.Provider.Host, c.Provider.Port)
-			log.WithFields(log.Fields{"id": c.Id}).Info("OutQueue empty. Dummy packet sent.")
+			logLocal.Info("OutQueue empty. Dummy packet sent.")
 			time.Sleep(time.Duration(int64(delaySec*math.Pow10(9))) * time.Nanosecond)
 		}
 	}
@@ -340,11 +342,11 @@ func (c *Client) ControlOutQueue() error {
 func (c *Client) ControlMessagingFetching() {
 	for {
 		c.GetMessagesFromProvider()
-		log.WithFields(log.Fields{"id": c.Id}).Info("Sent request to provider to fetch messages")
+		logLocal.Info("Sent request to provider to fetch messages")
 
 		timeout, err := helpers.RandomExponential(fetchRate)
 		if err != nil {
-			log.WithFields(log.Fields{"id": c.Id}).Error("Error in ControlMessagingFetching - generating random exp. value failed")
+			logLocal.Error("Error in ControlMessagingFetching - generating random exp. value failed")
 		}
 		time.Sleep(time.Duration(int64(timeout*math.Pow10(9))) * time.Nanosecond)
 	}
@@ -376,7 +378,7 @@ func (c *Client) CreateCoverMessage() ([]byte, error) {
 	an error is returned.
 */
 func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
-	log.WithFields(log.Fields{"id": c.Id}).Info(fmt.Sprintf("Reading network information from the PKI: %s", pkiName))
+	logLocal.Infof("Reading network information from the PKI: %s", pkiName)
 
 	db, err := pki.OpenDatabase(pkiName, "sqlite3")
 
@@ -386,7 +388,7 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 
 	recordsMixes, err := pki.QueryDatabase(db, "Pki", "Mix")
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error during querying the Mixes PKI")
+		logLocal.WithError(err).Error("Error during querying the Mixes PKI")
 		return err
 	}
 
@@ -394,14 +396,14 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 		result := make(map[string]interface{})
 		err := recordsMixes.MapScan(result)
 		if err != nil {
-			log.WithFields(log.Fields{"id": c.Id}).Error("Error during mixes record mapping PKI")
+			logLocal.WithError(err).Error("Error during mixes record mapping PKI")
 			return err
 		}
 
 		var mixConfig config.MixConfig
 		err = proto.Unmarshal(result["Config"].([]byte), &mixConfig)
 		if err != nil {
-			log.WithFields(log.Fields{"id": c.Id}).Error("Error during unmarshal function for mix config")
+			logLocal.WithError(err).Error("Error during unmarshal function for mix config")
 			return err
 		}
 		c.Network.Mixes = append(c.Network.Mixes, mixConfig)
@@ -409,7 +411,7 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 
 	recordsProviders, err := pki.QueryDatabase(db, "Pki", "Provider")
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error during querying the Providers PKI")
+		logLocal.WithError(err).Error("Error during querying the Providers PKI")
 		return err
 	}
 	for recordsProviders.Next() {
@@ -417,20 +419,20 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 		err := recordsProviders.MapScan(result)
 
 		if err != nil {
-			log.WithFields(log.Fields{"id": c.Id}).Error("Error during providers record mapping PKI")
+			logLocal.WithError(err).Error("Error during providers record mapping PKI")
 			return err
 		}
 
 		var prvConfig config.MixConfig
 		err = proto.Unmarshal(result["Config"].([]byte), &prvConfig)
 		if err != nil {
-			log.WithFields(log.Fields{"id": c.Id}).Error("Error during unmarshal function for provider config")
+			logLocal.WithError(err).Error("Error during unmarshal function for provider config")
 			return err
 		}
 
 		c.Network.Providers = append(c.Network.Providers, prvConfig)
 	}
-	log.WithFields(log.Fields{"id": c.Id}).Info(" Network information uploaded")
+	logLocal.Info(" Network information uploaded")
 
 	return nil
 }

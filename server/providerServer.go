@@ -8,7 +8,6 @@ import (
 	"anonymous-messaging/sphinx"
 
 	"github.com/protobuf/proto"
-	log "github.com/sirupsen/logrus"
 
 	"bytes"
 	"errors"
@@ -55,7 +54,6 @@ type ClientRecord struct {
 	signaling whether any operation was unsuccessful
 */
 func (p *ProviderServer) Start() error {
-
 	p.Run()
 
 	return nil
@@ -70,7 +68,7 @@ func (p *ProviderServer) Run() {
 	finish := make(chan bool)
 
 	go func() {
-		log.WithFields(log.Fields{"id": p.Id}).Info(fmt.Sprintf("Listening on %s", p.Host+":"+p.Port))
+		logLocal.Infof("Listening on %s", p.Host+":"+p.Port)
 		p.ListenForIncomingConnections()
 	}()
 
@@ -83,7 +81,7 @@ func (p *ProviderServer) Run() {
 	forwarded or stored. If the processing was unsuccessful and error is returned.
 */
 func (p *ProviderServer) ReceivedPacket(packet []byte) error {
-	log.WithFields(log.Fields{"id": p.Id}).Info("Received new sphinx packet")
+	logLocal.Info("Received new sphinx packet")
 
 	c := make(chan []byte)
 	cAdr := make(chan sphinx.Hop)
@@ -112,7 +110,7 @@ func (p *ProviderServer) ReceivedPacket(packet []byte) error {
 			return err
 		}
 	default:
-		log.WithFields(log.Fields{"id": p.Id}).Info("Sphinx packet flag not recognised")
+		logLocal.Info("Sphinx packet flag not recognised")
 	}
 
 	return nil
@@ -128,7 +126,7 @@ func (p *ProviderServer) ForwardPacket(sphinxPacket []byte, address string) erro
 	if err != nil {
 		return err
 	}
-	log.WithFields(log.Fields{"id": p.Id}).Info("Forwarded sphinx packet")
+	logLocal.Info("Forwarded sphinx packet")
 	return nil
 }
 
@@ -161,14 +159,14 @@ func (p *ProviderServer) ListenForIncomingConnections() {
 		conn, err := p.listener.Accept()
 
 		if err != nil {
-			log.WithFields(log.Fields{"id": p.Id}).Error(err)
+			logLocal.WithError(err).Error(err)
 		} else {
-			log.WithFields(log.Fields{"id": p.Id}).Info(fmt.Sprintf("Received new connection from %s", conn.RemoteAddr()))
+			logLocal.Infof("Received new connection from %s", conn.RemoteAddr())
 			errs := make(chan error, 1)
 			go p.HandleConnection(conn, errs)
 			err = <-errs
 			if err != nil {
-				log.WithFields(log.Fields{"id": p.Id}).Error(err)
+				logLocal.WithError(err).Error(err)
 			}
 		}
 	}
@@ -211,8 +209,8 @@ func (p *ProviderServer) HandleConnection(conn net.Conn, errs chan<- error) {
 			errs <- err
 		}
 	default:
-		log.WithFields(log.Fields{"id": p.Id}).Info(packet.Flag)
-		log.WithFields(log.Fields{"id": p.Id}).Info("Packet flag not recognised. Packet dropped")
+		logLocal.Info(packet.Flag)
+		logLocal.Info("Packet flag not recognised. Packet dropped")
 		errs <- nil
 	}
 	errs <- nil
@@ -256,7 +254,7 @@ func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, 
 	an authentication token back to the client.
 */
 func (p *ProviderServer) HandleAssignRequest(packet []byte) error {
-	log.WithFields(log.Fields{"id": p.Id}).Info("Received assign request from the client")
+	logLocal.Info("Received assign request from the client")
 
 	token, adr, err := p.RegisterNewClient(packet)
 	if err != nil {
@@ -287,7 +285,7 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 		return err
 	}
 
-	log.WithFields(log.Fields{"id": p.Id}).Info(fmt.Sprintf("Processing pull request: %s %s", request.ClientId, string(request.Token)))
+	logLocal.Infof("Processing pull request: %s %s", request.ClientId, string(request.Token))
 
 	if p.AuthenticateUser(request.ClientId, request.Token) == true {
 		signal, err := p.FetchMessages(request.ClientId)
@@ -296,14 +294,14 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 		}
 		switch signal {
 		case "NI":
-			log.WithFields(log.Fields{"id": p.Id}).Info("Inbox does not exist. Sending signal to client.")
+			logLocal.Info("Inbox does not exist. Sending signal to client.")
 		case "EI":
-			log.WithFields(log.Fields{"id": p.Id}).Info("Inbox is empty. Sending info to the client.")
+			logLocal.Info("Inbox is empty. Sending info to the client.")
 		case "SI":
-			log.WithFields(log.Fields{"id": p.Id}).Info("All messages from the inbox succesfuly sent to the client.")
+			logLocal.Info("All messages from the inbox succesfuly sent to the client.")
 		}
 	} else {
-		log.WithFields(log.Fields{"id": p.Id}).Warning("Authentication went wrong")
+		logLocal.Warning("Authentication went wrong")
 		return errors.New("authentication went wrong")
 	}
 	return nil
@@ -319,7 +317,7 @@ func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) b
 	if bytes.Compare(p.assignedClients[clientId].Token, clientToken) == 0 {
 		return true
 	}
-	log.WithFields(log.Fields{"id": p.Id}).Warning(fmt.Sprintf("Non matching token: %s, %s", p.assignedClients[clientId].Token, clientToken))
+	logLocal.Warningf("Non matching token: %s, %s", p.assignedClients[clientId].Token, clientToken)
 	return false
 }
 
@@ -356,7 +354,7 @@ func (p *ProviderServer) FetchMessages(clientId string) (string, error) {
 		}
 
 		address := p.assignedClients[clientId].Host + ":" + p.assignedClients[clientId].Port
-		log.WithFields(log.Fields{"id": p.Id}).Info(fmt.Sprintf("Found stored message for address %s", address))
+		logLocal.Infof("Found stored message for address %s", address)
 		msgBytes, err := config.WrapWithFlag(commFlag, dat)
 		if err != nil {
 			return "", err
@@ -389,7 +387,7 @@ func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId 
 		return err
 	}
 
-	log.WithFields(log.Fields{"id": p.Id}).Info(fmt.Sprintf("Stored message for %s", inboxId))
+	logLocal.Infof("Stored message for %s", inboxId)
 	return nil
 }
 

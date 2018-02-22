@@ -150,19 +150,19 @@ func TestClient_GetMessagesFromProvider(t *testing.T) {
 
 }
 
-func TestClient_RegisterToken_Pass(t *testing.T) {
-	client := SetupTestClient(t)
-	client.RegisterToken([]byte("TestToken"))
-	//r := <- client.registrationDone
-	//assert.True(t, r)
-	//assert.Equal(t, []byte("TestToken"), client.token, "Client should register only given token")
-}
+//func TestClient_RegisterToken_Pass(t *testing.T) {
+//client := SetupTestClient(t)
+//client.RegisterToken([]byte("TestToken"))
+//r := <- client.registrationDone
+//assert.True(t, r)
+//assert.Equal(t, []byte("TestToken"), client.token, "Client should register only given token")
+//}
 
-func TestClient_RegisterToken_Fail(t *testing.T) {
-	client := SetupTestClient(t)
-	client.RegisterToken([]byte("TestToken"))
-	assert.NotEqual(t, []byte("WrongToken"), client.token, "Client should register only the given token")
-}
+//func TestClient_RegisterToken_Fail(t *testing.T) {
+//	client := SetupTestClient(t)
+//	client.RegisterToken([]byte("TestToken"))
+//	assert.NotEqual(t, []byte("WrongToken"), client.token, "Client should register only the given token")
+//}
 
 func TestClient_RegisterToProvider(t *testing.T) {
 

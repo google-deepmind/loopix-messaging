@@ -8,14 +8,16 @@ package clientCore
 import (
 	"anonymous-messaging/config"
 	"anonymous-messaging/helpers"
+	"anonymous-messaging/logging"
 	sphinx "anonymous-messaging/sphinx"
 
 	"github.com/protobuf/proto"
-	log "github.com/sirupsen/logrus"
 
 	"crypto/elliptic"
 	"errors"
 )
+
+var logLocal = logging.PackageLogger()
 
 type NetworkPKI struct {
 	Mixes     []config.MixConfig
@@ -49,19 +51,19 @@ func (c *CryptoClient) CreateSphinxPacket(message string, recipient config.Clien
 
 	path, err := c.buildPath(recipient)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in CreateSphinxPacket - generating random path failed")
+		logLocal.WithError(err).Error("Error in CreateSphinxPacket - generating random path failed")
 		return nil, err
 	}
 
 	delays, err := c.generateDelaySequence(desiredRateParameter, path.Len())
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in CreateSphinxPacket - generating sequence of delays failed")
+		logLocal.WithError(err).Error("Error in CreateSphinxPacket - generating sequence of delays failed")
 		return nil, err
 	}
 
 	sphinxPacket, err := c.EncodeMessage(message, path, delays)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in CreateSphinxPacket - encoding message failed")
+		logLocal.WithError(err).Error("Error in CreateSphinxPacket - encoding message failed")
 		return nil, err
 	}
 	return sphinxPacket, nil
@@ -75,7 +77,7 @@ func (c *CryptoClient) CreateSphinxPacket(message string, recipient config.Clien
 func (c *CryptoClient) buildPath(recipient config.ClientConfig) (config.E2EPath, error) {
 	mixSeq, err := c.getRandomMixSequence(c.Network.Mixes, pathLength)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in buildPath - generating random mix path failed")
+		logLocal.WithError(err).Error("Error in buildPath - generating random mix path failed")
 		return config.E2EPath{}, err
 	}
 	path := config.E2EPath{IngressProvider: c.Provider, Mixes: mixSeq, EgressProvider: *recipient.Provider, Recipient: recipient}
@@ -96,7 +98,7 @@ func (c *CryptoClient) getRandomMixSequence(mixes []config.MixConfig, length int
 	} else {
 		randomSeq, err := helpers.RandomSample(mixes, length)
 		if err != nil {
-			log.WithFields(log.Fields{"id": c.Id}).Error("Error in getRandomMixSequence - sampling procedure failed")
+			logLocal.WithError(err).Error("Error in getRandomMixSequence - sampling procedure failed")
 			return nil, err
 		}
 		return randomSeq, nil
@@ -113,7 +115,7 @@ func (c *CryptoClient) generateDelaySequence(desiredRateParameter float64, lengt
 	for i := 0; i < length; i++ {
 		d, err := helpers.RandomExponential(desiredRateParameter)
 		if err != nil {
-			log.WithFields(log.Fields{"id": c.Id}).Error("Error in generateDelaySequence - generating random exponential sample failed")
+			logLocal.WithError(err).Error("Error in generateDelaySequence - generating random exponential sample failed")
 			return nil, err
 		}
 		delays = append(delays, d)
@@ -131,7 +133,7 @@ func (c *CryptoClient) EncodeMessage(message string, path config.E2EPath, delays
 	var packet sphinx.SphinxPacket
 	packet, err := sphinx.PackForwardMessage(c.Curve, path, delays, message)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.Id}).Error("Error in EncodeMessage - the pack procedure failed")
+		logLocal.WithError(err).Error("Error in EncodeMessage - the pack procedure failed")
 		return nil, err
 	}
 	return proto.Marshal(&packet)
