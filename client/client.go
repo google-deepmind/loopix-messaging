@@ -23,12 +23,16 @@ import (
 var logLocal = logging.PackageLogger()
 
 const (
+	// the parameter of the exponential distribution which defines the rate of sending by client
+	// the desiredRateParameter is the reciprocal of the expected value of the exponential distribution
 	desiredRateParameter = 0.2
-	fetchRate            = 0.01
-	assignFlag           = "\xA2"
-	commFlag             = "\xc6"
-	tokenFlag            = "xa9"
-	pullFlag             = "\xff"
+	// the rate at which clients are querying the provider for received packets. fetchRate value is the
+	// parameter of an exponential distribution, and is the reciprocal of the expected value of the exp. distribution
+	fetchRate  = 0.01
+	assignFlag = "\xA2"
+	commFlag   = "\xc6"
+	tokenFlag  = "xa9"
+	pullFlag   = "\xff"
 )
 
 type ClientIt interface {
