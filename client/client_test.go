@@ -20,12 +20,12 @@ var testMixSet []config.MixConfig
 var testClientSet []config.ClientConfig
 
 const (
-	PKIDIR = "testDatabase.db"
+	pkiDir = "testDatabase.db"
 )
 
 func setupTestDatabase() (*sqlx.DB, error) {
 
-	db, err := sqlx.Connect("sqlite3", PKIDIR)
+	db, err := sqlx.Connect("sqlite3", pkiDir)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func SetupTestClient(t *testing.T) *Client {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewTestClient("Client", "localhost", "3332", pubC, privC, PKIDIR, providerPubs)
+	client, err := NewTestClient("Client", "localhost", "3332", pubC, privC, pkiDir, providerPubs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,8 +127,8 @@ func SetupTestClient(t *testing.T) *Client {
 }
 
 func clean() error {
-	if _, err := os.Stat(PKIDIR); err == nil {
-		err := os.Remove(PKIDIR)
+	if _, err := os.Stat(pkiDir); err == nil {
+		err := os.Remove(pkiDir)
 		if err != nil {
 			return err
 		}

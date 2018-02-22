@@ -26,7 +26,7 @@ var providerServer *ProviderServer
 var clientServer *client.Client
 
 const (
-	TEST_DATABASE = "testDatabase.db"
+	testDatabase = "testDatabase.db"
 )
 
 func createTestProvider() (*ProviderServer, error) {
@@ -67,7 +67,7 @@ func createTestClient(provider config.MixConfig) (*client.Client, error) {
 		return nil, err
 	}
 	core := clientCore.CryptoClient{Id: "TestClient", PubKey: pub, PrvKey: priv, Curve: elliptic.P224(), Provider: provider}
-	client := &client.Client{Host: "localhost", Port: "9998", CryptoClient: core, PkiDir: TEST_DATABASE}
+	client := &client.Client{Host: "localhost", Port: "9998", CryptoClient: core, PkiDir: testDatabase}
 	addr, err := helpers.ResolveTCPAddress(client.Host, client.Port)
 	if err != nil {
 		return nil, err

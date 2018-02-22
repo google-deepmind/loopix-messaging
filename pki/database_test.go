@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	TESTDATABASE = "./testDatabase.db"
+	TESTDATABASE = "./TESTDATABASE.DB"
 )
 
 var dbDir string

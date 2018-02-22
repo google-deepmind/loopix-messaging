@@ -59,7 +59,7 @@ func (m *MixServer) ReceivedPacket(packet []byte) error {
 }
 
 func (m *MixServer) ForwardPacket(sphinxPacket []byte, address string) error {
-	packetBytes, err := config.WrapWithFlag(COMM_FLAG, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (m *MixServer) HandleConnection(conn net.Conn, errs chan<- error) {
 	}
 
 	switch packet.Flag {
-	case COMM_FLAG:
+	case commFlag:
 		err = m.ReceivedPacket(packet.Data)
 		if err != nil {
 			errs <- err

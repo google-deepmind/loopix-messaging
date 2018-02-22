@@ -24,10 +24,10 @@ import (
 const (
 	desiredRateParameter = 0.2
 	fetchRate            = 0.01
-	ASSIGNE_FLAG         = "\xA2"
-	COMM_FLAG            = "\xC6"
-	TOKEN_FLAG           = "xA9"
-	PULL_FLAG            = "\xFF"
+	assignFlag           = "\xA2"
+	commFlag             = "\xc6"
+	tokenFlag            = "xa9"
+	pullFlag             = "\xff"
 )
 
 type ClientIt interface {
@@ -108,7 +108,7 @@ func (c *Client) SendMessage(message string, recipient config.ClientConfig) erro
 		return err
 	}
 
-	packetBytes, err := config.WrapWithFlag(COMM_FLAG, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
 	if err != nil {
 		log.WithFields(log.Fields{"id": c.Id}).Error("Error in sending message - wrap with flag returned an error")
 		return err
@@ -177,7 +177,7 @@ func (c *Client) HandleConnection(conn net.Conn) {
 	}
 
 	switch packet.Flag {
-	case TOKEN_FLAG:
+	case tokenFlag:
 		c.RegisterToken(packet.Data)
 		go func() {
 			c.ControlOutQueue()
@@ -186,7 +186,7 @@ func (c *Client) HandleConnection(conn net.Conn) {
 		go func() {
 			c.ControlMessagingFetching()
 		}()
-	case COMM_FLAG:
+	case commFlag:
 		_, err := c.ProcessPacket(packet.Data)
 		if err != nil {
 			log.WithFields(log.Fields{"id": c.Id}).Error(err)
@@ -231,7 +231,7 @@ func (c *Client) RegisterToProvider() error {
 		return err
 	}
 
-	pktBytes, err := config.WrapWithFlag(ASSIGNE_FLAG, confBytes)
+	pktBytes, err := config.WrapWithFlag(assignFlag, confBytes)
 	if err != nil {
 		log.WithFields(log.Fields{"id": c.Id}).Error("Error in register provider - wrap with flag returned an error")
 		return err
@@ -258,7 +258,7 @@ func (c *Client) GetMessagesFromProvider() error {
 		return err
 	}
 
-	pktBytes, err := config.WrapWithFlag(PULL_FLAG, pullRqsBytes)
+	pktBytes, err := config.WrapWithFlag(pullFlag, pullRqsBytes)
 	if err != nil {
 		log.WithFields(log.Fields{"id": c.Id}).Error("Error in register provider - marshal of provider config returned an error")
 		return err
@@ -298,7 +298,7 @@ func (c *Client) FakeAdding() {
 		if err != nil {
 			log.WithFields(log.Fields{"id": c.Id}).Info("Something went wrong")
 		}
-		packet, err := config.WrapWithFlag(COMM_FLAG, sphinxPacket)
+		packet, err := config.WrapWithFlag(commFlag, sphinxPacket)
 		if err != nil {
 			log.WithFields(log.Fields{"id": c.Id}).Info("Something went wrong")
 		}
@@ -362,7 +362,7 @@ func (c *Client) CreateCoverMessage() ([]byte, error) {
 		return nil, err
 	}
 
-	packetBytes, err := config.WrapWithFlag(COMM_FLAG, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
 	if err != nil {
 		return nil, err
 	}

@@ -22,11 +22,11 @@ import (
 )
 
 const (
-	K             = 16
-	R             = 5
-	HEADERLENGTH  = 192
-	LAST_HOP_FLAG = "\xF0"
-	RELAY_FLAG    = "\xF1"
+	K            = 16
+	R            = 5
+	headerLength = 192
+	lastHopFlag  = "\xf0"
+	relayFlag    = "\xf1"
 )
 
 var curve = elliptic.P224()
@@ -94,9 +94,9 @@ func createHeader(curve elliptic.Curve, nodes []config.MixConfig, delays []float
 	for i, _ := range nodes {
 		var c Commands
 		if i == len(nodes)-1 {
-			c = Commands{Delay: delays[i], Flag: LAST_HOP_FLAG}
+			c = Commands{Delay: delays[i], Flag: lastHopFlag}
 		} else {
-			c = Commands{Delay: delays[i], Flag: RELAY_FLAG}
+			c = Commands{Delay: delays[i], Flag: relayFlag}
 		}
 		commands = append(commands, c)
 	}
@@ -220,7 +220,7 @@ func getSharedSecrets(curve elliptic.Curve, nodes []config.MixConfig, initialVal
 func computeFillers(nodes []config.MixConfig, tuples []HeaderInitials) (string, error) {
 
 	filler := ""
-	minLen := HEADERLENGTH - 32
+	minLen := headerLength - 32
 	for i := 1; i < len(nodes); i++ {
 		base := filler + strings.Repeat("\x00", K)
 		kx, err := computeSharedSecretHash(tuples[i-1].SecretHash, []byte("hrhohrhohrhohrho"))

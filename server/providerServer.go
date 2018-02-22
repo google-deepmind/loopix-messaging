@@ -19,10 +19,10 @@ import (
 )
 
 const (
-	ASSIGNE_FLAG = "\xA2"
-	COMM_FLAG    = "\xC6"
-	TOKEN_FLAG   = "xA9"
-	PULL_FLAG    = "\xFF"
+	assigneFlag = "\xa2"
+	commFlag    = "\xc6"
+	tokenFlag   = "xa9"
+	pullFlag    = "\xff"
 )
 
 type ProviderIt interface {
@@ -119,7 +119,7 @@ func (p *ProviderServer) ReceivedPacket(packet []byte) error {
 }
 
 func (p *ProviderServer) ForwardPacket(sphinxPacket []byte, address string) error {
-	packetBytes, err := config.WrapWithFlag(COMM_FLAG, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
 	if err != nil {
 		return err
 	}
@@ -195,17 +195,17 @@ func (p *ProviderServer) HandleConnection(conn net.Conn, errs chan<- error) {
 	}
 
 	switch packet.Flag {
-	case ASSIGNE_FLAG:
+	case assigneFlag:
 		err = p.HandleAssignRequest(packet.Data)
 		if err != nil {
 			errs <- err
 		}
-	case COMM_FLAG:
+	case commFlag:
 		err = p.ReceivedPacket(packet.Data)
 		if err != nil {
 			errs <- err
 		}
-	case PULL_FLAG:
+	case pullFlag:
 		err = p.HandlePullRequest(packet.Data)
 		if err != nil {
 			errs <- err
@@ -263,7 +263,7 @@ func (p *ProviderServer) HandleAssignRequest(packet []byte) error {
 		return err
 	}
 
-	tokenBytes, err := config.WrapWithFlag(TOKEN_FLAG, token)
+	tokenBytes, err := config.WrapWithFlag(tokenFlag, token)
 	if err != nil {
 		return err
 	}
@@ -357,7 +357,7 @@ func (p *ProviderServer) FetchMessages(clientId string) (string, error) {
 
 		address := p.assignedClients[clientId].Host + ":" + p.assignedClients[clientId].Port
 		log.WithFields(log.Fields{"id": p.Id}).Info(fmt.Sprintf("Found stored message for address %s", address))
-		msgBytes, err := config.WrapWithFlag(COMM_FLAG, dat)
+		msgBytes, err := config.WrapWithFlag(commFlag, dat)
 		if err != nil {
 			return "", err
 		}
