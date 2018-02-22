@@ -176,7 +176,10 @@ func (c *Client) HandleConnection(conn net.Conn) {
 	case tokenFlag:
 		c.RegisterToken(packet.Data)
 		go func() {
-			c.ControlOutQueue()
+			err := c.ControlOutQueue()
+			if err != nil {
+				logLocal.WithError(err).Panic("Error in the controller of the outgoing packets queue. Possible security threat.")
+			}
 		}()
 
 		go func() {
@@ -301,24 +304,19 @@ func (c *Client) ControlOutQueue() error {
 		case realPacket := <-c.OutQueue:
 			c.Send(realPacket, c.Provider.Host, c.Provider.Port)
 			logLocal.Info("Real packet was sent")
-			delaySec, err := helpers.RandomExponential(desiredRateParameter)
-			if err != nil {
-				return err
-			}
-			time.Sleep(time.Duration(int64(delaySec*math.Pow10(9))) * time.Nanosecond)
 		default:
-			delaySec, err := helpers.RandomExponential(desiredRateParameter)
-			if err != nil {
-				return err
-			}
 			dummyPacket, err := c.CreateCoverMessage()
 			if err != nil {
 				return err
 			}
 			c.Send(dummyPacket, c.Provider.Host, c.Provider.Port)
 			logLocal.Info("OutQueue empty. Dummy packet sent.")
-			time.Sleep(time.Duration(int64(delaySec*math.Pow10(9))) * time.Nanosecond)
 		}
+		delaySec, err := helpers.RandomExponential(desiredRateParameter)
+		if err != nil {
+			return err
+		}
+		time.Sleep(time.Duration(int64(delaySec*math.Pow10(9))) * time.Nanosecond)
 	}
 	return nil
 }
