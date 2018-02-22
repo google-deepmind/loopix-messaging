@@ -45,12 +45,9 @@ func CreateTable(db *sqlx.DB, tableName string, params map[string]string) error 
 	}
 
 	paramsText := "idx INTEGER PRIMARY KEY, " + strings.Join(paramsAndTypes[:], ", ")
-
-	if strings.ContainsAny(tableName, "'") || strings.ContainsAny(paramsText, "'") {
-		return errors.New("detected ' character. Possible SQL injection")
-	}
-	if strings.ContainsAny(tableName, ";") || strings.ContainsAny(paramsText, ";") {
-		return errors.New("detected ; character. Possible SQL injection")
+	err := detectSQLInjection(tableName, paramsText)
+	if err != nil {
+		return err
 	}
 
 	query := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s ( %s )", tableName, paramsText)
@@ -78,15 +75,12 @@ func CreateTable(db *sqlx.DB, tableName string, params map[string]string) error 
 */
 
 func InsertIntoTable(db *sqlx.DB, tableName string, id, typ string, config []byte) error {
-	if strings.ContainsAny(tableName, "'") {
-		return errors.New("detected ' character. Possible SQL injection")
-	}
-	if strings.ContainsAny(tableName, ";") {
-		return errors.New("detected ; character. Possible SQL injection")
+	err := detectSQLInjection(tableName)
+	if err != nil {
+		return err
 	}
 
 	query := "INSERT INTO " + tableName + " (Id, Typ, Config) VALUES (?, ?, ?)"
-
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return err
@@ -107,11 +101,9 @@ func InsertIntoTable(db *sqlx.DB, tableName string, id, typ string, config []byt
 */
 
 func QueryDatabase(db *sqlx.DB, tableName string, condition string) (*sqlx.Rows, error) {
-	if strings.ContainsAny(tableName, "'") || strings.ContainsAny(condition, "'") {
-		return nil, errors.New("detected ' character. Possible SQL injection")
-	}
-	if strings.ContainsAny(tableName, ";") || strings.ContainsAny(condition, ";") {
-		return nil, errors.New("detected ; character. Possible SQL injection")
+	err := detectSQLInjection(tableName, condition)
+	if err != nil {
+		return nil, err
 	}
 	query := fmt.Sprintf("SELECT * FROM %s WHERE Typ = ?", tableName)
 	rows, err := db.Queryx(query, condition)
@@ -135,4 +127,18 @@ func rowExists(db *sqlx.DB, query string, args ...interface{}) (bool, error) {
 		return false, err
 	}
 	return exists, nil
+}
+
+/*
+	detectSQLInjection checks whether the value passed to the query might allow for
+	SQL injection attacks by checking for ' and ; characters. If the error is detected
+	detectSQLInjection returns an error
+*/
+func detectSQLInjection(values ...string) error {
+	for _, v := range values {
+		if strings.ContainsAny(v, "'") || strings.ContainsAny(v, ";") {
+			return errors.New("detected possible SQL injection")
+		}
+	}
+	return nil
 }

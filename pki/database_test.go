@@ -90,10 +90,10 @@ func TestCreateTable(t *testing.T) {
 
 func TestCreateTable_SQLInjection(t *testing.T) {
 	err := CreateTable(db, "TestTable;", nil)
-	assert.EqualError(t, errors.New("detected ; character. Possible SQL injection"), err.Error())
+	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 
 	err = CreateTable(db, "TestTable'", nil)
-	assert.EqualError(t, errors.New("detected ' character. Possible SQL injection"), err.Error())
+	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 }
 
 func TestQueryDatabase(t *testing.T) {
@@ -118,16 +118,16 @@ func TestQueryDatabase(t *testing.T) {
 
 func TestQueryDatabase_SQLInjection(t *testing.T) {
 	_, err := QueryDatabase(db, "TableXX;", "DEF")
-	assert.EqualError(t, errors.New("detected ; character. Possible SQL injection"), err.Error())
+	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 
 	_, err = QueryDatabase(db, "TableXX", "DEF;")
-	assert.EqualError(t, errors.New("detected ; character. Possible SQL injection"), err.Error())
+	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 
 	_, err = QueryDatabase(db, "TableXX'", "DEF")
-	assert.EqualError(t, errors.New("detected ' character. Possible SQL injection"), err.Error())
+	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 
 	_, err = QueryDatabase(db, "TableXX", "DEF'")
-	assert.EqualError(t, errors.New("detected ' character. Possible SQL injection"), err.Error())
+	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 }
 
 func TestInsertIntoTable(t *testing.T) {
@@ -146,9 +146,9 @@ func TestInsertIntoTable(t *testing.T) {
 
 func TestInsertIntoTable_SQLInjection(t *testing.T) {
 	err := InsertIntoTable(db, "TableXX;", "TestInsertId", "TestInsertTyp", []byte("TestInsertBytes"))
-	assert.EqualError(t, errors.New("detected ; character. Possible SQL injection"), err.Error())
+	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 
 	err = InsertIntoTable(db, "TableXX'", "TestInsertId", "TestInsertTyp", []byte("TestInsertBytes"))
-	assert.EqualError(t, errors.New("detected ' character. Possible SQL injection"), err.Error())
+	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 
 }
