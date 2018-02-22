@@ -233,17 +233,3 @@ func TestClient_ReadInMixnetPKI(t *testing.T) {
 	assert.Equal(t, testMixSet, client.Network.Mixes)
 
 }
-
-//func TestClient_ReadInClientsPKI(t *testing.T) {
-//	clean()
-//	SetupTestClientsInDatabase(t)
-//
-//	client := SetupTestClient(t)
-//	err := client.ReadInClientsPKI(PKIDIR)
-//	if err != nil{
-//		t.Fatal(err)
-//	}
-//
-//	assert.Equal(t, len(testClientSet), len(client.OtherClients))
-//	assert.Equal(t, testClientSet, client.OtherClients)
-//}

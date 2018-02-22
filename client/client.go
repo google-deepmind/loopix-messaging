@@ -190,9 +190,9 @@ func (c *Client) HandleConnection(conn net.Conn) {
 		if err != nil {
 			logLocal.WithError(err).Error("Error in processing received packet")
 		}
-		logLocal.Info(" Received new message")
+		logLocal.Info("Received new message")
 	default:
-		logLocal.Info(" Packet flag not recognised. Packet dropped.")
+		logLocal.Info("Packet flag not recognised. Packet dropped.")
 	}
 }
 
@@ -216,7 +216,7 @@ func (c *Client) ProcessPacket(packet []byte) ([]byte, error) {
 // or returns an error.
 func (c *Client) SendRegisterMessageToProvider() error {
 
-	logLocal.Info(" Sending request to provider to register")
+	logLocal.Info("Sending request to provider to register")
 
 	confBytes, err := proto.Marshal(&c.Config)
 	if err != nil {
@@ -410,53 +410,10 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 
 		c.Network.Providers = append(c.Network.Providers, prvConfig)
 	}
-	logLocal.Info(" Network information uploaded")
+	logLocal.Info("Network information uploaded")
 
 	return nil
 }
-
-///*
-//	ReadInClientsPKI reads in the public information about users
-//	from the PKI database and stores them locally. In case
-//	the connection or fetching data from the PKI went wrong,
-//	an error is returned.
-//*/
-//func (c *Client) ReadInClientsPKI(pkiName string) error {
-//	log.WithFields(log.Fields{"id" : c.Id}).Info(fmt.Sprintf(" Reading network users information from the PKI: %s", pkiName))
-//
-//	db, err := pki.OpenDatabase(pkiName, "sqlite3")
-//
-//	if err != nil{
-//		return err
-//	}
-//
-//	records, err := pki.QueryDatabase(db, "Pki", "Client")
-//
-//	if err != nil {
-//		log.WithFields(log.Fields{"id" : c.Id}).Error("Error during Querying the Clients PKI")
-//		return err
-//	}
-//
-//	for records.Next() {
-//		result := make(map[string]interface{})
-//		err := records.MapScan(result)
-//
-//		if err != nil {
-//			log.WithFields(log.Fields{"id" : c.Id}).Error("Error in scanning table PKI record")
-//			return err
-//		}
-//
-//		var pubs config.ClientConfig
-//		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
-//		if err != nil {
-//			log.WithFields(log.Fields{"id" : c.Id}).Error(" Error during unmarshal function for client config")
-//			return err
-//		}
-//		c.OtherClients = append(c.OtherClients, pubs)
-//	}
-//	log.WithFields(log.Fields{"id" : c.Id}).Info(" Information about other users uploaded")
-//	return nil
-//}
 
 // The constructor function to create an new client object.
 // Function returns a new client object or an error, if occurred.

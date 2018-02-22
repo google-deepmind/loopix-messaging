@@ -3,6 +3,7 @@ package main
 import (
 	"anonymous-messaging/client"
 	"anonymous-messaging/config"
+	"anonymous-messaging/logging"
 	"anonymous-messaging/pki"
 	"anonymous-messaging/server"
 	"anonymous-messaging/sphinx"
@@ -11,7 +12,10 @@ import (
 	"fmt"
 
 	"github.com/protobuf/proto"
+	"time"
 )
+
+var logLocal = logging.PackageLogger()
 
 const (
 	PKI_DIR = "pki/database.db"
@@ -34,6 +38,63 @@ func pkiPreSetting(pkiDir string) error {
 		return err
 	}
 
+	return nil
+}
+
+func FakeAdding(c *client.Client) {
+	logLocal.Info("Adding simulated traffic of a client")
+	for {
+		sphinxPacket, err := c.CreateSphinxPacket("hello world", c.Config)
+		if err != nil {
+		}
+		packet, err := config.WrapWithFlag("\xc6", sphinxPacket)
+		if err != nil {
+			logLocal.Info("Something went wrong")
+		}
+		c.OutQueue <- packet
+		time.Sleep(10 * time.Second)
+	}
+}
+
+// ReadInClientsPKI reads in the public information about users
+// from the PKI database and stores them locally. In case
+// the connection or fetching data from the PKI went wrong,
+// an error is returned.
+func ReadInClientsPKI(pkiName string) error {
+	logLocal.Info(fmt.Sprintf(" Reading network users information from the PKI: %s", pkiName))
+	var users []config.ClientConfig
+
+	db, err := pki.OpenDatabase(pkiName, "sqlite3")
+
+	if err != nil {
+		return err
+	}
+
+	records, err := pki.QueryDatabase(db, "Pki", "Client")
+
+	if err != nil {
+		logLocal.WithError(err).Error("Error during Querying the Clients PKI")
+		return err
+	}
+
+	for records.Next() {
+		result := make(map[string]interface{})
+		err := records.MapScan(result)
+
+		if err != nil {
+			logLocal.WithError(err).Error("Error in scanning table PKI record")
+			return err
+		}
+
+		var pubs config.ClientConfig
+		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
+		if err != nil {
+			logLocal.WithError(err).Error(" Error during unmarshal function for client config")
+			return err
+		}
+		users = append(users, pubs)
+	}
+	logLocal.Info(" Information about other users uploaded")
 	return nil
 }
 
