@@ -1,12 +1,13 @@
 package sphinx
 
 import (
-	"crypto/sha256"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/hmac"
 	"crypto/elliptic"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
+
 	"math/big"
 )
 
@@ -30,7 +31,7 @@ func AES_CTR(key, plaintext []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-func hash(arg []byte) []byte{
+func hash(arg []byte) []byte {
 
 	h := sha256.New()
 	h.Write(arg)
@@ -38,14 +39,14 @@ func hash(arg []byte) []byte{
 	return h.Sum(nil)
 }
 
-func Hmac(key, message []byte) []byte{
+func Hmac(key, message []byte) []byte {
 	mac := hmac.New(sha256.New, key)
 	mac.Write(message)
 	return mac.Sum(nil)
 }
 
 func GenerateKeyPair() ([]byte, []byte, error) {
-	priv, x, y, err  := elliptic.GenerateKey(elliptic.P224(), rand.Reader)
+	priv, x, y, err := elliptic.GenerateKey(elliptic.P224(), rand.Reader)
 
 	if err != nil {
 		return nil, nil, err
@@ -54,18 +55,16 @@ func GenerateKeyPair() ([]byte, []byte, error) {
 	return elliptic.Marshal(elliptic.P224(), x, y), priv, nil
 }
 
-func KDF(key []byte) []byte{
+func KDF(key []byte) []byte {
 	return hash(key)[:K]
 }
 
-
-func bytesToBigNum(curve elliptic.Curve, value []byte) *big.Int{
+func bytesToBigNum(curve elliptic.Curve, value []byte) *big.Int {
 	nBig := new(big.Int)
 	nBig.SetBytes(value)
 
 	return new(big.Int).Mod(nBig, curve.Params().P)
 }
-
 
 func randomBigInt(curve *elliptic.CurveParams) (big.Int, error) {
 	nBig, err := rand.Int(rand.Reader, curve.Params().P)
@@ -75,8 +74,7 @@ func randomBigInt(curve *elliptic.CurveParams) (big.Int, error) {
 	return *nBig, nil
 }
 
-
-func expo(base []byte, exp []big.Int) []byte{
+func expo(base []byte, exp []big.Int) []byte {
 	x := exp[0]
 	for _, val := range exp[1:] {
 		x = *big.NewInt(0).Mul(&x, &val)
@@ -87,8 +85,7 @@ func expo(base []byte, exp []big.Int) []byte{
 	return elliptic.Marshal(curve, resultX, resultY)
 }
 
-
-func expo_group_base(curve elliptic.Curve, exp []big.Int) []byte{
+func expo_group_base(curve elliptic.Curve, exp []big.Int) []byte {
 	x := exp[0]
 
 	for _, val := range exp[1:] {
@@ -100,7 +97,6 @@ func expo_group_base(curve elliptic.Curve, exp []big.Int) []byte{
 
 }
 
-
-func computeMac(key, data []byte) []byte{
+func computeMac(key, data []byte) []byte {
 	return Hmac(key, data)
 }

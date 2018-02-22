@@ -1,22 +1,24 @@
 package server
 
 import (
-	"testing"
-	"anonymous-messaging/sphinx"
-	"anonymous-messaging/node"
 	"anonymous-messaging/client"
-	"fmt"
-	"os"
-	"github.com/stretchr/testify/assert"
-	"github.com/protobuf/proto"
-	"io/ioutil"
 	"anonymous-messaging/clientCore"
-	"crypto/elliptic"
 	"anonymous-messaging/config"
 	"anonymous-messaging/helpers"
-	"net"
-	"path/filepath"
+	"anonymous-messaging/node"
+	"anonymous-messaging/sphinx"
+
+	"github.com/protobuf/proto"
+	"github.com/stretchr/testify/assert"
+
+	"crypto/elliptic"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"net"
+	"os"
+	"path/filepath"
+	"testing"
 )
 
 var mixServer *MixServer
@@ -27,10 +29,9 @@ const (
 	TEST_DATABASE = "testDatabase.db"
 )
 
-
-func createTestProvider() (*ProviderServer, error){
+func createTestProvider() (*ProviderServer, error) {
 	pub, priv, err := sphinx.GenerateKeyPair()
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	node := node.Mix{Id: "Provider", PubKey: pub, PrvKey: priv}
@@ -40,13 +41,13 @@ func createTestProvider() (*ProviderServer, error){
 	return &provider, nil
 }
 
-func createTestMixnode() (*MixServer, error){
+func createTestMixnode() (*MixServer, error) {
 	pub, priv, err := sphinx.GenerateKeyPair()
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	node := node.Mix{Id: "Mix", PubKey: pub, PrvKey: priv}
-	mix := MixServer{Host: "localhost", Port : "9995", Mix : node}
+	mix := MixServer{Host: "localhost", Port: "9995", Mix: node}
 	mix.Config = config.MixConfig{Id: mix.Id, Host: mix.Host, Port: mix.Port, PubKey: mix.PubKey}
 	addr, err := helpers.ResolveTCPAddress(mix.Host, mix.Port)
 	if err != nil {
@@ -60,9 +61,9 @@ func createTestMixnode() (*MixServer, error){
 	return &mix, nil
 }
 
-func createTestClient(provider config.MixConfig) (*client.Client, error){
+func createTestClient(provider config.MixConfig) (*client.Client, error) {
 	pub, priv, err := sphinx.GenerateKeyPair()
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	core := clientCore.CryptoClient{Id: "TestClient", PubKey: pub, PrvKey: priv, Curve: elliptic.P224(), Provider: provider}
@@ -79,7 +80,7 @@ func createTestClient(provider config.MixConfig) (*client.Client, error){
 	return client, nil
 }
 
-func clean(){
+func clean() {
 	clientServer.Listener.Close()
 	os.RemoveAll("./inboxes")
 }
@@ -87,35 +88,33 @@ func clean(){
 func TestMain(m *testing.M) {
 	var err error
 	mixServer, err = createTestMixnode()
-	if err != nil{
+	if err != nil {
 		fmt.Println(err)
 		panic(m)
 	}
 
 	providerServer, err = createTestProvider()
-	if err != nil{
+	if err != nil {
 		fmt.Println(err)
 		panic(m)
 	}
 
 	clientServer, err = createTestClient(providerServer.Config)
-	if err != nil{
+	if err != nil {
 		fmt.Println(err)
 		panic(m)
 	}
 
 	providerServer.assignedClients[clientServer.Id] = ClientRecord{clientServer.Id,
-																	clientServer.Host,
-																	clientServer.Port,
-																	clientServer.PubKey,
-																	[]byte("TestToken")}
+		clientServer.Host,
+		clientServer.Port,
+		clientServer.PubKey,
+		[]byte("TestToken")}
 
 	code := m.Run()
 	clean()
 	os.Exit(code)
 }
-
-
 
 func TestProviderServer_AuthenticateUser_Pass(t *testing.T) {
 	testToken := []byte("AuthenticationToken")
@@ -130,10 +129,10 @@ func TestProviderServer_AuthenticateUser_Fail(t *testing.T) {
 	assert.False(t, providerServer.AuthenticateUser("Alice", []byte("WrongAuthToken")), " Authentication should not be successful")
 }
 
-func createInbox(id string, t *testing.T){
+func createInbox(id string, t *testing.T) {
 	path := filepath.Join("./inboxes", id)
 	exists, err := helpers.DirExists(path)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	if exists {
@@ -144,7 +143,7 @@ func createInbox(id string, t *testing.T){
 	}
 }
 
-func createTestMessage(id string, t *testing.T){
+func createTestMessage(id string, t *testing.T) {
 
 	file, err := os.Create(filepath.Join("./inboxes", id, "TestMessage.txt"))
 	if err != nil {
@@ -168,7 +167,6 @@ func TestProviderServer_FetchMessages_FullInbox(t *testing.T) {
 	}
 	assert.Equal(t, "SI", signal, " For inbox containing messages the signal should be SI")
 }
-
 
 func TestProviderServer_FetchMessages_EmptyInbox(t *testing.T) {
 	createInbox("EmptyInbox", t)
@@ -195,22 +193,21 @@ func TestProviderServer_StoreMessage(t *testing.T) {
 	filePath := inboxDir + "/" + fileId + ".txt"
 
 	err := os.MkdirAll(inboxDir, 0755)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
-
 
 	message := []byte("Hello world message")
 	providerServer.StoreMessage(message, inboxId, fileId)
 
 	_, err = os.Stat(filePath)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Nil(t, err, "The file with the message should be created")
 
 	dat, err := ioutil.ReadFile(filePath)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, message, dat, "Messages should be the same")
@@ -221,11 +218,11 @@ func TestProviderServer_HandlePullRequest_Pass(t *testing.T) {
 	testPullRequest := config.PullRequest{ClientId: "PassTestId", Token: []byte("TestToken")}
 	providerServer.assignedClients["PassTestId"] = ClientRecord{Id: "TestId", Host: "localhost", Port: "1111", PubKey: nil, Token: []byte("TestToken")}
 	bTestPullRequest, err := proto.Marshal(&testPullRequest)
-	if err != nil{
+	if err != nil {
 		t.Error(err)
 	}
 	err = providerServer.HandlePullRequest(bTestPullRequest)
-	if err != nil{
+	if err != nil {
 		t.Error(err)
 	}
 }
@@ -234,52 +231,50 @@ func TestProviderServer_HandlePullRequest_Fail(t *testing.T) {
 	testPullRequest := config.PullRequest{ClientId: "FailTestId", Token: []byte("TestToken")}
 	providerServer.assignedClients = map[string]ClientRecord{}
 	bTestPullRequest, err := proto.Marshal(&testPullRequest)
-	if err != nil{
+	if err != nil {
 		t.Error(err)
 	}
 	err = providerServer.HandlePullRequest(bTestPullRequest)
 	assert.EqualError(t, errors.New("authentication went wrong"), err.Error(), "HandlePullRequest should return an error if authentication failed")
 }
 
-
 func TestProviderServer_RegisterNewClient(t *testing.T) {
 	newClient := config.ClientConfig{Id: "NewClient", Host: "localhost", Port: "9998", PubKey: nil}
-	bNewClient, err :=  proto.Marshal(&newClient)
-	if err != nil{
+	bNewClient, err := proto.Marshal(&newClient)
+	if err != nil {
 		t.Fatal(err)
 	}
 	token, addr, err := providerServer.RegisterNewClient(bNewClient)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "localhost:9998", addr, "Returned address should be the same as registered client address")
-	assert.Equal(t, helpers.SHA256([]byte("TMP_Token" + "NewClient")), token, "Returned token should be equal to the hash of clients id")
+	assert.Equal(t, helpers.SHA256([]byte("TMP_Token"+"NewClient")), token, "Returned token should be equal to the hash of clients id")
 
 	path := fmt.Sprintf("./inboxes/%s", "NewClient")
 	exists, err := helpers.DirExists(path)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	assert.True(t, exists, "When a new client is registered an inbox should be created")
 }
 
-
 func TestProviderServer_HandleAssignRequest(t *testing.T) {
 	newClient := config.ClientConfig{Id: "ClientXYZ", Host: "localhost", Port: "9998", PubKey: nil}
-	bNewClient, err :=  proto.Marshal(&newClient)
-	if err != nil{
+	bNewClient, err := proto.Marshal(&newClient)
+	if err != nil {
 		t.Fatal(err)
 	}
 	err = providerServer.HandleAssignRequest(bNewClient)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func createTestPacket(t *testing.T) *sphinx.SphinxPacket{
+func createTestPacket(t *testing.T) *sphinx.SphinxPacket {
 	path := config.E2EPath{IngressProvider: providerServer.Config, Mixes: []config.MixConfig{mixServer.Config}, EgressProvider: providerServer.Config}
 	sphinxPacket, err := sphinx.PackForwardMessage(elliptic.P224(), path, []float64{0.1, 0.2, 0.3}, "Hello world")
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 		return nil
 	}
@@ -289,11 +284,11 @@ func createTestPacket(t *testing.T) *sphinx.SphinxPacket{
 func TestProviderServer_ReceivedPacket(t *testing.T) {
 	sphinxPacket := createTestPacket(t)
 	bSphinxPacket, err := proto.Marshal(sphinxPacket)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	err = providerServer.ReceivedPacket(bSphinxPacket)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 }
@@ -302,10 +297,10 @@ func TestProviderServer_HandleConnection(t *testing.T) {
 	serverConn, _ := net.Pipe()
 	errs := make(chan error, 1)
 	// serverConn.Write([]byte("test"))
-	go func(){
+	go func() {
 		providerServer.HandleConnection(serverConn, errs)
-		err := <- errs
-		if err != nil{
+		err := <-errs
+		if err != nil {
 			t.Fatal(err)
 		}
 		serverConn.Close()

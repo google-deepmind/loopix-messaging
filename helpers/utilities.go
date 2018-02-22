@@ -5,15 +5,15 @@
 package helpers
 
 import (
-	"math/rand"
-	"time"
-
 	"anonymous-messaging/config"
-	"net"
 	"anonymous-messaging/pki"
-	"os"
-	"errors"
+
 	"crypto/sha256"
+	"errors"
+	"math/rand"
+	"net"
+	"os"
+	"time"
 )
 
 func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
@@ -31,12 +31,12 @@ func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
 }
 
 func RandomSample(slice []config.MixConfig, length int) ([]config.MixConfig, error) {
-	if len(slice) < length{
+	if len(slice) < length {
 		return nil, errors.New(" cannot take a sample larger than the given list")
 	}
 
 	permuted, err := Permute(slice)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
@@ -58,7 +58,6 @@ func ResolveTCPAddress(host, port string) (*net.TCPAddr, error) {
 	}
 	return addr, nil
 }
-
 
 // TO DO: This function is useless; remove it and change the code
 
@@ -89,8 +88,8 @@ func DirExists(path string) (bool, error) {
 
 /*
 	SHA256 computes the hash value of a given argument using SHA256 algorithm.
- */
-func SHA256(arg []byte) []byte{
+*/
+func SHA256(arg []byte) []byte {
 	h := sha256.New()
 	h.Write([]byte(arg))
 	return h.Sum(nil)

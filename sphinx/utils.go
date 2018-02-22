@@ -4,7 +4,7 @@ import "fmt"
 
 func XorBytes(b1, b2 []byte) []byte {
 
-	if len(b1) != len(b2){
+	if len(b1) != len(b2) {
 		panic("String cannot be xored if their length is different")
 	}
 
@@ -17,10 +17,9 @@ func XorBytes(b1, b2 []byte) []byte {
 
 func BytesToString(b []byte) string {
 	result := ""
-	for _, v := range b{
+	for _, v := range b {
 		s := fmt.Sprintf("%v", v)
 		result = result + s
 	}
 	return result
 }
-

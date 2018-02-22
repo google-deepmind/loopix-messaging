@@ -1,17 +1,18 @@
 package clientCore
 
 import (
+	"anonymous-messaging/config"
+	sphinx "anonymous-messaging/sphinx"
+
+	"github.com/stretchr/testify/assert"
+
+	"crypto/elliptic"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
 	"strconv"
 	"testing"
-	"errors"
-
-	"anonymous-messaging/config"
-	"github.com/stretchr/testify/assert"
-	sphinx "anonymous-messaging/sphinx"
-	"crypto/elliptic"
 )
 
 var cryptoClient CryptoClient
@@ -21,28 +22,27 @@ var mixes []config.MixConfig
 func Setup() error {
 	for i := 0; i < 10; i++ {
 		pub, _, err := sphinx.GenerateKeyPair()
-		if err != nil{
+		if err != nil {
 			return err
 		}
 		mixes = append(mixes, config.NewMixConfig(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub))
 	}
 
-
 	// Create a mixClient
 	pubC, privC, err := sphinx.GenerateKeyPair()
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	cryptoClient = CryptoClient{Id: "MixClient", PubKey: pubC, PrvKey: privC, Curve: elliptic.P224()}
 
 	//Client a pair of mix configs, a single provider and a recipient
 	pub1, _, err := sphinx.GenerateKeyPair()
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
 	pub2, _, err := sphinx.GenerateKeyPair()
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
@@ -50,12 +50,12 @@ func Setup() error {
 	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
 
 	pubP, _, err := sphinx.GenerateKeyPair()
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
 	pubD, _, err := sphinx.GenerateKeyPair()
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP}
@@ -66,7 +66,6 @@ func Setup() error {
 
 	return nil
 }
-
 
 func TestMain(m *testing.M) {
 
@@ -88,7 +87,7 @@ func TestCryptoClient_EncodeMessage(t *testing.T) {
 		commands = append(commands, c)
 	}
 	encoded, err := cryptoClient.EncodeMessage("Hello world", path, delays)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -100,7 +99,7 @@ func TestCryptoClient_DecodeMessage(t *testing.T) {
 	packet := sphinx.SphinxPacket{Hdr: &sphinx.Header{}, Pld: []byte("Message")}
 
 	decoded, err := cryptoClient.DecodeMessage(packet)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	expected := packet
@@ -109,7 +108,7 @@ func TestCryptoClient_DecodeMessage(t *testing.T) {
 
 func TestCryptoClient_GenerateDelaySequence_Pass(t *testing.T) {
 	delays, err := cryptoClient.generateDelaySequence(100, 5)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, len(delays), 5, "The length of returned delays should be equal to theinput length")
@@ -124,7 +123,7 @@ func TestCryptoClient_GenerateDelaySequence_Fail(t *testing.T) {
 func Test_GetRandomMixSequence_TooFewMixes(t *testing.T) {
 
 	sequence, err := cryptoClient.getRandomMixSequence(mixes, 20)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 10, len(sequence), "When the given length is larger than the number of active nodes, the path should be "+
@@ -134,7 +133,7 @@ func Test_GetRandomMixSequence_TooFewMixes(t *testing.T) {
 func Test_GetRandomMixSequence_MoreMixes(t *testing.T) {
 
 	sequence, err := cryptoClient.getRandomMixSequence(mixes, 3)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 3, len(sequence), "When the given length is larger than the number of active nodes, the path should be "+

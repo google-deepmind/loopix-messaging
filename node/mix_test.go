@@ -1,22 +1,22 @@
 package node
 
 import (
-	"os"
-	"testing"
-
 	"anonymous-messaging/config"
 	sphinx "anonymous-messaging/sphinx"
-	"crypto/elliptic"
-	"github.com/stretchr/testify/assert"
+
 	"github.com/protobuf/proto"
+	"github.com/stretchr/testify/assert"
+
+	"crypto/elliptic"
+	"os"
 	"reflect"
+	"testing"
 )
 
 var providerWorker Mix
 var testPacket sphinx.SphinxPacket
 var nodes []config.MixConfig
 var curve elliptic.Curve
-
 
 func Setup() error {
 	curve := elliptic.P224()
@@ -51,22 +51,21 @@ func Setup() error {
 		return err
 	}
 
-	dest := config.ClientConfig{Id : "Destination", Host: "localhost", Port: "3334", PubKey: pubD, Provider: &provider}
+	dest := config.ClientConfig{Id: "Destination", Host: "localhost", Port: "3334", PubKey: pubD, Provider: &provider}
 	path := config.E2EPath{IngressProvider: provider, Mixes: []config.MixConfig{m1, m2, m3}, EgressProvider: provider, Recipient: dest}
 
 	testPacket, err = sphinx.PackForwardMessage(curve, path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")
-	if err != nil{
+	if err != nil {
 		panic(err)
 	}
 
 	return nil
 }
 
-
 func TestMain(m *testing.M) {
 
 	err := Setup()
-	if err != nil{
+	if err != nil {
 		panic(m)
 	}
 	os.Exit(m.Run())
@@ -79,16 +78,16 @@ func TestMixProcessPacket(t *testing.T) {
 	errCh := make(chan error, 1)
 
 	testPacketBytes, err := proto.Marshal(&testPacket)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	providerWorker.ProcessPacket(testPacketBytes, ch, chHop, cAdr, errCh)
 	dePacket := <-ch
-	nextHop := <- chHop
-	flag := <- cAdr
-	err = <- errCh
-	if err != nil{
+	nextHop := <-chHop
+	flag := <-cAdr
+	err = <-errCh
+	if err != nil {
 		t.Fatal(err)
 	}
 

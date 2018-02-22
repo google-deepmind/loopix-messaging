@@ -1,18 +1,19 @@
 package main
 
 import (
-	"flag"
 	"anonymous-messaging/client"
+	"anonymous-messaging/config"
+	"anonymous-messaging/pki"
 	"anonymous-messaging/server"
 	"anonymous-messaging/sphinx"
-	"anonymous-messaging/pki"
+
+	"flag"
 	"fmt"
-	"anonymous-messaging/config"
+
 	"github.com/protobuf/proto"
 )
 
-
-const(
+const (
 	PKI_DIR = "pki/database.db"
 )
 
@@ -46,19 +47,17 @@ func main() {
 	flag.Parse()
 
 	err := pkiPreSetting(PKI_DIR)
-	if err != nil{
+	if err != nil {
 		panic(err)
 	}
-
 
 	switch *typ {
 	case "client":
 		db, err := pki.OpenDatabase(PKI_DIR, "sqlite3")
 
-		if err != nil{
+		if err != nil {
 			panic(err)
 		}
-
 
 		row := db.QueryRow("SELECT Config FROM Pki WHERE Id = ? AND Typ = ?", providerId, "Provider")
 
@@ -71,48 +70,48 @@ func main() {
 		err = proto.Unmarshal(results, &providerInfo)
 
 		pubC, privC, err := sphinx.GenerateKeyPair()
-		if err != nil{
+		if err != nil {
 			panic(err)
 		}
 
 		client, err := client.NewClient(*id, *host, *port, pubC, privC, PKI_DIR, providerInfo)
-		if err != nil{
+		if err != nil {
 			panic(err)
 		}
 
 		err = client.Start()
-		if err != nil{
+		if err != nil {
 			panic(err)
 		}
 
 	case "mix":
 		pubM, privM, err := sphinx.GenerateKeyPair()
-		if err != nil{
+		if err != nil {
 			panic(err)
 		}
 
 		mixServer, err := server.NewMixServer(*id, *host, *port, pubM, privM, PKI_DIR)
-		if err != nil{
+		if err != nil {
 			panic(err)
 		}
 
 		err = mixServer.Start()
-		if err != nil{
+		if err != nil {
 			panic(err)
 		}
 	case "provider":
 		pubP, privP, err := sphinx.GenerateKeyPair()
-		if err != nil{
+		if err != nil {
 			panic(err)
 		}
 
 		providerServer, err := server.NewProviderServer(*id, *host, *port, pubP, privP, PKI_DIR)
-		if err != nil{
+		if err != nil {
 			panic(err)
 		}
 
 		err = providerServer.Start()
-		if err != nil{
+		if err != nil {
 			panic(err)
 		}
 	}

@@ -1,10 +1,10 @@
 /*
 	Package node implements the core functions for a mix node, which allow to process the received cryptographic packets.
- */
+*/
 package node
 
 import (
-	sphinx "anonymous-messaging/sphinx"
+	"anonymous-messaging/sphinx"
 	"time"
 )
 
@@ -14,7 +14,7 @@ type Mix struct {
 	PrvKey []byte
 }
 
-func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan <- sphinx.Hop, cFlag chan <- string, errCh chan <- error){
+func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.Hop, cFlag chan<- string, errCh chan<- error) {
 
 	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.PrvKey)
 	if err != nil {

@@ -1,21 +1,19 @@
 package pki
 
 import (
+	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/assert"
+
+	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
-	"errors"
-
-	"github.com/jmoiron/sqlx"
-	"database/sql"
-	"github.com/stretchr/testify/assert"
 )
-
 
 const (
 	TESTDATABASE = "./testDatabase.db"
 )
-
 
 var dbDir string
 var db *sqlx.DB
@@ -101,7 +99,7 @@ func TestCreateTable_SQLInjection(t *testing.T) {
 func TestQueryDatabase(t *testing.T) {
 	rows, err := QueryDatabase(db, "TableXX", "DEF")
 
-	if err != nil{
+	if err != nil {
 		t.Error(err)
 	}
 
@@ -117,7 +115,6 @@ func TestQueryDatabase(t *testing.T) {
 	assert.Equal(t, "DEF", string(results["Typ"].([]byte)), "Should be equal")
 	assert.Equal(t, []byte("GHI"), results["Config"].([]byte), "Should be equal")
 }
-
 
 func TestQueryDatabase_SQLInjection(t *testing.T) {
 	_, err := QueryDatabase(db, "TableXX;", "DEF")
@@ -140,14 +137,14 @@ func TestInsertIntoTable(t *testing.T) {
 		t.Error(err)
 	}
 
-	exists, err := rowExists(db,"SELECT * FROM TableXX WHERE Id=$1 AND Typ=$2 AND Config=$3", "TestInsertId", "TestInsertTyp", []byte("TestInsertBytes"))
+	exists, err := rowExists(db, "SELECT * FROM TableXX WHERE Id=$1 AND Typ=$2 AND Config=$3", "TestInsertId", "TestInsertTyp", []byte("TestInsertBytes"))
 	if err != nil {
 		t.Error(err)
 	}
 	assert.True(t, exists, "The inserted row was not found in the database")
 }
 
-func TestInsertIntoTable_SQLInjection(t *testing.T){
+func TestInsertIntoTable_SQLInjection(t *testing.T) {
 	err := InsertIntoTable(db, "TableXX;", "TestInsertId", "TestInsertTyp", []byte("TestInsertBytes"))
 	assert.EqualError(t, errors.New("detected ; character. Possible SQL injection"), err.Error())
 

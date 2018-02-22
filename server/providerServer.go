@@ -1,26 +1,28 @@
 package server
 
 import (
-	"anonymous-messaging/node"
-	"net"
-	"anonymous-messaging/networker"
-	"os"
-	"fmt"
-	"bytes"
 	"anonymous-messaging/config"
-	"io/ioutil"
 	"anonymous-messaging/helpers"
-	log "github.com/sirupsen/logrus"
-	"errors"
+	"anonymous-messaging/networker"
+	"anonymous-messaging/node"
 	"anonymous-messaging/sphinx"
+
 	"github.com/protobuf/proto"
+	log "github.com/sirupsen/logrus"
+
+	"bytes"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"net"
+	"os"
 )
 
 const (
 	ASSIGNE_FLAG = "\xA2"
-	COMM_FLAG = "\xC6"
-	TOKEN_FLAG = "xA9"
-	PULL_FLAG = "\xFF"
+	COMM_FLAG    = "\xC6"
+	TOKEN_FLAG   = "xA9"
+	PULL_FLAG    = "\xFF"
 )
 
 type ProviderIt interface {
@@ -40,19 +42,19 @@ type ProviderServer struct {
 }
 
 type ClientRecord struct {
-	Id string
-	Host string
-	Port string
+	Id     string
+	Host   string
+	Port   string
 	PubKey []byte
-	Token []byte
+	Token  []byte
 }
 
 /*
 	Start function creates the loggers for capturing the info and error logs
 	and starts the listening server. Function returns an error
 	signaling whether any operation was unsuccessful
- */
-func (p *ProviderServer) Start() error{
+*/
+func (p *ProviderServer) Start() error {
 
 	p.Run()
 
@@ -61,14 +63,14 @@ func (p *ProviderServer) Start() error{
 
 /*
 	Function opens the listener to start listening on provider's host and port
- */
+*/
 func (p *ProviderServer) Run() {
 
 	defer p.listener.Close()
 	finish := make(chan bool)
 
 	go func() {
-		log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf("Listening on %s", p.Host + ":" + p.Port))
+		log.WithFields(log.Fields{"id": p.Id}).Info(fmt.Sprintf("Listening on %s", p.Host+":"+p.Port))
 		p.ListenForIncomingConnections()
 	}()
 
@@ -79,9 +81,9 @@ func (p *ProviderServer) Run() {
 	Function processes the received sphinx packet, performs the
 	unwrapping operation and checks whether the packet should be
 	forwarded or stored. If the processing was unsuccessful and error is returned.
- */
-func (p *ProviderServer) ReceivedPacket(packet []byte) error{
-	log.WithFields(log.Fields{"id" : p.Id}).Info("Received new sphinx packet")
+*/
+func (p *ProviderServer) ReceivedPacket(packet []byte) error {
+	log.WithFields(log.Fields{"id": p.Id}).Info("Received new sphinx packet")
 
 	c := make(chan []byte)
 	cAdr := make(chan sphinx.Hop)
@@ -90,43 +92,43 @@ func (p *ProviderServer) ReceivedPacket(packet []byte) error{
 
 	go p.ProcessPacket(packet, c, cAdr, cFlag, errCh)
 	dePacket := <-c
-	nextHop := <- cAdr
-	flag := <- cFlag
-	err := <- errCh
+	nextHop := <-cAdr
+	flag := <-cFlag
+	err := <-errCh
 
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
 	switch flag {
 	case "\xF1":
 		err = p.ForwardPacket(dePacket, nextHop.Address)
-		if err != nil{
+		if err != nil {
 			return err
 		}
 	case "\xF0":
 		err = p.StoreMessage(dePacket, nextHop.Id, "TMP_MESSAGE_ID")
-		if err != nil{
+		if err != nil {
 			return err
 		}
 	default:
-		log.WithFields(log.Fields{"id" : p.Id}).Info("Sphinx packet flag not recognised")
+		log.WithFields(log.Fields{"id": p.Id}).Info("Sphinx packet flag not recognised")
 	}
 
 	return nil
 }
 
-func (p *ProviderServer) ForwardPacket(sphinxPacket []byte, address string) error{
+func (p *ProviderServer) ForwardPacket(sphinxPacket []byte, address string) error {
 	packetBytes, err := config.WrapWithFlag(COMM_FLAG, sphinxPacket)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
 	err = p.Send(packetBytes, address)
-	if err != nil{
+	if err != nil {
 		return err
 	}
-	log.WithFields(log.Fields{"id" : p.Id}).Info("Forwarded sphinx packet")
+	log.WithFields(log.Fields{"id": p.Id}).Info("Forwarded sphinx packet")
 	return nil
 }
 
@@ -147,7 +149,6 @@ func (p *ProviderServer) Send(packet []byte, address string) error {
 	return nil
 }
 
-
 /*
 	Function responsible for running the listening process of the server;
 	The providers listener accepts incoming connections and
@@ -160,14 +161,14 @@ func (p *ProviderServer) ListenForIncomingConnections() {
 		conn, err := p.listener.Accept()
 
 		if err != nil {
-			log.WithFields(log.Fields{"id" : p.Id}).Error(err)
+			log.WithFields(log.Fields{"id": p.Id}).Error(err)
 		} else {
-			log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf("Received new connection from %s", conn.RemoteAddr()))
+			log.WithFields(log.Fields{"id": p.Id}).Info(fmt.Sprintf("Received new connection from %s", conn.RemoteAddr()))
 			errs := make(chan error, 1)
 			go p.HandleConnection(conn, errs)
-			err = <- errs
-			if err != nil{
-				log.WithFields(log.Fields{"id" : p.Id}).Error(err)
+			err = <-errs
+			if err != nil {
+				log.WithFields(log.Fields{"id": p.Id}).Error(err)
 			}
 		}
 	}
@@ -176,7 +177,7 @@ func (p *ProviderServer) ListenForIncomingConnections() {
 /*
 	HandleConnection handles the received packets; it checks the flag of the
 	packet and schedules a corresponding process function and returns an error.
- */
+*/
 func (p *ProviderServer) HandleConnection(conn net.Conn, errs chan<- error) {
 
 	buff := make([]byte, 1024)
@@ -206,12 +207,12 @@ func (p *ProviderServer) HandleConnection(conn net.Conn, errs chan<- error) {
 		}
 	case PULL_FLAG:
 		err = p.HandlePullRequest(packet.Data)
-		if err != nil{
+		if err != nil {
 			errs <- err
 		}
 	default:
-		log.WithFields(log.Fields{"id" : p.Id}).Info(packet.Flag)
-		log.WithFields(log.Fields{"id" : p.Id}).Info("Packet flag not recognised. Packet dropped")
+		log.WithFields(log.Fields{"id": p.Id}).Info(packet.Flag)
+		log.WithFields(log.Fields{"id": p.Id}).Info("Packet flag not recognised. Packet dropped")
 		errs <- nil
 	}
 	errs <- nil
@@ -221,12 +222,12 @@ func (p *ProviderServer) HandleConnection(conn net.Conn, errs chan<- error) {
 	RegisterNewClient generates a fresh authentication token and saves it together with client's public configuration data
 	in the list of all registered clients. After the client is registered the function creates an inbox directory
 	for the client's inbox, in which clients messages will be stored.
- */
+*/
 
-func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, error){
+func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, error) {
 	var clientConf config.ClientConfig
 	err := proto.Unmarshal(clientBytes, &clientConf)
-	if err != nil{
+	if err != nil {
 		return nil, "", err
 	}
 
@@ -237,7 +238,7 @@ func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, 
 
 	path := fmt.Sprintf("./inboxes/%s", clientConf.Id)
 	exists, err := helpers.DirExists(path)
-	if err != nil{
+	if err != nil {
 		return nil, "", err
 	}
 	if exists == false {
@@ -255,7 +256,7 @@ func (p *ProviderServer) RegisterNewClient(clientBytes []byte) ([]byte, string, 
 	an authentication token back to the client.
 */
 func (p *ProviderServer) HandleAssignRequest(packet []byte) error {
-	log.WithFields(log.Fields{"id" : p.Id}).Info("Received assign request from the client")
+	log.WithFields(log.Fields{"id": p.Id}).Info("Received assign request from the client")
 
 	token, adr, err := p.RegisterNewClient(packet)
 	if err != nil {
@@ -286,23 +287,23 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 		return err
 	}
 
-	log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf("Processing pull request: %s %s", request.ClientId, string(request.Token)))
+	log.WithFields(log.Fields{"id": p.Id}).Info(fmt.Sprintf("Processing pull request: %s %s", request.ClientId, string(request.Token)))
 
-	if p.AuthenticateUser(request.ClientId, request.Token) == true{
+	if p.AuthenticateUser(request.ClientId, request.Token) == true {
 		signal, err := p.FetchMessages(request.ClientId)
 		if err != nil {
 			return err
 		}
-		switch signal{
+		switch signal {
 		case "NI":
-			log.WithFields(log.Fields{"id" : p.Id}).Info("Inbox does not exist. Sending signal to client.")
+			log.WithFields(log.Fields{"id": p.Id}).Info("Inbox does not exist. Sending signal to client.")
 		case "EI":
-			log.WithFields(log.Fields{"id" : p.Id}).Info("Inbox is empty. Sending info to the client.")
+			log.WithFields(log.Fields{"id": p.Id}).Info("Inbox is empty. Sending info to the client.")
 		case "SI":
-			log.WithFields(log.Fields{"id" : p.Id}).Info("All messages from the inbox succesfuly sent to the client.")
+			log.WithFields(log.Fields{"id": p.Id}).Info("All messages from the inbox succesfuly sent to the client.")
 		}
 	} else {
-		log.WithFields(log.Fields{"id" : p.Id}).Warning("Authentication went wrong")
+		log.WithFields(log.Fields{"id": p.Id}).Warning("Authentication went wrong")
 		return errors.New("authentication went wrong")
 	}
 	return nil
@@ -313,12 +314,12 @@ func (p *ProviderServer) HandlePullRequest(rqsBytes []byte) error {
 	the one stored by the provider. If tokens are the same, it returns true
 	and false otherwise.
 */
-func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) bool{
+func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) bool {
 
 	if bytes.Compare(p.assignedClients[clientId].Token, clientToken) == 0 {
 		return true
 	}
-	log.WithFields(log.Fields{"id" : p.Id}).Warning(fmt.Sprintf("Non matching token: %s, %s", p.assignedClients[clientId].Token, clientToken))
+	log.WithFields(log.Fields{"id": p.Id}).Warning(fmt.Sprintf("Non matching token: %s, %s", p.assignedClients[clientId].Token, clientToken))
 	return false
 }
 
@@ -330,18 +331,18 @@ func (p *ProviderServer) AuthenticateUser(clientId string, clientToken []byte) b
 	signaling whether (NI) inbox does not exist, (EI) inbox is empty,
 	(SI) messages were send to the client; and an error.
 */
-func (p *ProviderServer) FetchMessages(clientId string) (string, error){
+func (p *ProviderServer) FetchMessages(clientId string) (string, error) {
 
 	path := fmt.Sprintf("./inboxes/%s", clientId)
 	exist, err := helpers.DirExists(path)
-	if err != nil{
+	if err != nil {
 		return "", err
 	}
-	if exist == false{
+	if exist == false {
 		return "NI", nil
 	}
 	files, err := ioutil.ReadDir(path)
-	if err != nil{
+	if err != nil {
 		return "", err
 	}
 	if len(files) == 0 {
@@ -350,18 +351,18 @@ func (p *ProviderServer) FetchMessages(clientId string) (string, error){
 
 	for _, f := range files {
 		dat, err := ioutil.ReadFile(path + "/" + f.Name())
-		if err !=nil {
+		if err != nil {
 			return "", err
 		}
 
 		address := p.assignedClients[clientId].Host + ":" + p.assignedClients[clientId].Port
-		log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf("Found stored message for address %s", address))
+		log.WithFields(log.Fields{"id": p.Id}).Info(fmt.Sprintf("Found stored message for address %s", address))
 		msgBytes, err := config.WrapWithFlag(COMM_FLAG, dat)
-		if err !=nil {
+		if err != nil {
 			return "", err
 		}
 		err = p.Send(msgBytes, address)
-		if err !=nil {
+		if err != nil {
 			return "", err
 		}
 	}
@@ -388,7 +389,7 @@ func (p *ProviderServer) StoreMessage(message []byte, inboxId string, messageId 
 		return err
 	}
 
-	log.WithFields(log.Fields{"id" : p.Id}).Info(fmt.Sprintf("Stored message for %s", inboxId))
+	log.WithFields(log.Fields{"id": p.Id}).Info(fmt.Sprintf("Stored message for %s", inboxId))
 	return nil
 }
 
@@ -403,11 +404,11 @@ func NewProviderServer(id string, host string, port string, pubKey []byte, prvKe
 	providerServer.assignedClients = make(map[string]ClientRecord)
 
 	configBytes, err := proto.Marshal(&providerServer.Config)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	err = helpers.AddToDatabase(pkiPath, "Pki", providerServer.Id, "Provider", configBytes)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 

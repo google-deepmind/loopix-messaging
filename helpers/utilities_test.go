@@ -1,14 +1,16 @@
 package helpers
 
 import (
-	"testing"
-	"errors"
 	"anonymous-messaging/config"
+
 	"github.com/stretchr/testify/assert"
+
+	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"sort"
-	"fmt"
+	"testing"
 )
 
 var mixes []config.MixConfig
@@ -16,16 +18,17 @@ var testDir string
 
 // ById implements the sort interface and sorts based on the id of the nodes
 type ById []config.MixConfig
+
 func (v ById) Len() int           { return len(v) }
 func (v ById) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
 func (v ById) Less(i, j int) bool { return v[i].Id < v[j].Id }
 
-func Setup() error{
+func Setup() error {
 	for i := 0; i < 10; i++ {
 		mixes = append(mixes, config.MixConfig{Id: fmt.Sprintf("Mix%d", i),
-											Host: fmt.Sprintf("Host%d", i),
-											Port: fmt.Sprintf("Port%d", i),
-											PubKey: nil})
+			Host:   fmt.Sprintf("Host%d", i),
+			Port:   fmt.Sprintf("Port%d", i),
+			PubKey: nil})
 	}
 
 	currDir, err := os.Getwd()
@@ -36,9 +39,9 @@ func Setup() error{
 	return nil
 }
 
-func Clean() error{
+func Clean() error {
 	err := os.RemoveAll(testDir)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	return nil
@@ -83,7 +86,7 @@ func TestDirExists_Fail(t *testing.T) {
 
 func TestPermute_Pass(t *testing.T) {
 	permuted, err := Permute(mixes)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, len(mixes), len(permuted), " Permute should return a permutation of a given slice, hence the lengths should be equal")
@@ -100,7 +103,7 @@ func TestPermute_Fail(t *testing.T) {
 
 func TestRandomExponential_Pass(t *testing.T) {
 	val, err := RandomExponential(5.0)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, reflect.Float64, reflect.TypeOf(val).Kind(), " RandomExponential should return a single float64 value")
@@ -119,7 +122,7 @@ func TestRandomExponential_Fail_NegativeParam(t *testing.T) {
 
 func TestRandomSample_Pass_SmallerLen(t *testing.T) {
 	sample, err := RandomSample(mixes, 5)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 5, len(sample), " RandomSample should return a sample of given size")
@@ -127,12 +130,11 @@ func TestRandomSample_Pass_SmallerLen(t *testing.T) {
 
 func TestRandomSample_Pass_EqualLen(t *testing.T) {
 	sample, err := RandomSample(mixes, 5)
-	if err != nil{
+	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 5, len(sample), " RandomSample should return a sample of given size")
 }
-
 
 func TestRandomSample_Fail(t *testing.T) {
 	_, err := RandomSample(mixes, 20)

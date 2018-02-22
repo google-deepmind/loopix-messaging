@@ -6,19 +6,19 @@
 package pki
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 )
 
 /*
 	OpenDatabase opens a connection with a specified database.
 	OpenDatabase returns the database object and an error.
- */
+*/
 func OpenDatabase(dataSourceName, dbDriver string) (*sqlx.DB, error) {
 
 	var db *sqlx.DB
@@ -36,8 +36,8 @@ func OpenDatabase(dataSourceName, dbDriver string) (*sqlx.DB, error) {
 	column fields. CreateTable returns an error if a table could not be
 	correctly created or when an SQL injection attacks was detected.
 
- */
-func CreateTable(db *sqlx.DB, tableName string, params map[string]string) error{
+*/
+func CreateTable(db *sqlx.DB, tableName string, params map[string]string) error {
 	paramsAndTypes := make([]string, 0, len(params))
 
 	for key := range params {
@@ -46,10 +46,10 @@ func CreateTable(db *sqlx.DB, tableName string, params map[string]string) error{
 
 	paramsText := "idx INTEGER PRIMARY KEY, " + strings.Join(paramsAndTypes[:], ", ")
 
-	if strings.ContainsAny(tableName, "'") || strings.ContainsAny(paramsText, "'"){
+	if strings.ContainsAny(tableName, "'") || strings.ContainsAny(paramsText, "'") {
 		return errors.New("detected ' character. Possible SQL injection")
 	}
-	if strings.ContainsAny(tableName, ";") || strings.ContainsAny(paramsText, ";"){
+	if strings.ContainsAny(tableName, ";") || strings.ContainsAny(paramsText, ";") {
 		return errors.New("detected ; character. Possible SQL injection")
 	}
 
@@ -57,11 +57,11 @@ func CreateTable(db *sqlx.DB, tableName string, params map[string]string) error{
 
 	statement, err := db.Prepare(query)
 
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	_, err = statement.Exec()
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
@@ -77,22 +77,22 @@ func CreateTable(db *sqlx.DB, tableName string, params map[string]string) error{
 	insertion fails.
 */
 
-func InsertIntoTable(db *sqlx.DB, tableName string, id, typ string, config []byte) error{
-	if strings.ContainsAny(tableName, "'"){
+func InsertIntoTable(db *sqlx.DB, tableName string, id, typ string, config []byte) error {
+	if strings.ContainsAny(tableName, "'") {
 		return errors.New("detected ' character. Possible SQL injection")
 	}
-	if strings.ContainsAny(tableName, ";"){
+	if strings.ContainsAny(tableName, ";") {
 		return errors.New("detected ; character. Possible SQL injection")
 	}
 
-	query :="INSERT INTO " + tableName + " (Id, Typ, Config) VALUES (?, ?, ?)"
+	query := "INSERT INTO " + tableName + " (Id, Typ, Config) VALUES (?, ?, ?)"
 
 	stmt, err := db.Prepare(query)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	_, err = stmt.Exec(id, typ, config)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
@@ -107,10 +107,10 @@ func InsertIntoTable(db *sqlx.DB, tableName string, id, typ string, config []byt
 */
 
 func QueryDatabase(db *sqlx.DB, tableName string, condition string) (*sqlx.Rows, error) {
-	if strings.ContainsAny(tableName, "'") || strings.ContainsAny(condition, "'"){
+	if strings.ContainsAny(tableName, "'") || strings.ContainsAny(condition, "'") {
 		return nil, errors.New("detected ' character. Possible SQL injection")
 	}
-	if strings.ContainsAny(tableName, ";") || strings.ContainsAny(condition, ";"){
+	if strings.ContainsAny(tableName, ";") || strings.ContainsAny(condition, ";") {
 		return nil, errors.New("detected ; character. Possible SQL injection")
 	}
 	query := fmt.Sprintf("SELECT * FROM %s WHERE Typ = ?", tableName)
@@ -126,7 +126,7 @@ func QueryDatabase(db *sqlx.DB, tableName string, condition string) (*sqlx.Rows,
 	rowExists checks whether a particular row, extracted using a given query, exists.
 	rowExists is used only in the unit tests, hence doesn't have to contain the SQL injection attacks detection.
 	If rowExists will become a public function, it should have SQL injection detection implemented.
- */
+*/
 func rowExists(db *sqlx.DB, query string, args ...interface{}) (bool, error) {
 	var exists bool
 	query = fmt.Sprintf("SELECT exists (%s)", query)
