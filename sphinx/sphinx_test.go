@@ -61,7 +61,7 @@ func TestExpoBaseSingleValue(t *testing.T) {
 	nBig := *big.NewInt(2)
 	exp := []big.Int{nBig}
 
-	result := expo_group_base(curve, exp)
+	result := expoGroupBase(curve, exp)
 	expectedX, expectedY := curve.ScalarBaseMult(nBig.Bytes())
 
 	assert.Equal(t, elliptic.Marshal(curve, expectedX, expectedY), result)
@@ -72,7 +72,7 @@ func TestExpoBaseMultipleValue(t *testing.T) {
 	for i := 1; i <= 3; i++ {
 		exp = append(exp, *big.NewInt(int64(i)))
 	}
-	result := expo_group_base(curve, exp)
+	result := expoGroupBase(curve, exp)
 	expectedX, expectedY := curve.ScalarBaseMult(big.NewInt(6).Bytes())
 	assert.Equal(t, elliptic.Marshal(curve, expectedX, expectedY), result)
 

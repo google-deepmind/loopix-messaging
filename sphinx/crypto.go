@@ -85,7 +85,7 @@ func expo(base []byte, exp []big.Int) []byte {
 	return elliptic.Marshal(curve, resultX, resultY)
 }
 
-func expo_group_base(curve elliptic.Curve, exp []big.Int) []byte {
+func expoGroupBase(curve elliptic.Curve, exp []big.Int) []byte {
 	x := exp[0]
 
 	for _, val := range exp[1:] {

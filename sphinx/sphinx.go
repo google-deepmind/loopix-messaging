@@ -184,7 +184,7 @@ func getSharedSecrets(curve elliptic.Curve, nodes []config.MixConfig, initialVal
 
 	for _, n := range nodes {
 
-		alpha := expo_group_base(curve, blindFactors)
+		alpha := expoGroupBase(curve, blindFactors)
 
 		s := expo(n.PubKey, blindFactors)
 		aes_s := KDF(s)
