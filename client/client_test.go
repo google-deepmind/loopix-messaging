@@ -150,6 +150,7 @@ func TestClient_GetMessagesFromProvider(t *testing.T) {
 
 }
 
+// TODO: Fix this test
 //func TestClient_RegisterToken_Pass(t *testing.T) {
 //client := SetupTestClient(t)
 //client.RegisterToken([]byte("TestToken"))
@@ -164,10 +165,12 @@ func TestClient_GetMessagesFromProvider(t *testing.T) {
 //	assert.NotEqual(t, []byte("WrongToken"), client.token, "Client should register only the given token")
 //}
 
+// TODO: Fix this test
 func TestClient_RegisterToProvider(t *testing.T) {
 
 }
 
+// TODO: Fix this test
 //func TestClient_SendMessage(t *testing.T) {
 //	pubP, _, err := sphinx.GenerateKeyPair()
 //	if err != nil{
@@ -215,6 +218,7 @@ func TestClient_RegisterToProvider(t *testing.T) {
 //	}
 //}
 
+// TODO: Fix this test
 func TestClient_ProcessPacket(t *testing.T) {
 
 }
