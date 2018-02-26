@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	TESTDATABASE = "./TESTDATABASE.DB"
+	testDatabase = "./TESTDATABASE.DB"
 )
 
 var dbDir string
@@ -22,7 +22,7 @@ func Setup() (*sqlx.DB, error) {
 
 	Clean()
 
-	db, err := sqlx.Connect("sqlite3", TESTDATABASE)
+	db, err := sqlx.Connect("sqlite3", testDatabase)
 	if err != nil {
 		return nil, err
 	}
@@ -49,8 +49,8 @@ func Setup() (*sqlx.DB, error) {
 
 func Clean() {
 
-	if _, err := os.Stat(TESTDATABASE); err == nil {
-		errRemove := os.Remove(TESTDATABASE)
+	if _, err := os.Stat(testDatabase); err == nil {
+		errRemove := os.Remove(testDatabase)
 		if errRemove != nil {
 			panic(err)
 		}
