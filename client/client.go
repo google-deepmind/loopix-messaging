@@ -269,32 +269,11 @@ func (c *Client) Run() {
 	finish := make(chan bool)
 
 	go func() {
-		c.FakeAdding()
-	}()
-
-	go func() {
 		logLocal.Infof("Listening on address %s", c.Host+":"+c.Port)
 		c.ListenForIncomingConnections()
 	}()
 
 	<-finish
-}
-
-func (c *Client) FakeAdding() {
-	logLocal.Info("Started fake adding")
-	for {
-		sphinxPacket, err := c.CreateSphinxPacket("hello world", c.Config)
-		if err != nil {
-			logLocal.Info("Something went wrong")
-		}
-		packet, err := config.WrapWithFlag(commFlag, sphinxPacket)
-		if err != nil {
-			logLocal.Info("Something went wrong")
-		}
-		c.OutQueue <- packet
-		logLocal.Info("Added packet")
-		time.Sleep(10 * time.Second)
-	}
 }
 
 func (c *Client) ControlOutQueue() error {
