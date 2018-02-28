@@ -39,24 +39,24 @@ type Client interface {
 	networker.NetworkClient
 	networker.NetworkServer
 
-	Start()
-	SendMessage(message string, recipient config.ClientConfig)
+	Start() error
+	SendMessage(message string, recipient config.ClientConfig) error
 	registerToken(token []byte)
-	processPacket(packet []byte)
-	sendRegisterMessageToProvider()
-	getMessagesFromProvider()
-	controlOutQueue()
+	processPacket(packet []byte) ([]byte, error)
+	sendRegisterMessageToProvider() error
+	getMessagesFromProvider() error
+	controlOutQueue() error
 	controlMessagingFetching()
-	createCoverMessage()
-	ReadInNetworkFromPKI(pkiName string)
+	createCoverMessage() ([]byte, error)
+	ReadInNetworkFromPKI(pkiName string) error
 }
 
 type client struct {
-	Host string
-	Port string
+	id   string
+	host string
+	port string
 
-	clientCore.CryptoClient
-	Listener *net.TCPListener
+	listener *net.TCPListener
 
 	PkiDir string
 
@@ -65,6 +65,8 @@ type client struct {
 
 	OutQueue         chan []byte
 	registrationDone chan bool
+
+	*clientCore.CryptoClient
 }
 
 // Start function creates the loggers for capturing the info and error logs;
@@ -110,7 +112,7 @@ func (c *client) Start() error {
 // The function returns an error if any issues occurred.
 func (c *client) SendMessage(message string, recipient config.ClientConfig) error {
 
-	sphinxPacket, err := c.CreateSphinxPacket(message, recipient)
+	sphinxPacket, err := c.EncodeMessage(message, recipient)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in sending message - create sphinx packet returned an error")
 		return err
@@ -149,7 +151,7 @@ func (c *client) send(packet []byte, host string, port string) error {
 // is logged into the log files, but the function is not stopped
 func (c *client) listenForIncomingConnections() {
 	for {
-		conn, err := c.Listener.Accept()
+		conn, err := c.listener.Accept()
 
 		if err != nil {
 			logLocal.WithError(err).Error(err)
@@ -271,11 +273,11 @@ func (c *client) getMessagesFromProvider() error {
 
 // Run opens the listener to start listening on clients host and port
 func (c *client) Run() {
-	defer c.Listener.Close()
+	defer c.listener.Close()
 	finish := make(chan bool)
 
 	go func() {
-		logLocal.Infof("Listening on address %s", c.Host+":"+c.Port)
+		logLocal.Infof("Listening on address %s", c.host+":"+c.port)
 		c.listenForIncomingConnections()
 	}()
 
@@ -324,7 +326,7 @@ func (c *client) controlMessagingFetching() {
 // TODO: change to a drop cover message instead of a loop.
 func (c *client) createCoverMessage() ([]byte, error) {
 	dummyLoad := "DummyPayloadMessage"
-	sphinxPacket, err := c.CreateSphinxPacket(dummyLoad, c.Config)
+	sphinxPacket, err := c.EncodeMessage(dummyLoad, c.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -403,10 +405,10 @@ func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 // The constructor function to create an new client object.
 // Function returns a new client object or an error, if occurred.
 func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
-	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224(), Provider: provider}
+	core := clientCore.NewCryptoClient(id, pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
 
-	c := client{Host: host, Port: port, CryptoClient: core, PkiDir: pkiDir}
-	c.Config = config.ClientConfig{Id: c.Id, Host: c.Host, Port: c.Port, PubKey: c.PubKey, Provider: &c.Provider}
+	c := client{host: host, port: port, CryptoClient: core, PkiDir: pkiDir}
+	c.Config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
 
 	configBytes, err := proto.Marshal(&c.Config)
 
@@ -418,12 +420,12 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 		return nil, err
 	}
 
-	addr, err := helpers.ResolveTCPAddress(c.Host, c.Port)
+	addr, err := helpers.ResolveTCPAddress(c.host, c.port)
 	if err != nil {
 		return nil, err
 	}
 
-	c.Listener, err = net.ListenTCP("tcp", addr)
+	c.listener, err = net.ListenTCP("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
@@ -433,9 +435,9 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 // NewTestClient constructs a client object, which can be used for testing. The object contains the crypto core
 // and the top-level of client, but does not involve networking and starting a listener.
 func NewTestClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
-	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224(), Provider: provider}
-	c := client{Host: host, Port: port, CryptoClient: core, PkiDir: pkiDir}
-	c.Config = config.ClientConfig{Id: c.Id, Host: c.Host, Port: c.Port, PubKey: c.PubKey, Provider: &c.Provider}
+	core := clientCore.NewCryptoClient(id, pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
+	c := client{host: host, port: port, CryptoClient: core, PkiDir: pkiDir}
+	c.Config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
 
 	return &c, nil
 }
