@@ -107,7 +107,7 @@ func SetupTestClientsInDatabase(t *testing.T) {
 	}
 }
 
-func SetupTestClient(t *testing.T) *Client {
+func SetupTestClient(t *testing.T) *client {
 	pubP, _, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		t.Fatal(err)

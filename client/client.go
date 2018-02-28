@@ -41,13 +41,13 @@ type Client interface {
 
 	Start()
 	SendMessage(message string, recipient config.ClientConfig)
-	RegisterToken(token []byte)
-	ProcessPacket(packet []byte)
-	SendRegisterMessageToProvider()
-	GetMessagesFromProvider()
-	ControlOutQueue()
-	ControlMessagingFetching()
-	CreateCoverMessage()
+	registerToken(token []byte)
+	processPacket(packet []byte)
+	sendRegisterMessageToProvider()
+	getMessagesFromProvider()
+	controlOutQueue()
+	controlMessagingFetching()
+	createCoverMessage()
 	ReadInNetworkFromPKI(pkiName string)
 }
 
@@ -88,7 +88,7 @@ func (c *client) Start() error {
 			case <-c.registrationDone:
 				return
 			default:
-				err = c.SendRegisterMessageToProvider()
+				err = c.sendRegisterMessageToProvider()
 				if err != nil {
 					logLocal.WithError(err).Error("Error during registration to provider", err)
 				}
@@ -128,7 +128,7 @@ func (c *client) SendMessage(message string, recipient config.ClientConfig) erro
 // Send opens a connection with selected network address
 // and send the passed packet. If connection failed or
 // the packet could not be send, an error is returned
-func (c *client) Send(packet []byte, host string, port string) error {
+func (c *client) send(packet []byte, host string, port string) error {
 
 	conn, err := net.Dial("tcp", host+":"+port)
 
@@ -147,14 +147,14 @@ func (c *client) Send(packet []byte, host string, port string) error {
 // passes the incoming packets to the packet handler.
 // If the connection could not be accepted an error
 // is logged into the log files, but the function is not stopped
-func (c *client) ListenForIncomingConnections() {
+func (c *client) listenForIncomingConnections() {
 	for {
 		conn, err := c.Listener.Accept()
 
 		if err != nil {
 			logLocal.WithError(err).Error(err)
 		} else {
-			go c.HandleConnection(conn)
+			go c.handleConnection(conn)
 		}
 	}
 }
@@ -162,7 +162,7 @@ func (c *client) ListenForIncomingConnections() {
 // HandleConnection handles the received packets; it checks the flag of the
 // packet and schedules a corresponding process function;
 // The potential errors are logged into the log files.
-func (c *client) HandleConnection(conn net.Conn) {
+func (c *client) handleConnection(conn net.Conn) {
 
 	buff := make([]byte, 1024)
 	defer conn.Close()
@@ -180,19 +180,19 @@ func (c *client) HandleConnection(conn net.Conn) {
 
 	switch packet.Flag {
 	case tokenFlag:
-		c.RegisterToken(packet.Data)
+		c.registerToken(packet.Data)
 		go func() {
-			err := c.ControlOutQueue()
+			err := c.controlOutQueue()
 			if err != nil {
 				logLocal.WithError(err).Panic("Error in the controller of the outgoing packets queue. Possible security threat.")
 			}
 		}()
 
 		go func() {
-			c.ControlMessagingFetching()
+			c.controlMessagingFetching()
 		}()
 	case commFlag:
-		_, err := c.ProcessPacket(packet.Data)
+		_, err := c.processPacket(packet.Data)
 		if err != nil {
 			logLocal.WithError(err).Error("Error in processing received packet")
 		}
@@ -203,7 +203,7 @@ func (c *client) HandleConnection(conn net.Conn) {
 }
 
 // RegisterToken stores the authentication token received from the provider
-func (c *client) RegisterToken(token []byte) {
+func (c *client) registerToken(token []byte) {
 	c.token = token
 	logLocal.Infof(" Registered token %s", c.token)
 	c.registrationDone <- true
@@ -212,7 +212,7 @@ func (c *client) RegisterToken(token []byte) {
 // ProcessPacket processes the received sphinx packet and returns the
 // encapsulated message or error in case the processing
 // was unsuccessful.
-func (c *client) ProcessPacket(packet []byte) ([]byte, error) {
+func (c *client) processPacket(packet []byte) ([]byte, error) {
 	logLocal.Info(" Processing packet")
 	return packet, nil
 }
@@ -220,7 +220,7 @@ func (c *client) ProcessPacket(packet []byte) ([]byte, error) {
 // SendRegisterMessageToProvider allows the client to register with the selected provider.
 // The client sends a special assignment packet, with its public information, to the provider
 // or returns an error.
-func (c *client) SendRegisterMessageToProvider() error {
+func (c *client) sendRegisterMessageToProvider() error {
 
 	logLocal.Info("Sending request to provider to register")
 
@@ -236,7 +236,7 @@ func (c *client) SendRegisterMessageToProvider() error {
 		return err
 	}
 
-	err = c.Send(pktBytes, c.Provider.Host, c.Provider.Port)
+	err = c.send(pktBytes, c.Provider.Host, c.Provider.Port)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in register provider - send registration packet returned an error")
 		return err
@@ -247,7 +247,7 @@ func (c *client) SendRegisterMessageToProvider() error {
 // GetMessagesFromProvider allows to fetch messages from the inbox stored by the
 // provider. The client sends a pull packet to the provider, along with
 // the authentication token. An error is returned if occurred.
-func (c *client) GetMessagesFromProvider() error {
+func (c *client) getMessagesFromProvider() error {
 	pullRqs := config.PullRequest{ClientId: c.Id, Token: c.token}
 	pullRqsBytes, err := proto.Marshal(&pullRqs)
 	if err != nil {
@@ -261,7 +261,7 @@ func (c *client) GetMessagesFromProvider() error {
 		return err
 	}
 
-	err = c.Send(pktBytes, c.Provider.Host, c.Provider.Port)
+	err = c.send(pktBytes, c.Provider.Host, c.Provider.Port)
 	if err != nil {
 		return err
 	}
@@ -276,25 +276,25 @@ func (c *client) Run() {
 
 	go func() {
 		logLocal.Infof("Listening on address %s", c.Host+":"+c.Port)
-		c.ListenForIncomingConnections()
+		c.listenForIncomingConnections()
 	}()
 
 	<-finish
 }
 
-func (c *client) ControlOutQueue() error {
+func (c *client) controlOutQueue() error {
 	logLocal.Info("Queue controller started")
 	for {
 		select {
 		case realPacket := <-c.OutQueue:
-			c.Send(realPacket, c.Provider.Host, c.Provider.Port)
+			c.send(realPacket, c.Provider.Host, c.Provider.Port)
 			logLocal.Info("Real packet was sent")
 		default:
-			dummyPacket, err := c.CreateCoverMessage()
+			dummyPacket, err := c.createCoverMessage()
 			if err != nil {
 				return err
 			}
-			c.Send(dummyPacket, c.Provider.Host, c.Provider.Port)
+			c.send(dummyPacket, c.Provider.Host, c.Provider.Port)
 			logLocal.Info("OutQueue empty. Dummy packet sent.")
 		}
 		delaySec, err := helpers.RandomExponential(desiredRateParameter)
@@ -306,9 +306,9 @@ func (c *client) ControlOutQueue() error {
 	return nil
 }
 
-func (c *client) ControlMessagingFetching() {
+func (c *client) controlMessagingFetching() {
 	for {
-		c.GetMessagesFromProvider()
+		c.getMessagesFromProvider()
 		logLocal.Info("Sent request to provider to fetch messages")
 
 		timeout, err := helpers.RandomExponential(fetchRate)
@@ -322,7 +322,7 @@ func (c *client) ControlMessagingFetching() {
 // CreateCoverMessage packs a dummy message into a Sphinx packet.
 // The dummy message is a loop message.
 // TODO: change to a drop cover message instead of a loop.
-func (c *client) CreateCoverMessage() ([]byte, error) {
+func (c *client) createCoverMessage() ([]byte, error) {
 	dummyLoad := "DummyPayloadMessage"
 	sphinxPacket, err := c.CreateSphinxPacket(dummyLoad, c.Config)
 	if err != nil {
