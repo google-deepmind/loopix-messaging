@@ -35,17 +35,23 @@ const (
 	pullFlag   = "\xff"
 )
 
-type ClientIt interface {
+type Client interface {
 	networker.NetworkClient
 	networker.NetworkServer
-	SendMessage(message string, recipient config.MixConfig)
-	ProcessPacket(packet []byte)
+
 	Start()
-	ReadInNetworkFromPKI()
-	ReadInClientsPKI()
+	SendMessage(message string, recipient config.ClientConfig)
+	RegisterToken(token []byte)
+	ProcessPacket(packet []byte)
+	SendRegisterMessageToProvider()
+	GetMessagesFromProvider()
+	ControlOutQueue()
+	ControlMessagingFetching()
+	CreateCoverMessage()
+	ReadInNetworkFromPKI(pkiName string)
 }
 
-type Client struct {
+type client struct {
 	Host string
 	Port string
 
@@ -65,7 +71,7 @@ type Client struct {
 // it reads the network and users information from the PKI database
 // and starts the listening server. Function returns an error
 // signaling whenever any operation was unsuccessful.
-func (c *Client) Start() error {
+func (c *client) Start() error {
 
 	c.OutQueue = make(chan []byte)
 	c.registrationDone = make(chan bool)
@@ -102,7 +108,7 @@ func (c *Client) Start() error {
 // sphinx cryptographic packet format. Next, the encoded packet is combined with a
 // flag signaling that this is a usual network packet, and passed to be send.
 // The function returns an error if any issues occurred.
-func (c *Client) SendMessage(message string, recipient config.ClientConfig) error {
+func (c *client) SendMessage(message string, recipient config.ClientConfig) error {
 
 	sphinxPacket, err := c.CreateSphinxPacket(message, recipient)
 	if err != nil {
@@ -122,7 +128,7 @@ func (c *Client) SendMessage(message string, recipient config.ClientConfig) erro
 // Send opens a connection with selected network address
 // and send the passed packet. If connection failed or
 // the packet could not be send, an error is returned
-func (c *Client) Send(packet []byte, host string, port string) error {
+func (c *client) Send(packet []byte, host string, port string) error {
 
 	conn, err := net.Dial("tcp", host+":"+port)
 
@@ -141,7 +147,7 @@ func (c *Client) Send(packet []byte, host string, port string) error {
 // passes the incoming packets to the packet handler.
 // If the connection could not be accepted an error
 // is logged into the log files, but the function is not stopped
-func (c *Client) ListenForIncomingConnections() {
+func (c *client) ListenForIncomingConnections() {
 	for {
 		conn, err := c.Listener.Accept()
 
@@ -156,7 +162,7 @@ func (c *Client) ListenForIncomingConnections() {
 // HandleConnection handles the received packets; it checks the flag of the
 // packet and schedules a corresponding process function;
 // The potential errors are logged into the log files.
-func (c *Client) HandleConnection(conn net.Conn) {
+func (c *client) HandleConnection(conn net.Conn) {
 
 	buff := make([]byte, 1024)
 	defer conn.Close()
@@ -197,7 +203,7 @@ func (c *Client) HandleConnection(conn net.Conn) {
 }
 
 // RegisterToken stores the authentication token received from the provider
-func (c *Client) RegisterToken(token []byte) {
+func (c *client) RegisterToken(token []byte) {
 	c.token = token
 	logLocal.Infof(" Registered token %s", c.token)
 	c.registrationDone <- true
@@ -206,7 +212,7 @@ func (c *Client) RegisterToken(token []byte) {
 // ProcessPacket processes the received sphinx packet and returns the
 // encapsulated message or error in case the processing
 // was unsuccessful.
-func (c *Client) ProcessPacket(packet []byte) ([]byte, error) {
+func (c *client) ProcessPacket(packet []byte) ([]byte, error) {
 	logLocal.Info(" Processing packet")
 	return packet, nil
 }
@@ -214,7 +220,7 @@ func (c *Client) ProcessPacket(packet []byte) ([]byte, error) {
 // SendRegisterMessageToProvider allows the client to register with the selected provider.
 // The client sends a special assignment packet, with its public information, to the provider
 // or returns an error.
-func (c *Client) SendRegisterMessageToProvider() error {
+func (c *client) SendRegisterMessageToProvider() error {
 
 	logLocal.Info("Sending request to provider to register")
 
@@ -241,7 +247,7 @@ func (c *Client) SendRegisterMessageToProvider() error {
 // GetMessagesFromProvider allows to fetch messages from the inbox stored by the
 // provider. The client sends a pull packet to the provider, along with
 // the authentication token. An error is returned if occurred.
-func (c *Client) GetMessagesFromProvider() error {
+func (c *client) GetMessagesFromProvider() error {
 	pullRqs := config.PullRequest{ClientId: c.Id, Token: c.token}
 	pullRqsBytes, err := proto.Marshal(&pullRqs)
 	if err != nil {
@@ -264,7 +270,7 @@ func (c *Client) GetMessagesFromProvider() error {
 }
 
 // Run opens the listener to start listening on clients host and port
-func (c *Client) Run() {
+func (c *client) Run() {
 	defer c.Listener.Close()
 	finish := make(chan bool)
 
@@ -276,7 +282,7 @@ func (c *Client) Run() {
 	<-finish
 }
 
-func (c *Client) ControlOutQueue() error {
+func (c *client) ControlOutQueue() error {
 	logLocal.Info("Queue controller started")
 	for {
 		select {
@@ -300,7 +306,7 @@ func (c *Client) ControlOutQueue() error {
 	return nil
 }
 
-func (c *Client) ControlMessagingFetching() {
+func (c *client) ControlMessagingFetching() {
 	for {
 		c.GetMessagesFromProvider()
 		logLocal.Info("Sent request to provider to fetch messages")
@@ -316,7 +322,7 @@ func (c *Client) ControlMessagingFetching() {
 // CreateCoverMessage packs a dummy message into a Sphinx packet.
 // The dummy message is a loop message.
 // TODO: change to a drop cover message instead of a loop.
-func (c *Client) CreateCoverMessage() ([]byte, error) {
+func (c *client) CreateCoverMessage() ([]byte, error) {
 	dummyLoad := "DummyPayloadMessage"
 	sphinxPacket, err := c.CreateSphinxPacket(dummyLoad, c.Config)
 	if err != nil {
@@ -334,7 +340,7 @@ func (c *Client) CreateCoverMessage() ([]byte, error) {
 // from the PKI database and stores them locally. In case
 // the connection or fetching data from the PKI went wrong,
 // an error is returned.
-func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
+func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 	logLocal.Infof("Reading network information from the PKI: %s", pkiName)
 
 	db, err := pki.OpenDatabase(pkiName, "sqlite3")
@@ -396,10 +402,10 @@ func (c *Client) ReadInNetworkFromPKI(pkiName string) error {
 
 // The constructor function to create an new client object.
 // Function returns a new client object or an error, if occurred.
-func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*Client, error) {
+func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
 	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224(), Provider: provider}
 
-	c := Client{Host: host, Port: port, CryptoClient: core, PkiDir: pkiDir}
+	c := client{Host: host, Port: port, CryptoClient: core, PkiDir: pkiDir}
 	c.Config = config.ClientConfig{Id: c.Id, Host: c.Host, Port: c.Port, PubKey: c.PubKey, Provider: &c.Provider}
 
 	configBytes, err := proto.Marshal(&c.Config)
@@ -426,9 +432,9 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 
 // NewTestClient constructs a client object, which can be used for testing. The object contains the crypto core
 // and the top-level of client, but does not involve networking and starting a listener.
-func NewTestClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*Client, error) {
+func NewTestClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
 	core := clientCore.CryptoClient{Id: id, PubKey: pubKey, PrvKey: prvKey, Curve: elliptic.P224(), Provider: provider}
-	c := Client{Host: host, Port: port, CryptoClient: core, PkiDir: pkiDir}
+	c := client{Host: host, Port: port, CryptoClient: core, PkiDir: pkiDir}
 	c.Config = config.ClientConfig{Id: c.Id, Host: c.Host, Port: c.Port, PubKey: c.PubKey, Provider: &c.Provider}
 
 	return &c, nil
