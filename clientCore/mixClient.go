@@ -149,5 +149,5 @@ func (c *CryptoClient) GetPublicKey() []byte {
 }
 
 func NewCryptoClient(id string, pubKey, privKey []byte, curve elliptic.Curve, provider config.MixConfig, network NetworkPKI) *CryptoClient {
-	return &CryptoClient{id: id, pubKey: pubKey, prvKey: privKey, curve: curve, Provider: provider, Network: network}
+	return &CryptoClient{pubKey: pubKey, prvKey: privKey, curve: curve, Provider: provider, Network: network}
 }

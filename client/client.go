@@ -41,6 +41,8 @@ type Client interface {
 
 	Start() error
 	SendMessage(message string, recipient config.ClientConfig) error
+	ReadInNetworkFromPKI(pkiName string) error
+
 	registerToken(token []byte)
 	processPacket(packet []byte) ([]byte, error)
 	sendRegisterMessageToProvider() error
@@ -48,7 +50,6 @@ type Client interface {
 	controlOutQueue() error
 	controlMessagingFetching()
 	createCoverMessage() ([]byte, error)
-	ReadInNetworkFromPKI(pkiName string) error
 }
 
 type client struct {
@@ -58,9 +59,9 @@ type client struct {
 
 	listener *net.TCPListener
 
-	PkiDir string
+	pkiDir string
 
-	Config config.ClientConfig
+	config config.ClientConfig
 	token  []byte
 
 	OutQueue         chan []byte
@@ -78,7 +79,7 @@ func (c *client) Start() error {
 	c.OutQueue = make(chan []byte)
 	c.registrationDone = make(chan bool)
 
-	err := c.ReadInNetworkFromPKI(c.PkiDir)
+	err := c.ReadInNetworkFromPKI(c.pkiDir)
 	if err != nil {
 		logLocal.WithError(err).Error("Error during reading in network PKI")
 		return err
@@ -226,7 +227,7 @@ func (c *client) sendRegisterMessageToProvider() error {
 
 	logLocal.Info("Sending request to provider to register")
 
-	confBytes, err := proto.Marshal(&c.Config)
+	confBytes, err := proto.Marshal(&c.config)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in register provider - marshal of provider config returned an error")
 		return err
@@ -250,7 +251,7 @@ func (c *client) sendRegisterMessageToProvider() error {
 // provider. The client sends a pull packet to the provider, along with
 // the authentication token. An error is returned if occurred.
 func (c *client) getMessagesFromProvider() error {
-	pullRqs := config.PullRequest{ClientId: c.Id, Token: c.token}
+	pullRqs := config.PullRequest{ClientId: c.id, Token: c.token}
 	pullRqsBytes, err := proto.Marshal(&pullRqs)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in register provider - marshal of pull request returned an error")
@@ -326,7 +327,7 @@ func (c *client) controlMessagingFetching() {
 // TODO: change to a drop cover message instead of a loop.
 func (c *client) createCoverMessage() ([]byte, error) {
 	dummyLoad := "DummyPayloadMessage"
-	sphinxPacket, err := c.EncodeMessage(dummyLoad, c.Config)
+	sphinxPacket, err := c.EncodeMessage(dummyLoad, c.config)
 	if err != nil {
 		return nil, err
 	}
@@ -407,15 +408,15 @@ func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
 	core := clientCore.NewCryptoClient(id, pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
 
-	c := client{host: host, port: port, CryptoClient: core, PkiDir: pkiDir}
-	c.Config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
+	c := client{host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
+	c.config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
 
-	configBytes, err := proto.Marshal(&c.Config)
+	configBytes, err := proto.Marshal(&c.config)
 
 	if err != nil {
 		return nil, err
 	}
-	err = helpers.AddToDatabase(pkiDir, "Pki", c.Id, "Client", configBytes)
+	err = helpers.AddToDatabase(pkiDir, "Pki", c.id, "Client", configBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -436,8 +437,8 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 // and the top-level of client, but does not involve networking and starting a listener.
 func NewTestClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
 	core := clientCore.NewCryptoClient(id, pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
-	c := client{host: host, port: port, CryptoClient: core, PkiDir: pkiDir}
-	c.Config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
+	c := client{host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
+	c.config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
 
 	return &c, nil
 }
