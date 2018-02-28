@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-var cryptoClient CryptoClient
+var client cryptoClient
 var path config.E2EPath
 var mixes []config.MixConfig
 
@@ -33,7 +33,7 @@ func Setup() error {
 	if err != nil {
 		return err
 	}
-	cryptoClient = CryptoClient{Id: "MixClient", PubKey: pubC, PrvKey: privC, Curve: elliptic.P224()}
+	client = *NewCryptoClient("MixClient", pubC, privC, elliptic.P224(), config.MixConfig{}, NetworkPKI{})
 
 	//Client a pair of mix configs, a single provider and a recipient
 	pub1, _, err := sphinx.GenerateKeyPair()
@@ -86,7 +86,7 @@ func TestCryptoClient_EncodeMessage(t *testing.T) {
 		c := sphinx.Commands{Delay: v, Flag: "Flag"}
 		commands = append(commands, c)
 	}
-	encoded, err := cryptoClient.EncodeMessage("Hello world", path, delays)
+	encoded, err := client.encodeMessage("Hello world", path, delays)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestCryptoClient_EncodeMessage(t *testing.T) {
 func TestCryptoClient_DecodeMessage(t *testing.T) {
 	packet := sphinx.SphinxPacket{Hdr: &sphinx.Header{}, Pld: []byte("Message")}
 
-	decoded, err := cryptoClient.DecodeMessage(packet)
+	decoded, err := client.decodeMessage(packet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestCryptoClient_DecodeMessage(t *testing.T) {
 }
 
 func TestCryptoClient_GenerateDelaySequence_Pass(t *testing.T) {
-	delays, err := cryptoClient.generateDelaySequence(100, 5)
+	delays, err := client.generateDelaySequence(100, 5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,13 +116,13 @@ func TestCryptoClient_GenerateDelaySequence_Pass(t *testing.T) {
 }
 
 func TestCryptoClient_GenerateDelaySequence_Fail(t *testing.T) {
-	_, err := cryptoClient.generateDelaySequence(0, 5)
+	_, err := client.generateDelaySequence(0, 5)
 	assert.EqualError(t, errors.New("the parameter of exponential distribution has to be larger than zero"), err.Error(), "")
 }
 
 func Test_GetRandomMixSequence_TooFewMixes(t *testing.T) {
 
-	sequence, err := cryptoClient.getRandomMixSequence(mixes, 20)
+	sequence, err := client.getRandomMixSequence(mixes, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func Test_GetRandomMixSequence_TooFewMixes(t *testing.T) {
 
 func Test_GetRandomMixSequence_MoreMixes(t *testing.T) {
 
-	sequence, err := cryptoClient.getRandomMixSequence(mixes, 3)
+	sequence, err := client.getRandomMixSequence(mixes, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,11 +142,11 @@ func Test_GetRandomMixSequence_MoreMixes(t *testing.T) {
 }
 
 func Test_GetRandomMixSequence_FailEmptyList(t *testing.T) {
-	_, err := cryptoClient.getRandomMixSequence([]config.MixConfig{}, 6)
+	_, err := client.getRandomMixSequence([]config.MixConfig{}, 6)
 	assert.EqualError(t, errors.New("cannot take a mix sequence from an empty list"), err.Error(), "")
 }
 
 func Test_GetRandomMixSequence_FailNonList(t *testing.T) {
-	_, err := cryptoClient.getRandomMixSequence(nil, 6)
+	_, err := client.getRandomMixSequence(nil, 6)
 	assert.EqualError(t, errors.New("cannot take a mix sequence from an empty list"), err.Error(), "")
 }
