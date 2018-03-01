@@ -13,8 +13,8 @@ import (
 	"testing"
 )
 
-var providerWorker Mix
-var testPacket sphinx.SphinxPacket
+var providerWorker *Mix
+var testPacket *sphinx.SphinxPacket
 var nodes []config.MixConfig
 var curve elliptic.Curve
 
@@ -43,7 +43,7 @@ func Setup() error {
 	m3 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3332", PubKey: pub3}
 	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3333", PubKey: pubP}
 
-	providerWorker = *NewMix(pubP, privP)
+	providerWorker = NewMix(pubP, privP)
 	nodes = []config.MixConfig{m1, m2, m3}
 
 	pubD, _, err := sphinx.GenerateKeyPair()
@@ -54,7 +54,7 @@ func Setup() error {
 	dest := config.ClientConfig{Id: "Destination", Host: "localhost", Port: "3334", PubKey: pubD, Provider: &provider}
 	path := config.E2EPath{IngressProvider: provider, Mixes: []config.MixConfig{m1, m2, m3}, EgressProvider: provider, Recipient: dest}
 
-	testPacket, err = sphinx.PackForwardMessage(curve, path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")
+	*testPacket, err = sphinx.PackForwardMessage(curve, path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +77,7 @@ func TestMixProcessPacket(t *testing.T) {
 	cAdr := make(chan string, 1)
 	errCh := make(chan error, 1)
 
-	testPacketBytes, err := proto.Marshal(&testPacket)
+	testPacketBytes, err := proto.Marshal(testPacket)
 	if err != nil {
 		t.Fatal(err)
 	}

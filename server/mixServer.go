@@ -13,6 +13,7 @@ import (
 
 	"github.com/protobuf/proto"
 
+	"golang.org/x/tools/go/gcimporter15/testdata"
 	"net"
 )
 
@@ -21,6 +22,8 @@ var logLocal = logging.PackageLogger()
 type MixServerIt interface {
 	networker.NetworkServer
 	networker.NetworkClient
+	GetConfig() config.MixConfig
+	Start() error
 }
 
 type MixServer struct {
@@ -36,6 +39,10 @@ type MixServer struct {
 func (m *MixServer) Start() error {
 	defer m.run()
 	return nil
+}
+
+func (m *MixServer) GetConfig() config.MixConfig {
+	return m.config
 }
 
 func (m *MixServer) receivedPacket(packet []byte) error {

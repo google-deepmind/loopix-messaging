@@ -28,6 +28,7 @@ type ProviderIt interface {
 	networker.NetworkServer
 	networker.NetworkClient
 	Start() error
+	GetConfig() config.MixConfig
 }
 
 type ProviderServer struct {
@@ -57,6 +58,10 @@ func (p *ProviderServer) Start() error {
 	p.run()
 
 	return nil
+}
+
+func (p *ProviderServer) GetConfig() config.MixConfig {
+	return p.config
 }
 
 // Function opens the listener to start listening on provider's host and port
