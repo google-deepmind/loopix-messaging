@@ -1,8 +1,6 @@
 package server
 
 import (
-	"anonymous-messaging/client"
-	"anonymous-messaging/clientCore"
 	"anonymous-messaging/config"
 	"anonymous-messaging/helpers"
 	"anonymous-messaging/node"
@@ -23,7 +21,6 @@ import (
 
 var mixServer *MixServer
 var providerServer *ProviderServer
-var clientServer *client.Client
 
 const (
 	testDatabase = "testDatabase.db"
@@ -61,27 +58,20 @@ func createTestMixnode() (*MixServer, error) {
 	return &mix, nil
 }
 
-func createTestClient(provider config.MixConfig) (*client.Client, error) {
-	pub, priv, err := sphinx.GenerateKeyPair()
-	if err != nil {
-		return nil, err
-	}
-	core := clientCore.CryptoClient{Id: "TestClient", PubKey: pub, PrvKey: priv, Curve: elliptic.P224(), Provider: provider}
-	client := &client.Client{Host: "localhost", Port: "9998", CryptoClient: core, PkiDir: testDatabase}
-	addr, err := helpers.ResolveTCPAddress(client.Host, client.Port)
+func createFakeClientListener(host, port string) (*net.TCPListener, error) {
+	addr, err := helpers.ResolveTCPAddress(host, port)
 	if err != nil {
 		return nil, err
 	}
 
-	client.Listener, err = net.ListenTCP("tcp", addr)
+	listener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	return client, nil
+	return listener, nil
 }
 
 func clean() {
-	clientServer.Listener.Close()
 	os.RemoveAll("./inboxes")
 }
 
@@ -98,18 +88,6 @@ func TestMain(m *testing.M) {
 		fmt.Println(err)
 		panic(m)
 	}
-
-	clientServer, err = createTestClient(providerServer.Config)
-	if err != nil {
-		fmt.Println(err)
-		panic(m)
-	}
-
-	providerServer.assignedClients[clientServer.Id] = ClientRecord{clientServer.Id,
-		clientServer.Host,
-		clientServer.Port,
-		clientServer.PubKey,
-		[]byte("TestToken")}
 
 	code := m.Run()
 	clean()
@@ -158,10 +136,19 @@ func createTestMessage(id string, t *testing.T) {
 }
 
 func TestProviderServer_FetchMessages_FullInbox(t *testing.T) {
-	createInbox(clientServer.Id, t)
-	createTestMessage(clientServer.Id, t)
+	clientListener, err := createFakeClientListener("localhost", "9999")
+	defer clientListener.Close()
 
-	signal, err := providerServer.FetchMessages(clientServer.Id)
+	providerServer.assignedClients["FakeClient"] = ClientRecord{"FakeClient",
+		"localhost",
+		"9999",
+		[]byte("FakePublicKey"),
+		[]byte("TestToken")}
+
+	createInbox("FakeClient", t)
+	createTestMessage("FakeClient", t)
+
+	signal, err := providerServer.FetchMessages("FakeClient")
 	if err != nil {
 		t.Error(err)
 	}
@@ -260,7 +247,10 @@ func TestProviderServer_RegisterNewClient(t *testing.T) {
 }
 
 func TestProviderServer_HandleAssignRequest(t *testing.T) {
-	newClient := config.ClientConfig{Id: "ClientXYZ", Host: "localhost", Port: "9998", PubKey: nil}
+	clientListener, err := createFakeClientListener("localhost", "9999")
+	defer clientListener.Close()
+
+	newClient := config.ClientConfig{Id: "ClientXYZ", Host: "localhost", Port: "9999", PubKey: nil}
 	bNewClient, err := proto.Marshal(&newClient)
 	if err != nil {
 		t.Fatal(err)
