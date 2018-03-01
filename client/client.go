@@ -67,7 +67,7 @@ type client struct {
 // signaling whenever any operation was unsuccessful.
 func (c *client) Start() error {
 
-	c.ResolveAddressAndStartListening()
+	c.resolveAddressAndStartListening()
 
 	c.outQueue = make(chan []byte)
 	c.registrationDone = make(chan bool)
@@ -97,7 +97,7 @@ func (c *client) Start() error {
 	return nil
 }
 
-func (c *client) ResolveAddressAndStartListening() error {
+func (c *client) resolveAddressAndStartListening() error {
 	addr, err := helpers.ResolveTCPAddress(c.host, c.port)
 	if err != nil {
 		return err
