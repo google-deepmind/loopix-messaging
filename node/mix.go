@@ -8,15 +8,19 @@ import (
 	"time"
 )
 
+type MixNode interface {
+	ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.Hop, cFlag chan<- string, errCh chan<- error)
+	GetPublicKey() []byte
+}
+
 type Mix struct {
-	Id     string
-	PubKey []byte
-	PrvKey []byte
+	pubKey []byte
+	prvKey []byte
 }
 
 func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.Hop, cFlag chan<- string, errCh chan<- error) {
 
-	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.PrvKey)
+	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.prvKey)
 	if err != nil {
 		errCh <- err
 	}
@@ -35,6 +39,10 @@ func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.H
 
 }
 
-func NewMix(id string, pubKey []byte, prvKey []byte) *Mix {
-	return &Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
+func (m *Mix) GetPublicKey() []byte {
+	return m.pubKey
+}
+
+func NewMix(pubKey []byte, prvKey []byte) *Mix {
+	return &Mix{pubKey: pubKey, prvKey: prvKey}
 }

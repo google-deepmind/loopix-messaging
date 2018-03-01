@@ -43,7 +43,7 @@ func Setup() error {
 	m3 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3332", PubKey: pub3}
 	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3333", PubKey: pubP}
 
-	providerWorker = *NewMix("ProviderWorker", pubP, privP)
+	providerWorker = *NewMix(pubP, privP)
 	nodes = []config.MixConfig{m1, m2, m3}
 
 	pubD, _, err := sphinx.GenerateKeyPair()
