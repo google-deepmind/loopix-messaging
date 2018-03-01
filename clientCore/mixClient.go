@@ -28,11 +28,6 @@ type MixClient interface {
 	EncodeIntoSphinxPacket(message string, recipient config.ClientConfig) ([]byte, error)
 	DecodeSphinxPacket(packet sphinx.SphinxPacket) (sphinx.SphinxPacket, error)
 	GetPublicKey() []byte
-
-	createSphinxPacket(message string, recipient config.ClientConfig) ([]byte, error)
-	buildPath(recipient config.ClientConfig) (config.E2EPath, error)
-	getRandomMixSequence(mixes []config.MixConfig, length int) ([]config.MixConfig, error)
-	generateDelaySequence(desiredRateParameter float64, length int) ([]float64, error)
 }
 
 type CryptoClient struct {

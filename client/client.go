@@ -42,15 +42,6 @@ type Client interface {
 	Start() error
 	SendMessage(message string, recipient config.ClientConfig) error
 	ReadInNetworkFromPKI(pkiName string) error
-
-	encodeMessage(message string, recipient config.ClientConfig) ([]byte, error)
-	registerToken(token []byte)
-	processPacket(packet []byte) ([]byte, error)
-	sendRegisterMessageToProvider() error
-	getMessagesFromProvider() error
-	controlOutQueue() error
-	controlMessagingFetching()
-	createCoverMessage() ([]byte, error)
 }
 
 type client struct {
