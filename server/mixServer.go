@@ -33,7 +33,7 @@ type MixServer struct {
 	Config config.MixConfig
 }
 
-func (m *MixServer) ReceivedPacket(packet []byte) error {
+func (m *MixServer) receivedPacket(packet []byte) error {
 	logLocal.Info("Received new sphinx packet")
 
 	c := make(chan []byte)
@@ -52,19 +52,19 @@ func (m *MixServer) ReceivedPacket(packet []byte) error {
 	}
 
 	if flag == "\xF1" {
-		m.ForwardPacket(dePacket, nextHop.Address)
+		m.forwardPacket(dePacket, nextHop.Address)
 	} else {
 		logLocal.Info("Packet has non-forward flag. Packet dropped")
 	}
 	return nil
 }
 
-func (m *MixServer) ForwardPacket(sphinxPacket []byte, address string) error {
+func (m *MixServer) forwardPacket(sphinxPacket []byte, address string) error {
 	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
 	if err != nil {
 		return err
 	}
-	err = m.Send(packetBytes, address)
+	err = m.send(packetBytes, address)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (m *MixServer) ForwardPacket(sphinxPacket []byte, address string) error {
 	return nil
 }
 
-func (m *MixServer) Send(packet []byte, address string) error {
+func (m *MixServer) send(packet []byte, address string) error {
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -88,25 +88,25 @@ func (m *MixServer) Send(packet []byte, address string) error {
 }
 
 func (m *MixServer) Start() error {
-	defer m.Run()
+	defer m.run()
 
 	return nil
 }
 
-func (m *MixServer) Run() {
+func (m *MixServer) run() {
 
 	defer m.Listener.Close()
 	finish := make(chan bool)
 
 	go func() {
 		logLocal.Infof("Listening on %s", m.Host+":"+m.Port)
-		m.ListenForIncomingConnections()
+		m.listenForIncomingConnections()
 	}()
 
 	<-finish
 }
 
-func (m *MixServer) ListenForIncomingConnections() {
+func (m *MixServer) listenForIncomingConnections() {
 	for {
 		conn, err := m.Listener.Accept()
 
@@ -115,7 +115,7 @@ func (m *MixServer) ListenForIncomingConnections() {
 		} else {
 			logLocal.Infof("Received connection from %s", conn.RemoteAddr())
 			errs := make(chan error, 1)
-			go m.HandleConnection(conn, errs)
+			go m.handleConnection(conn, errs)
 			err = <-errs
 			if err != nil {
 				logLocal.WithError(err).Error(err)
@@ -124,7 +124,7 @@ func (m *MixServer) ListenForIncomingConnections() {
 	}
 }
 
-func (m *MixServer) HandleConnection(conn net.Conn, errs chan<- error) {
+func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
 	defer conn.Close()
 
 	buff := make([]byte, 1024)
@@ -141,7 +141,7 @@ func (m *MixServer) HandleConnection(conn net.Conn, errs chan<- error) {
 
 	switch packet.Flag {
 	case commFlag:
-		err = m.ReceivedPacket(packet.Data)
+		err = m.receivedPacket(packet.Data)
 		if err != nil {
 			errs <- err
 		}
