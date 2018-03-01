@@ -12,8 +12,6 @@ import (
 	"anonymous-messaging/sphinx"
 
 	"github.com/protobuf/proto"
-
-	"golang.org/x/tools/go/gcimporter15/testdata"
 	"net"
 )
 
