@@ -55,7 +55,7 @@ type client struct {
 	config config.ClientConfig
 	token  []byte
 
-	OutQueue         chan []byte
+	outQueue         chan []byte
 	registrationDone chan bool
 
 	*clientCore.CryptoClient
@@ -69,7 +69,7 @@ func (c *client) Start() error {
 
 	c.ResolveAddressAndStartListening()
 
-	c.OutQueue = make(chan []byte)
+	c.outQueue = make(chan []byte)
 	c.registrationDone = make(chan bool)
 
 	err := c.ReadInNetworkFromPKI(c.pkiDir)
@@ -118,7 +118,7 @@ func (c *client) SendMessage(message string, recipient config.ClientConfig) erro
 		logLocal.WithError(err).Error("Error in sending message - encode message returned error")
 		return err
 	}
-	c.OutQueue <- packet
+	c.outQueue <- packet
 	return nil
 }
 
@@ -300,7 +300,7 @@ func (c *client) controlOutQueue() error {
 	logLocal.Info("Queue controller started")
 	for {
 		select {
-		case realPacket := <-c.OutQueue:
+		case realPacket := <-c.outQueue:
 			c.send(realPacket, c.Provider.Host, c.Provider.Port)
 			logLocal.Info("Real packet was sent")
 		default:
