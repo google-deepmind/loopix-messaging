@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-var client cryptoClient
+var client CryptoClient
 var path config.E2EPath
 var mixes []config.MixConfig
 
@@ -49,20 +49,8 @@ func Setup() error {
 	m1 := config.MixConfig{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
 	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
 
-	pubP, _, err := sphinx.GenerateKeyPair()
-	if err != nil {
-		return err
-	}
-
-	pubD, _, err := sphinx.GenerateKeyPair()
-	if err != nil {
-		return err
-	}
-	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP}
-	recipient := config.ClientConfig{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD, Provider: &provider}
-
-	// Creating a test path
-	path = config.E2EPath{IngressProvider: provider, Mixes: []config.MixConfig{m1, m2}, EgressProvider: provider, Recipient: recipient}
+	client.Network = NetworkPKI{}
+	client.Network.Mixes = []config.MixConfig{m1, m2}
 
 	return nil
 }
@@ -79,14 +67,20 @@ func TestMain(m *testing.M) {
 
 func TestCryptoClient_EncodeMessage(t *testing.T) {
 
-	delays := []float64{1.4, 2.5, 2.3, 3.5, 6.7}
-
-	var commands []sphinx.Commands
-	for _, v := range delays {
-		c := sphinx.Commands{Delay: v, Flag: "Flag"}
-		commands = append(commands, c)
+	pubP, _, err := sphinx.GenerateKeyPair()
+	if err != nil {
+		t.Fatal(err)
 	}
-	encoded, err := client.encodeMessage("Hello world", path, delays)
+	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP}
+
+	pubD, _, err := sphinx.GenerateKeyPair()
+	if err != nil {
+		t.Fatal(err)
+	}
+	recipient := config.ClientConfig{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD, Provider: &provider}
+	client.Provider = provider
+
+	encoded, err := client.EncodeIntoSphinxPacket("Hello world", recipient)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +92,7 @@ func TestCryptoClient_EncodeMessage(t *testing.T) {
 func TestCryptoClient_DecodeMessage(t *testing.T) {
 	packet := sphinx.SphinxPacket{Hdr: &sphinx.Header{}, Pld: []byte("Message")}
 
-	decoded, err := client.decodeMessage(packet)
+	decoded, err := client.DecodeSphinxPacket(packet)
 	if err != nil {
 		t.Fatal(err)
 	}

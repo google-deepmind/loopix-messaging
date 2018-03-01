@@ -27,6 +27,7 @@ type NetworkPKI struct {
 type MixClient interface {
 	EncodeIntoSphinxPacket(message string, recipient config.ClientConfig) ([]byte, error)
 	DecodeSphinxPacket(packet sphinx.SphinxPacket) (sphinx.SphinxPacket, error)
+	GetPublicKey() []byte
 
 	createSphinxPacket(message string, recipient config.ClientConfig) ([]byte, error)
 	buildPath(recipient config.ClientConfig) (config.E2EPath, error)
