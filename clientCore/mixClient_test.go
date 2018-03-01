@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-var client CryptoClient
+var client *CryptoClient
 var path config.E2EPath
 var mixes []config.MixConfig
 
@@ -33,7 +33,7 @@ func Setup() error {
 	if err != nil {
 		return err
 	}
-	client = *NewCryptoClient("MixClient", pubC, privC, elliptic.P224(), config.MixConfig{}, NetworkPKI{})
+	client = NewCryptoClient("MixClient", pubC, privC, elliptic.P224(), config.MixConfig{}, NetworkPKI{})
 
 	//Client a pair of mix configs, a single provider and a recipient
 	pub1, _, err := sphinx.GenerateKeyPair()
