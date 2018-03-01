@@ -43,6 +43,7 @@ type Client interface {
 	SendMessage(message string, recipient config.ClientConfig) error
 	ReadInNetworkFromPKI(pkiName string) error
 
+	encodeMessage(message string, recipient config.ClientConfig) ([]byte, error)
 	registerToken(token []byte)
 	processPacket(packet []byte) ([]byte, error)
 	sendRegisterMessageToProvider() error
@@ -58,8 +59,7 @@ type client struct {
 	port string
 
 	listener *net.TCPListener
-
-	pkiDir string
+	pkiDir   string
 
 	config config.ClientConfig
 	token  []byte
@@ -75,6 +75,8 @@ type client struct {
 // and starts the listening server. Function returns an error
 // signaling whenever any operation was unsuccessful.
 func (c *client) Start() error {
+
+	c.ResolveAddressAndStartListening()
 
 	c.OutQueue = make(chan []byte)
 	c.registrationDone = make(chan bool)
@@ -100,32 +102,50 @@ func (c *client) Start() error {
 		}
 	}()
 
-	c.Run()
+	c.startListenerInNewRoutine()
+	return nil
+}
+
+func (c *client) ResolveAddressAndStartListening() error {
+	addr, err := helpers.ResolveTCPAddress(c.host, c.port)
+	if err != nil {
+		return err
+	}
+
+	c.listener, err = net.ListenTCP("tcp", addr)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 // SendMessage responsible for sending a real message. Takes as input the message string
 // and the public information about the destination.
-// The function generates a random path and a set of random values from exponential distribution.
-// Given those values it triggers the encode function, which packs the message into the
-// sphinx cryptographic packet format. Next, the encoded packet is combined with a
-// flag signaling that this is a usual network packet, and passed to be send.
-// The function returns an error if any issues occurred.
 func (c *client) SendMessage(message string, recipient config.ClientConfig) error {
+	packet, err := c.encodeMessage(message, recipient)
+	if err != nil {
+		logLocal.WithError(err).Error("Error in sending message - encode message returned error")
+		return err
+	}
+	c.OutQueue <- packet
+	return nil
+}
 
-	sphinxPacket, err := c.EncodeMessage(message, recipient)
+// encodeMessage encapsulates the given message into a sphinx packet destinated for recipient
+// and wraps with the flag pointing that it is the communication packet
+func (c *client) encodeMessage(message string, recipient config.ClientConfig) ([]byte, error) {
+	sphinxPacket, err := c.EncodeIntoSphinxPacket(message, recipient)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in sending message - create sphinx packet returned an error")
-		return err
+		return nil, err
 	}
 
 	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in sending message - wrap with flag returned an error")
-		return err
+		return nil, err
 	}
-	c.OutQueue <- packetBytes
-	return nil
+	return packetBytes, nil
 }
 
 // Send opens a connection with selected network address
@@ -143,6 +163,19 @@ func (c *client) send(packet []byte, host string, port string) error {
 
 	_, err = conn.Write(packet)
 	return err
+}
+
+// run opens the listener to start listening on clients host and port
+func (c *client) startListenerInNewRoutine() {
+	defer c.listener.Close()
+	finish := make(chan bool)
+
+	go func() {
+		logLocal.Infof("Listening on address %s", c.host+":"+c.port)
+		c.listenForIncomingConnections()
+	}()
+
+	<-finish
 }
 
 // ListenForIncomingConnections responsible for running the listening process of the server;
@@ -272,19 +305,6 @@ func (c *client) getMessagesFromProvider() error {
 	return nil
 }
 
-// Run opens the listener to start listening on clients host and port
-func (c *client) Run() {
-	defer c.listener.Close()
-	finish := make(chan bool)
-
-	go func() {
-		logLocal.Infof("Listening on address %s", c.host+":"+c.port)
-		c.listenForIncomingConnections()
-	}()
-
-	<-finish
-}
-
 func (c *client) controlOutQueue() error {
 	logLocal.Info("Queue controller started")
 	for {
@@ -327,7 +347,7 @@ func (c *client) controlMessagingFetching() {
 // TODO: change to a drop cover message instead of a loop.
 func (c *client) createCoverMessage() ([]byte, error) {
 	dummyLoad := "DummyPayloadMessage"
-	sphinxPacket, err := c.EncodeMessage(dummyLoad, c.config)
+	sphinxPacket, err := c.EncodeIntoSphinxPacket(dummyLoad, c.config)
 	if err != nil {
 		return nil, err
 	}
@@ -421,15 +441,6 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 		return nil, err
 	}
 
-	addr, err := helpers.ResolveTCPAddress(c.host, c.port)
-	if err != nil {
-		return nil, err
-	}
-
-	c.listener, err = net.ListenTCP("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
 	return &c, nil
 }
 
