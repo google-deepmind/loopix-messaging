@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+// MixNode is the interface that wraps th bacis methods
+// of a mix node.
+// ProcessPacket processes the received packet bytes and writes in return meta information to given channels.
+// GetPublicKey returns the sequence of key bytes.
 type MixNode interface {
 	ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.Hop, cFlag chan<- string, errCh chan<- error)
 	GetPublicKey() []byte
@@ -18,6 +22,8 @@ type Mix struct {
 	prvKey []byte
 }
 
+// ProcessPacket performs the processing operation on the received packet, including cryptographic operations and
+// extraction of the meta information.
 func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.Hop, cFlag chan<- string, errCh chan<- error) {
 
 	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.prvKey)
@@ -39,10 +45,12 @@ func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.H
 
 }
 
+// GetPublicKey returns the public key of the mixnode.
 func (m *Mix) GetPublicKey() []byte {
 	return m.pubKey
 }
 
+// NewMix creates a new instance of Mix struct with given public and private key
 func NewMix(pubKey []byte, prvKey []byte) *Mix {
 	return &Mix{pubKey: pubKey, prvKey: prvKey}
 }
