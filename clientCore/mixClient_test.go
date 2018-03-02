@@ -80,7 +80,7 @@ func TestCryptoClient_EncodeMessage(t *testing.T) {
 	recipient := config.ClientConfig{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD, Provider: &provider}
 	client.Provider = provider
 
-	encoded, err := client.EncodeIntoSphinxPacket("Hello world", recipient)
+	encoded, err := client.EncodeMessage("Hello world", recipient)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestCryptoClient_EncodeMessage(t *testing.T) {
 func TestCryptoClient_DecodeMessage(t *testing.T) {
 	packet := sphinx.SphinxPacket{Hdr: &sphinx.Header{}, Pld: []byte("Message")}
 
-	decoded, err := client.DecodeSphinxPacket(packet)
+	decoded, err := client.DecodeMessage(packet)
 	if err != nil {
 		t.Fatal(err)
 	}

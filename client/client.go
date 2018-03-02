@@ -125,7 +125,7 @@ func (c *client) SendMessage(message string, recipient config.ClientConfig) erro
 // encodeMessage encapsulates the given message into a sphinx packet destinated for recipient
 // and wraps with the flag pointing that it is the communication packet
 func (c *client) encodeMessage(message string, recipient config.ClientConfig) ([]byte, error) {
-	sphinxPacket, err := c.EncodeIntoSphinxPacket(message, recipient)
+	sphinxPacket, err := c.EncodeMessage(message, recipient)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in sending message - create sphinx packet returned an error")
 		return nil, err
@@ -338,7 +338,7 @@ func (c *client) controlMessagingFetching() {
 // TODO: change to a drop cover message instead of a loop.
 func (c *client) createCoverMessage() ([]byte, error) {
 	dummyLoad := "DummyPayloadMessage"
-	sphinxPacket, err := c.EncodeIntoSphinxPacket(dummyLoad, c.config)
+	sphinxPacket, err := c.EncodeMessage(dummyLoad, c.config)
 	if err != nil {
 		return nil, err
 	}
