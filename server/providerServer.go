@@ -39,8 +39,7 @@ type ProviderServer struct {
 	listener *net.TCPListener
 
 	assignedClients map[string]ClientRecord
-
-	config config.MixConfig
+	config          config.MixConfig
 }
 
 type ClientRecord struct {
