@@ -122,7 +122,7 @@ func (c *CryptoClient) generateDelaySequence(desiredRateParameter float64, lengt
 }
 
 // EncodeMessage encodes given message into the Sphinx packet format. EncodeMessage takes as inputs
-// the message, path which the packet should traverse, including the destination, and a set of delays.
+// the message and the recipient's public configuration.
 // EncodeMessage returns the byte representation of the packet or an error if the packet could not be created.
 func (c *CryptoClient) EncodeIntoSphinxPacket(message string, recipient config.ClientConfig) ([]byte, error) {
 
