@@ -20,8 +20,8 @@ import (
 var logLocal = logging.PackageLogger()
 
 type NetworkPKI struct {
-	Mixes     []config.MixConfig
-	Providers []config.MixConfig
+	Mixes   []config.MixConfig
+	Clients []config.ClientConfig
 }
 
 type MixClient interface {
