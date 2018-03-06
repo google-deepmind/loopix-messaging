@@ -390,7 +390,6 @@ func NewProviderServer(id string, host string, port string, pubKey []byte, prvKe
 	}
 
 	addr, err := helpers.ResolveTCPAddress(providerServer.host, providerServer.port)
-
 	if err != nil {
 		return nil, err
 	}
