@@ -477,6 +477,7 @@ func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 		return err
 	}
 	for recordsProviders.Next() {
+		logLocal.Info("FOUND SOME INFO ABOUT PROVIDERS")
 		result := make(map[string]interface{})
 		err := recordsProviders.MapScan(result)
 
@@ -493,6 +494,7 @@ func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 		}
 
 		c.Network.Providers = append(c.Network.Providers, prvConfig)
+		logLocal.Info(c.Network.Providers)
 	}
 	logLocal.Info("Network information uploaded")
 
@@ -503,7 +505,6 @@ func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 // Function returns a new client object or an error, if occurred.
 func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
 	core := clientCore.NewCryptoClient(id, pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
-
 	c := client{host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
 	c.config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
 
