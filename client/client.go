@@ -308,6 +308,9 @@ func (c *client) getMessagesFromProvider() error {
 	return nil
 }
 
+// controlOutQueue controls the outgoing queue of the client.
+// If a message awaits in the queue, it is sent. Otherwise a
+// drop cover message is sent instead.
 func (c *client) controlOutQueue() error {
 	logLocal.Info("Queue controller started")
 	for {
@@ -332,6 +335,8 @@ func (c *client) controlOutQueue() error {
 	return nil
 }
 
+// controlMessagingFetching periodically at random sends a query to the provider
+// to fetch received messages
 func (c *client) controlMessagingFetching() {
 	for {
 		c.getMessagesFromProvider()
@@ -379,6 +384,9 @@ func (c *client) createLoopCoverMessage() ([]byte, error) {
 	return packetBytes, nil
 }
 
+// runLoopCoverTrafficStream manages the stream of loop cover traffic.
+// In each stream iteration it sends a freshly created loop packet and
+// waits a random time before scheduling the next loop packet.
 func (c *client) runLoopCoverTrafficStream() error {
 	logLocal.Info("Stream of loop cover traffic started")
 	for {
@@ -398,6 +406,10 @@ func (c *client) runLoopCoverTrafficStream() error {
 	return nil
 }
 
+// runDropCoverTrafficStream manages the stream of drop cover traffic.
+// In each stream iteration it creates a fresh drop cover message destinated
+// to a randomly selected user in the network. The drop packet is sent
+// and the next stream call is scheduled after random time.
 func (c *client) runDropCoverTrafficStream() error {
 	logLocal.Info("Stream of drop cover traffic started")
 	for {
@@ -417,6 +429,7 @@ func (c *client) runDropCoverTrafficStream() error {
 	return nil
 }
 
+// turnOnLoopCoverTraffic starts the stream of loop cover traffic
 func (c *client) turnOnLoopCoverTraffic() {
 	go func() {
 		err := c.runLoopCoverTrafficStream()
@@ -426,6 +439,7 @@ func (c *client) turnOnLoopCoverTraffic() {
 	}()
 }
 
+// turnOnDropCoverTraffic starts the stream of drop cover traffic
 func (c *client) turnOnDropCoverTraffic() {
 	go func() {
 		err := c.runDropCoverTrafficStream()
