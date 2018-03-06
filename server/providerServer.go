@@ -376,7 +376,7 @@ func (p *ProviderServer) storeMessage(message []byte, inboxId string, messageId 
 // NewProviderServer returns a new provider object and an error.
 func NewProviderServer(id string, host string, port string, pubKey []byte, prvKey []byte, pkiPath string) (*ProviderServer, error) {
 	node := node.NewMix(pubKey, prvKey)
-	providerServer := ProviderServer{host: host, port: port, Mix: node, listener: nil}
+	providerServer := ProviderServer{id: id, host: host, port: port, Mix: node, listener: nil}
 	providerServer.config = config.MixConfig{Id: providerServer.id, Host: providerServer.host, Port: providerServer.port, PubKey: providerServer.GetPublicKey()}
 	providerServer.assignedClients = make(map[string]ClientRecord)
 
