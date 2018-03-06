@@ -477,7 +477,6 @@ func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 		return err
 	}
 	for recordsProviders.Next() {
-		logLocal.Info("FOUND SOME INFO ABOUT PROVIDERS")
 		result := make(map[string]interface{})
 		err := recordsProviders.MapScan(result)
 
@@ -494,7 +493,6 @@ func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 		}
 
 		c.Network.Providers = append(c.Network.Providers, prvConfig)
-		logLocal.Info(c.Network.Providers)
 	}
 	logLocal.Info("Network information uploaded")
 
@@ -504,8 +502,8 @@ func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 // The constructor function to create an new client object.
 // Function returns a new client object or an error, if occurred.
 func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
-	core := clientCore.NewCryptoClient(id, pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
-	c := client{host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
+	core := clientCore.NewCryptoClient(pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
+	c := client{id: id, host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
 	c.config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
 
 	configBytes, err := proto.Marshal(&c.config)
@@ -524,8 +522,8 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 // NewTestClient constructs a client object, which can be used for testing. The object contains the crypto core
 // and the top-level of client, but does not involve networking and starting a listener.
 func NewTestClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
-	core := clientCore.NewCryptoClient(id, pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
-	c := client{host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
+	core := clientCore.NewCryptoClient(pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
+	c := client{id: id, host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
 	c.config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
 
 	return &c, nil
