@@ -31,9 +31,9 @@ func createTestProvider() (*ProviderServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	node := node.Mix{Id: "Provider", PubKey: pub, PrvKey: priv}
-	provider := ProviderServer{Host: "localhost", Port: "9999", Mix: node}
-	provider.Config = config.MixConfig{Id: provider.Id, Host: provider.Host, Port: provider.Port, PubKey: provider.PubKey}
+	node := node.NewMix(pub, priv)
+	provider := ProviderServer{host: "localhost", port: "9999", Mix: node}
+	provider.config = config.MixConfig{Id: provider.id, Host: provider.host, Port: provider.port, PubKey: provider.GetPublicKey()}
 	provider.assignedClients = make(map[string]ClientRecord)
 	return &provider, nil
 }
@@ -43,15 +43,15 @@ func createTestMixnode() (*MixServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	node := node.Mix{Id: "Mix", PubKey: pub, PrvKey: priv}
-	mix := MixServer{Host: "localhost", Port: "9995", Mix: node}
-	mix.Config = config.MixConfig{Id: mix.Id, Host: mix.Host, Port: mix.Port, PubKey: mix.PubKey}
-	addr, err := helpers.ResolveTCPAddress(mix.Host, mix.Port)
+	node := node.NewMix(pub, priv)
+	mix := MixServer{host: "localhost", port: "9995", Mix: node}
+	mix.config = config.MixConfig{Id: mix.id, Host: mix.host, Port: mix.port, PubKey: mix.GetPublicKey()}
+	addr, err := helpers.ResolveTCPAddress(mix.host, mix.port)
 	if err != nil {
 		return nil, err
 	}
 
-	mix.Listener, err = net.ListenTCP("tcp", addr)
+	mix.listener, err = net.ListenTCP("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
@@ -96,15 +96,15 @@ func TestMain(m *testing.M) {
 
 func TestProviderServer_AuthenticateUser_Pass(t *testing.T) {
 	testToken := []byte("AuthenticationToken")
-	record := ClientRecord{Id: "Alice", Host: "localhost", Port: "1111", PubKey: nil, Token: testToken}
+	record := ClientRecord{id: "Alice", host: "localhost", port: "1111", pubKey: nil, token: testToken}
 	providerServer.assignedClients["Alice"] = record
-	assert.True(t, providerServer.AuthenticateUser("Alice", []byte("AuthenticationToken")), " Authentication should be successful")
+	assert.True(t, providerServer.authenticateUser("Alice", []byte("AuthenticationToken")), " Authentication should be successful")
 }
 
 func TestProviderServer_AuthenticateUser_Fail(t *testing.T) {
-	record := ClientRecord{Id: "Alice", Host: "localhost", Port: "1111", PubKey: nil, Token: []byte("AuthenticationToken")}
+	record := ClientRecord{id: "Alice", host: "localhost", port: "1111", pubKey: nil, token: []byte("AuthenticationToken")}
 	providerServer.assignedClients["Alice"] = record
-	assert.False(t, providerServer.AuthenticateUser("Alice", []byte("WrongAuthToken")), " Authentication should not be successful")
+	assert.False(t, providerServer.authenticateUser("Alice", []byte("WrongAuthToken")), " Authentication should not be successful")
 }
 
 func createInbox(id string, t *testing.T) {
@@ -148,7 +148,7 @@ func TestProviderServer_FetchMessages_FullInbox(t *testing.T) {
 	createInbox("FakeClient", t)
 	createTestMessage("FakeClient", t)
 
-	signal, err := providerServer.FetchMessages("FakeClient")
+	signal, err := providerServer.fetchMessages("FakeClient")
 	if err != nil {
 		t.Error(err)
 	}
@@ -157,7 +157,7 @@ func TestProviderServer_FetchMessages_FullInbox(t *testing.T) {
 
 func TestProviderServer_FetchMessages_EmptyInbox(t *testing.T) {
 	createInbox("EmptyInbox", t)
-	signal, err := providerServer.FetchMessages("EmptyInbox")
+	signal, err := providerServer.fetchMessages("EmptyInbox")
 	if err != nil {
 		t.Error(err)
 	}
@@ -165,7 +165,7 @@ func TestProviderServer_FetchMessages_EmptyInbox(t *testing.T) {
 }
 
 func TestProviderServer_FetchMessages_NoInbox(t *testing.T) {
-	signal, err := providerServer.FetchMessages("NonExistingInbox")
+	signal, err := providerServer.fetchMessages("NonExistingInbox")
 	if err != nil {
 		t.Error(err)
 	}
@@ -185,7 +185,7 @@ func TestProviderServer_StoreMessage(t *testing.T) {
 	}
 
 	message := []byte("Hello world message")
-	providerServer.StoreMessage(message, inboxId, fileId)
+	providerServer.storeMessage(message, inboxId, fileId)
 
 	_, err = os.Stat(filePath)
 	if err != nil {
@@ -203,12 +203,12 @@ func TestProviderServer_StoreMessage(t *testing.T) {
 
 func TestProviderServer_HandlePullRequest_Pass(t *testing.T) {
 	testPullRequest := config.PullRequest{ClientId: "PassTestId", Token: []byte("TestToken")}
-	providerServer.assignedClients["PassTestId"] = ClientRecord{Id: "TestId", Host: "localhost", Port: "1111", PubKey: nil, Token: []byte("TestToken")}
+	providerServer.assignedClients["PassTestId"] = ClientRecord{id: "TestId", host: "localhost", port: "1111", pubKey: nil, token: []byte("TestToken")}
 	bTestPullRequest, err := proto.Marshal(&testPullRequest)
 	if err != nil {
 		t.Error(err)
 	}
-	err = providerServer.HandlePullRequest(bTestPullRequest)
+	err = providerServer.handlePullRequest(bTestPullRequest)
 	if err != nil {
 		t.Error(err)
 	}
@@ -221,7 +221,7 @@ func TestProviderServer_HandlePullRequest_Fail(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = providerServer.HandlePullRequest(bTestPullRequest)
+	err = providerServer.handlePullRequest(bTestPullRequest)
 	assert.EqualError(t, errors.New("authentication went wrong"), err.Error(), "HandlePullRequest should return an error if authentication failed")
 }
 
@@ -231,7 +231,7 @@ func TestProviderServer_RegisterNewClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, addr, err := providerServer.RegisterNewClient(bNewClient)
+	token, addr, err := providerServer.registerNewClient(bNewClient)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,14 +255,14 @@ func TestProviderServer_HandleAssignRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = providerServer.HandleAssignRequest(bNewClient)
+	err = providerServer.handleAssignRequest(bNewClient)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func createTestPacket(t *testing.T) *sphinx.SphinxPacket {
-	path := config.E2EPath{IngressProvider: providerServer.Config, Mixes: []config.MixConfig{mixServer.Config}, EgressProvider: providerServer.Config}
+	path := config.E2EPath{IngressProvider: providerServer.config, Mixes: []config.MixConfig{mixServer.config}, EgressProvider: providerServer.config}
 	sphinxPacket, err := sphinx.PackForwardMessage(elliptic.P224(), path, []float64{0.1, 0.2, 0.3}, "Hello world")
 	if err != nil {
 		t.Fatal(err)
@@ -277,7 +277,7 @@ func TestProviderServer_ReceivedPacket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = providerServer.ReceivedPacket(bSphinxPacket)
+	err = providerServer.receivedPacket(bSphinxPacket)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func TestProviderServer_HandleConnection(t *testing.T) {
 	errs := make(chan error, 1)
 	// serverConn.Write([]byte("test"))
 	go func() {
-		providerServer.HandleConnection(serverConn, errs)
+		providerServer.handleConnection(serverConn, errs)
 		err := <-errs
 		if err != nil {
 			t.Fatal(err)

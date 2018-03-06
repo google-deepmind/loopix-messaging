@@ -13,61 +13,49 @@ import (
 	"testing"
 )
 
-var providerWorker Mix
-var testPacket sphinx.SphinxPacket
 var nodes []config.MixConfig
-var curve elliptic.Curve
 
-func Setup() error {
-	curve := elliptic.P224()
+func createProviderWorker() (*Mix, error) {
+	pubP, privP, err := sphinx.GenerateKeyPair()
+	if err != nil {
+		return nil, err
+	}
+	providerWorker := NewMix(pubP, privP)
+	return providerWorker, nil
+}
 
+func createTestPacket(curve elliptic.Curve, mixes []config.MixConfig, provider config.MixConfig, recipient config.ClientConfig) (*sphinx.SphinxPacket, error) {
+	path := config.E2EPath{IngressProvider: provider, Mixes: mixes, EgressProvider: provider, Recipient: recipient}
+	testPacket, err := sphinx.PackForwardMessage(curve, path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")
+	if err != nil {
+		return nil, err
+	}
+	return &testPacket, nil
+}
+
+func createTestMixes() ([]config.MixConfig, error) {
 	pub1, _, err := sphinx.GenerateKeyPair()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pub2, _, err := sphinx.GenerateKeyPair()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pub3, _, err := sphinx.GenerateKeyPair()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	pubP, privP, _ := sphinx.GenerateKeyPair()
-	if err != nil {
-		return err
-	}
-
 	m1 := config.MixConfig{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
 	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
 	m3 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3332", PubKey: pub3}
-	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3333", PubKey: pubP}
-
-	providerWorker = *NewMix("ProviderWorker", pubP, privP)
 	nodes = []config.MixConfig{m1, m2, m3}
 
-	pubD, _, err := sphinx.GenerateKeyPair()
-	if err != nil {
-		return err
-	}
-
-	dest := config.ClientConfig{Id: "Destination", Host: "localhost", Port: "3334", PubKey: pubD, Provider: &provider}
-	path := config.E2EPath{IngressProvider: provider, Mixes: []config.MixConfig{m1, m2, m3}, EgressProvider: provider, Recipient: dest}
-
-	testPacket, err = sphinx.PackForwardMessage(curve, path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")
-	if err != nil {
-		panic(err)
-	}
-
-	return nil
+	return nodes, nil
 }
 
 func TestMain(m *testing.M) {
 
-	err := Setup()
-	if err != nil {
-		panic(m)
-	}
 	os.Exit(m.Run())
 }
 
@@ -77,7 +65,28 @@ func TestMixProcessPacket(t *testing.T) {
 	cAdr := make(chan string, 1)
 	errCh := make(chan error, 1)
 
-	testPacketBytes, err := proto.Marshal(&testPacket)
+	pubD, _, err := sphinx.GenerateKeyPair()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	providerWorker, err := createProviderWorker()
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3333", PubKey: providerWorker.pubKey}
+	dest := config.ClientConfig{Id: "Destination", Host: "localhost", Port: "3334", PubKey: pubD, Provider: &provider}
+	mixes, err := createTestMixes()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testPacket, err := createTestPacket(elliptic.P224(), mixes, provider, dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testPacketBytes, err := proto.Marshal(testPacket)
 	if err != nil {
 		t.Fatal(err)
 	}

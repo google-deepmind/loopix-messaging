@@ -9,14 +9,15 @@ import (
 )
 
 type Mix struct {
-	Id     string
-	PubKey []byte
-	PrvKey []byte
+	pubKey []byte
+	prvKey []byte
 }
 
+// ProcessPacket performs the processing operation on the received packet, including cryptographic operations and
+// extraction of the meta information.
 func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.Hop, cFlag chan<- string, errCh chan<- error) {
 
-	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.PrvKey)
+	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.prvKey)
 	if err != nil {
 		errCh <- err
 	}
@@ -35,6 +36,12 @@ func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.H
 
 }
 
-func NewMix(id string, pubKey []byte, prvKey []byte) *Mix {
-	return &Mix{Id: id, PubKey: pubKey, PrvKey: prvKey}
+// GetPublicKey returns the public key of the mixnode.
+func (m *Mix) GetPublicKey() []byte {
+	return m.pubKey
+}
+
+// NewMix creates a new instance of Mix struct with given public and private key
+func NewMix(pubKey []byte, prvKey []byte) *Mix {
+	return &Mix{pubKey: pubKey, prvKey: prvKey}
 }
