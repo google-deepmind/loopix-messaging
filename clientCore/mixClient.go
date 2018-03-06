@@ -144,6 +144,6 @@ func (c *CryptoClient) GetPublicKey() []byte {
 	return c.pubKey
 }
 
-func NewCryptoClient(id string, pubKey, privKey []byte, curve elliptic.Curve, provider config.MixConfig, network NetworkPKI) *CryptoClient {
+func NewCryptoClient(pubKey, privKey []byte, curve elliptic.Curve, provider config.MixConfig, network NetworkPKI) *CryptoClient {
 	return &CryptoClient{pubKey: pubKey, prvKey: privKey, curve: curve, Provider: provider, Network: network}
 }

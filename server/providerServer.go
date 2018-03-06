@@ -225,6 +225,7 @@ func (p *ProviderServer) registerNewClient(clientBytes []byte) ([]byte, string, 
 	p.assignedClients[clientConf.Id] = record
 	address := clientConf.Host + ":" + clientConf.Port
 
+	logLocal.Infof("===> register: %s", clientConf.Id)
 	path := fmt.Sprintf("./inboxes/%s", clientConf.Id)
 	exists, err := helpers.DirExists(path)
 	if err != nil {
@@ -314,6 +315,7 @@ func (p *ProviderServer) authenticateUser(clientId string, clientToken []byte) b
 // (SI) messages were send to the client; and an error.
 func (p *ProviderServer) fetchMessages(clientId string) (string, error) {
 
+	logLocal.Infof("===> fetch: %s", clientId)
 	path := fmt.Sprintf("./inboxes/%s", clientId)
 	exist, err := helpers.DirExists(path)
 	if err != nil {
@@ -354,6 +356,7 @@ func (p *ProviderServer) fetchMessages(clientId string) (string, error) {
 // If the inbox address does not exist or writing into the inbox was unsuccessful
 // the function returns an error
 func (p *ProviderServer) storeMessage(message []byte, inboxId string, messageId string) error {
+	logLocal.Infof("====> store %s", inboxId)
 	path := fmt.Sprintf("./inboxes/%s", inboxId)
 	fileName := path + "/" + messageId + ".txt"
 
