@@ -10,7 +10,6 @@ import (
 	"anonymous-messaging/helpers"
 	"anonymous-messaging/logging"
 	"anonymous-messaging/networker"
-	"anonymous-messaging/pki"
 
 	"github.com/protobuf/proto"
 
@@ -21,15 +20,15 @@ import (
 )
 
 var logLocal = logging.PackageLogger()
+var loopCoverTrafficEnabled = true
+var dropCoverTrafficEnabled = true
 
 const (
 	// the parameter of the exponential distribution which defines the rate of sending by client
 	// the desiredRateParameter is the reciprocal of the expected value of the exponential distribution
-	desiredRateParameter    = 0.2
-	loopRate                = 0.1
-	dropRate                = 0.1
-	loopCoverTrafficEnabled = true
-	dropCoverTrafficEnabled = true
+	desiredRateParameter = 0.2
+	loopRate             = 0.1
+	dropRate             = 0.1
 	// the rate at which clients are querying the provider for received packets. fetchRate value is the
 	// parameter of an exponential distribution, and is the reciprocal of the expected value of the exp. distribution
 	fetchRate  = 0.01
@@ -230,6 +229,7 @@ func (c *client) handleConnection(conn net.Conn) {
 		go func() {
 			c.controlMessagingFetching()
 		}()
+
 	case commFlag:
 		_, err := c.processPacket(packet.Data)
 		if err != nil {
@@ -350,7 +350,8 @@ func (c *client) controlMessagingFetching() {
 // TODO: change to a drop cover message instead of a loop.
 func (c *client) createCoverMessage() ([]byte, error) {
 	dummyLoad := "DummyPayloadMessage"
-	sphinxPacket, err := c.EncodeMessage(dummyLoad, c.config)
+	randomRecipient := helpers.GetRandomElement(c.Network.Clients)
+	sphinxPacket, err := c.EncodeMessage(dummyLoad, randomRecipient)
 	if err != nil {
 		return nil, err
 	}
@@ -385,9 +386,8 @@ func (c *client) runLoopCoverTrafficStream() error {
 		if err != nil {
 			return err
 		}
-		// TODO: send the loop and register the time of sending
 		c.send(loopPacket, c.Provider.Host, c.Provider.Port)
-
+		logLocal.Info("Loop message sent")
 		delaySec, err := helpers.RandomExponential(loopRate)
 		if err != nil {
 			return err
@@ -442,60 +442,21 @@ func (c *client) turnOnDropCoverTraffic() {
 func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 	logLocal.Infof("Reading network information from the PKI: %s", pkiName)
 
-	db, err := pki.OpenDatabase(pkiName, "sqlite3")
-
+	mixes, err := helpers.GetMixesPKI(pkiName)
 	if err != nil {
+		logLocal.WithError(err).Error("Error while reading mixes from PKI")
 		return err
 	}
+	c.Network.Mixes = mixes
 
-	recordsMixes, err := pki.QueryDatabase(db, "Pki", "Mix")
+	clients, err := helpers.GetClientPKI(pkiName)
 	if err != nil {
-		logLocal.WithError(err).Error("Error during querying the Mixes PKI")
+		logLocal.WithError(err).Error("Error while reading clients from PKI")
 		return err
 	}
+	c.Network.Clients = clients
 
-	for recordsMixes.Next() {
-		result := make(map[string]interface{})
-		err := recordsMixes.MapScan(result)
-		if err != nil {
-			logLocal.WithError(err).Error("Error during mixes record mapping PKI")
-			return err
-		}
-
-		var mixConfig config.MixConfig
-		err = proto.Unmarshal(result["Config"].([]byte), &mixConfig)
-		if err != nil {
-			logLocal.WithError(err).Error("Error during unmarshal function for mix config")
-			return err
-		}
-		c.Network.Mixes = append(c.Network.Mixes, mixConfig)
-	}
-
-	recordsProviders, err := pki.QueryDatabase(db, "Pki", "Provider")
-	if err != nil {
-		logLocal.WithError(err).Error("Error during querying the Providers PKI")
-		return err
-	}
-	for recordsProviders.Next() {
-		result := make(map[string]interface{})
-		err := recordsProviders.MapScan(result)
-
-		if err != nil {
-			logLocal.WithError(err).Error("Error during providers record mapping PKI")
-			return err
-		}
-
-		var prvConfig config.MixConfig
-		err = proto.Unmarshal(result["Config"].([]byte), &prvConfig)
-		if err != nil {
-			logLocal.WithError(err).Error("Error during unmarshal function for provider config")
-			return err
-		}
-
-		c.Network.Providers = append(c.Network.Providers, prvConfig)
-	}
 	logLocal.Info("Network information uploaded")
-
 	return nil
 }
 
