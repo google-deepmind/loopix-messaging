@@ -25,9 +25,11 @@ var logLocal = logging.PackageLogger()
 const (
 	// the parameter of the exponential distribution which defines the rate of sending by client
 	// the desiredRateParameter is the reciprocal of the expected value of the exponential distribution
-	desiredRateParameter = 0.2
-	loopRate             = 0.1
-	dropRate             = 0.1
+	desiredRateParameter    = 0.2
+	loopRate                = 0.1
+	dropRate                = 0.1
+	loopCoverTrafficEnabled = true
+	dropCoverTrafficEnabled = true
 	// the rate at which clients are querying the provider for received packets. fetchRate value is the
 	// parameter of an exponential distribution, and is the reciprocal of the expected value of the exp. distribution
 	fetchRate  = 0.01
@@ -217,6 +219,14 @@ func (c *client) handleConnection(conn net.Conn) {
 			}
 		}()
 
+		if loopCoverTrafficEnabled {
+			c.turnOnLoopCoverTraffic()
+		}
+
+		if dropCoverTrafficEnabled {
+			c.turnOnDropCoverTraffic()
+		}
+
 		go func() {
 			c.controlMessagingFetching()
 		}()
@@ -405,6 +415,24 @@ func (c *client) runDropCoverTrafficStream() error {
 
 	}
 	return nil
+}
+
+func (c *client) turnOnLoopCoverTraffic() {
+	go func() {
+		err := c.runLoopCoverTrafficStream()
+		if err != nil {
+			logLocal.WithError(err).Panic("Error in the controller of the loop cover traffic. Possible security threat.")
+		}
+	}()
+}
+
+func (c *client) turnOnDropCoverTraffic() {
+	go func() {
+		err := c.runDropCoverTrafficStream()
+		if err != nil {
+			logLocal.WithError(err).Panic("Error in the controller of the loop cover traffic. Possible security threat.")
+		}
+	}()
 }
 
 // ReadInNetworkFromPKI reads in the public information about active mixes
