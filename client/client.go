@@ -26,6 +26,8 @@ const (
 	// the parameter of the exponential distribution which defines the rate of sending by client
 	// the desiredRateParameter is the reciprocal of the expected value of the exponential distribution
 	desiredRateParameter = 0.2
+	loopRate             = 0.1
+	dropRate             = 0.1
 	// the rate at which clients are querying the provider for received packets. fetchRate value is the
 	// parameter of an exponential distribution, and is the reciprocal of the expected value of the exp. distribution
 	fetchRate  = 0.01
@@ -348,6 +350,61 @@ func (c *client) createCoverMessage() ([]byte, error) {
 		return nil, err
 	}
 	return packetBytes, nil
+}
+
+// createLoopCoverMessage packs a dummy loop message into
+// a sphinx packet. The loop message is destinated back to the sender
+// createLoopCoverMessage returns a byte representation of the encapsulated packet and an error
+func (c *client) createLoopCoverMessage() ([]byte, error) {
+	loopLoad := "LoopCoverMessage"
+	sphinxPacket, err := c.EncodeMessage(loopLoad, c.config)
+	if err != nil {
+		return nil, err
+	}
+	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
+	if err != nil {
+		return nil, err
+	}
+	return packetBytes, nil
+}
+
+func (c *client) runLoopCoverTrafficStream() error {
+	logLocal.Info("Stream of loop cover traffic started")
+	for {
+		loopPacket, err := c.createLoopCoverMessage()
+		if err != nil {
+			return err
+		}
+		// TODO: send the loop and register the time of sending
+		c.send(loopPacket, c.Provider.Host, c.Provider.Port)
+
+		delaySec, err := helpers.RandomExponential(loopRate)
+		if err != nil {
+			return err
+		}
+		time.Sleep(time.Duration(int64(delaySec*math.Pow10(9))) * time.Nanosecond)
+
+	}
+	return nil
+}
+
+func (c *client) runDropCoverTrafficStream() error {
+	logLocal.Info("Stream of drop cover traffic started")
+	for {
+		dropPacket, err := c.createCoverMessage()
+		if err != nil {
+			return err
+		}
+		c.send(dropPacket, c.Provider.Host, c.Provider.Port)
+		logLocal.Info("Drop packet sent")
+		delaySec, err := helpers.RandomExponential(dropRate)
+		if err != nil {
+			return err
+		}
+		time.Sleep(time.Duration(int64(delaySec*math.Pow10(9))) * time.Nanosecond)
+
+	}
+	return nil
 }
 
 // ReadInNetworkFromPKI reads in the public information about active mixes
