@@ -8,15 +8,6 @@ import (
 	"time"
 )
 
-// MixNode is the interface that wraps th bacis methods
-// of a mix node.
-// ProcessPacket processes the received packet bytes and writes in return meta information to given channels.
-// GetPublicKey returns the sequence of key bytes.
-type MixNode interface {
-	ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.Hop, cFlag chan<- string, errCh chan<- error)
-	GetPublicKey() []byte
-}
-
 type Mix struct {
 	pubKey []byte
 	prvKey []byte
