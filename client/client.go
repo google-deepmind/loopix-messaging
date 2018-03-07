@@ -330,11 +330,10 @@ func (c *client) controlOutQueue() error {
 			c.send(dummyPacket, c.Provider.Host, c.Provider.Port)
 			logLocal.Info("OutQueue empty. Dummy packet sent.")
 		}
-		delaySec, err := helpers.RandomExponential(desiredRateParameter)
+		err := delayBeforeContinute(desiredRateParameter)
 		if err != nil {
 			return err
 		}
-		time.Sleep(time.Duration(int64(delaySec*math.Pow10(9))) * time.Nanosecond)
 	}
 	return nil
 }
@@ -345,12 +344,10 @@ func (c *client) controlMessagingFetching() {
 	for {
 		c.getMessagesFromProvider()
 		logLocal.Info("Sent request to provider to fetch messages")
-
-		timeout, err := helpers.RandomExponential(fetchRate)
+		err := delayBeforeContinute(fetchRate)
 		if err != nil {
 			logLocal.Error("Error in ControlMessagingFetching - generating random exp. value failed")
 		}
-		time.Sleep(time.Duration(int64(timeout*math.Pow10(9))) * time.Nanosecond)
 	}
 }
 
@@ -412,11 +409,10 @@ func (c *client) runLoopCoverTrafficStream() error {
 		}
 		c.send(loopPacket, c.Provider.Host, c.Provider.Port)
 		logLocal.Info("Loop message sent")
-		delaySec, err := helpers.RandomExponential(loopRate)
+		err = delayBeforeContinute(loopRate)
 		if err != nil {
 			return err
 		}
-		time.Sleep(time.Duration(int64(delaySec*math.Pow10(9))) * time.Nanosecond)
 
 	}
 	return nil
@@ -435,13 +431,20 @@ func (c *client) runDropCoverTrafficStream() error {
 		}
 		c.send(dropPacket, c.Provider.Host, c.Provider.Port)
 		logLocal.Info("Drop packet sent")
-		delaySec, err := helpers.RandomExponential(dropRate)
+		err = delayBeforeContinute(dropRate)
 		if err != nil {
 			return err
 		}
-		time.Sleep(time.Duration(int64(delaySec*math.Pow10(9))) * time.Nanosecond)
-
 	}
+	return nil
+}
+
+func delayBeforeContinute(rateParam float64) error {
+	delaySec, err := helpers.RandomExponential(rateParam)
+	if err != nil {
+		return err
+	}
+	time.Sleep(time.Duration(int64(delaySec*math.Pow10(9))) * time.Nanosecond)
 	return nil
 }
 
