@@ -19,9 +19,11 @@ import (
 	"time"
 )
 
-var logLocal = logging.PackageLogger()
-var loopCoverTrafficEnabled = true
-var dropCoverTrafficEnabled = true
+var (
+	logLocal                = logging.PackageLogger()
+	loopCoverTrafficEnabled = true
+	dropCoverTrafficEnabled = true
+)
 
 const (
 	// the parameter of the exponential distribution which defines the rate of sending by client
