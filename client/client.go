@@ -14,7 +14,9 @@ import (
 	"github.com/protobuf/proto"
 
 	"crypto/elliptic"
+	"crypto/rand"
 	"math"
+	"math/big"
 	"net"
 	"time"
 )
@@ -354,10 +356,12 @@ func (c *client) controlMessagingFetching() {
 
 // CreateCoverMessage packs a dummy message into a Sphinx packet.
 // The dummy message is a loop message.
-// TODO: change to a drop cover message instead of a loop.
 func (c *client) createDropCoverMessage() ([]byte, error) {
 	dummyLoad := "DummyPayloadMessage"
-	randomRecipient := helpers.GetRandomElement(c.Network.Clients)
+	randomRecipient, err := c.getRandomRecipient(c.Network.Clients)
+	if err != nil {
+		return nil, err
+	}
 	sphinxPacket, err := c.EncodeMessage(dummyLoad, randomRecipient)
 	if err != nil {
 		return nil, err
@@ -368,6 +372,16 @@ func (c *client) createDropCoverMessage() ([]byte, error) {
 		return nil, err
 	}
 	return packetBytes, nil
+}
+
+// getRandomRecipient picks a random client from the list of all available clients (stored by the client).
+// getRandomRecipient returns the selected client public configuration and an error
+func (c *client) getRandomRecipient(slice []config.ClientConfig) (config.ClientConfig, error) {
+	randIdx, err := rand.Int(rand.Reader, big.NewInt(int64(len(slice))))
+	if err != nil {
+		return config.ClientConfig{}, err
+	}
+	return slice[randIdx.Int64()], nil
 }
 
 // createLoopCoverMessage packs a dummy loop message into

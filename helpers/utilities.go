@@ -18,12 +18,6 @@ import (
 	"time"
 )
 
-func GetRandomElement(slice []config.ClientConfig) config.ClientConfig {
-	rand.Seed(time.Now().Unix())
-	randIdx := rand.Intn(len(slice))
-	return slice[randIdx]
-}
-
 func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
 	if len(slice) == 0 {
 		return nil, errors.New(" cannot permute an empty list of mixes")
