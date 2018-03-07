@@ -444,7 +444,7 @@ func (c *client) turnOnDropCoverTraffic() {
 	go func() {
 		err := c.runDropCoverTrafficStream()
 		if err != nil {
-			logLocal.WithError(err).Panic("Error in the controller of the loop cover traffic. Possible security threat.")
+			logLocal.WithError(err).Panic("Error in the controller of the drop cover traffic. Possible security threat.")
 		}
 	}()
 }
