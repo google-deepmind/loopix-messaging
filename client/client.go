@@ -319,7 +319,7 @@ func (c *client) controlOutQueue() error {
 			c.send(realPacket, c.Provider.Host, c.Provider.Port)
 			logLocal.Info("Real packet was sent")
 		default:
-			dummyPacket, err := c.createCoverMessage()
+			dummyPacket, err := c.createDropCoverMessage()
 			if err != nil {
 				return err
 			}
@@ -353,7 +353,7 @@ func (c *client) controlMessagingFetching() {
 // CreateCoverMessage packs a dummy message into a Sphinx packet.
 // The dummy message is a loop message.
 // TODO: change to a drop cover message instead of a loop.
-func (c *client) createCoverMessage() ([]byte, error) {
+func (c *client) createDropCoverMessage() ([]byte, error) {
 	dummyLoad := "DummyPayloadMessage"
 	randomRecipient := helpers.GetRandomElement(c.Network.Clients)
 	sphinxPacket, err := c.EncodeMessage(dummyLoad, randomRecipient)
@@ -413,7 +413,7 @@ func (c *client) runLoopCoverTrafficStream() error {
 func (c *client) runDropCoverTrafficStream() error {
 	logLocal.Info("Stream of drop cover traffic started")
 	for {
-		dropPacket, err := c.createCoverMessage()
+		dropPacket, err := c.createDropCoverMessage()
 		if err != nil {
 			return err
 		}
