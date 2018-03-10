@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 
+	"anonymous-messaging/helpers"
 	"github.com/protobuf/proto"
 )
 
@@ -107,6 +108,11 @@ func main() {
 	flag.Parse()
 
 	err := pkiPreSetting(PKI_DIR)
+	if err != nil {
+		panic(err)
+	}
+
+	ip, err := helpers.GetLocalIP()
 	if err != nil {
 		panic(err)
 	}
