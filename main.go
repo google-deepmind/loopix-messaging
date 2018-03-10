@@ -117,6 +117,8 @@ func main() {
 		panic(err)
 	}
 
+	host = &ip
+
 	switch *typ {
 	case "client":
 		db, err := pki.OpenDatabase(PKI_DIR, "sqlite3")
