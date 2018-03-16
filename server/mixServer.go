@@ -151,7 +151,9 @@ func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
 		}
 	default:
 		logLocal.Infof("Packet flag %s not recognised. Packet dropped", packet.Flag)
+		errs <- nil
 	}
+	errs <- nil
 }
 
 func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath string) (*MixServer, error) {
