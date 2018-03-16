@@ -35,4 +35,5 @@ To simulate the clients run
 
     ```shell
         bash run_clients.sh
-    ```     
+    ```
+This is not an officially supported Google product.     
