@@ -25,7 +25,7 @@ import (
 	"loopix-messaging/logging"
 	sphinx "loopix-messaging/sphinx"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	"crypto/elliptic"
 	"errors"

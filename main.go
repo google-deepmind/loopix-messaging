@@ -26,7 +26,7 @@ import (
 	"fmt"
 
 	"loopix-messaging/helpers"
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 var logLocal = logging.PackageLogger()

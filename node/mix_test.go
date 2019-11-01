@@ -18,7 +18,7 @@ import (
 	"loopix-messaging/config"
 	sphinx "loopix-messaging/sphinx"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 
 	"crypto/elliptic"

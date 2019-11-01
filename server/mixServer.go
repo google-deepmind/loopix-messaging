@@ -25,7 +25,7 @@ import (
 	"loopix-messaging/node"
 	"loopix-messaging/sphinx"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"net"
 )
 

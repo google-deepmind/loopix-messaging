@@ -24,7 +24,7 @@ import (
 	"loopix-messaging/logging"
 	"loopix-messaging/networker"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	"crypto/elliptic"
 	"crypto/rand"

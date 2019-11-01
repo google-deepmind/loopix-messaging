@@ -20,7 +20,7 @@
 package config
 
 import (
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 func NewMixConfig(mixId, host, port string, pubKey []byte) MixConfig {
