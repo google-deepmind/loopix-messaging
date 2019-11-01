@@ -15,17 +15,17 @@
 package main
 
 import (
-	"anonymous-messaging/client"
-	"anonymous-messaging/config"
-	"anonymous-messaging/logging"
-	"anonymous-messaging/pki"
-	"anonymous-messaging/server"
-	"anonymous-messaging/sphinx"
+	"loopix-messaging/client"
+	"loopix-messaging/config"
+	"loopix-messaging/logging"
+	"loopix-messaging/pki"
+	"loopix-messaging/server"
+	"loopix-messaging/sphinx"
 
 	"flag"
 	"fmt"
 
-	"anonymous-messaging/helpers"
+	"loopix-messaging/helpers"
 	"github.com/protobuf/proto"
 )
 

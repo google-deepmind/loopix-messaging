@@ -15,11 +15,11 @@
 package server
 
 import (
-	"anonymous-messaging/config"
-	"anonymous-messaging/helpers"
-	"anonymous-messaging/networker"
-	"anonymous-messaging/node"
-	"anonymous-messaging/sphinx"
+	"loopix-messaging/config"
+	"loopix-messaging/helpers"
+	"loopix-messaging/networker"
+	"loopix-messaging/node"
+	"loopix-messaging/sphinx"
 
 	"github.com/protobuf/proto"
 

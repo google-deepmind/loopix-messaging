@@ -15,8 +15,8 @@
 package clientCore
 
 import (
-	"anonymous-messaging/config"
-	sphinx "anonymous-messaging/sphinx"
+	"loopix-messaging/config"
+	sphinx "loopix-messaging/sphinx"
 
 	"github.com/stretchr/testify/assert"
 

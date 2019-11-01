@@ -20,10 +20,10 @@
 package clientCore
 
 import (
-	"anonymous-messaging/config"
-	"anonymous-messaging/helpers"
-	"anonymous-messaging/logging"
-	sphinx "anonymous-messaging/sphinx"
+	"loopix-messaging/config"
+	"loopix-messaging/helpers"
+	"loopix-messaging/logging"
+	sphinx "loopix-messaging/sphinx"
 
 	"github.com/protobuf/proto"
 

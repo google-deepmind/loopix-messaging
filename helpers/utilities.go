@@ -19,8 +19,8 @@
 package helpers
 
 import (
-	"anonymous-messaging/config"
-	"anonymous-messaging/pki"
+	"loopix-messaging/config"
+	"loopix-messaging/pki"
 
 	"github.com/protobuf/proto"
 

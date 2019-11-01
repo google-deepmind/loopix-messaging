@@ -15,7 +15,7 @@
 package sphinx
 
 import (
-	"anonymous-messaging/config"
+	"loopix-messaging/config"
 
 	"crypto/aes"
 	"crypto/elliptic"

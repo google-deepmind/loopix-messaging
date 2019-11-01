@@ -18,11 +18,11 @@
 package client
 
 import (
-	"anonymous-messaging/clientCore"
-	"anonymous-messaging/config"
-	"anonymous-messaging/helpers"
-	"anonymous-messaging/logging"
-	"anonymous-messaging/networker"
+	"loopix-messaging/clientCore"
+	"loopix-messaging/config"
+	"loopix-messaging/helpers"
+	"loopix-messaging/logging"
+	"loopix-messaging/networker"
 
 	"github.com/protobuf/proto"
 

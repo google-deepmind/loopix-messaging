@@ -20,8 +20,8 @@
 package sphinx
 
 import (
-	"anonymous-messaging/config"
-	"anonymous-messaging/logging"
+	"loopix-messaging/config"
+	"loopix-messaging/logging"
 
 	"crypto/aes"
 	"crypto/cipher"

@@ -18,7 +18,7 @@
 package node
 
 import (
-	"anonymous-messaging/sphinx"
+	"loopix-messaging/sphinx"
 	"time"
 )
 
