@@ -25,9 +25,6 @@ type MixConfig struct {
 	Host                 string   `protobuf:"bytes,2,opt,name=Host,proto3" json:"Host,omitempty"`
 	Port                 string   `protobuf:"bytes,3,opt,name=Port,proto3" json:"Port,omitempty"`
 	PubKey               []byte   `protobuf:"bytes,4,opt,name=PubKey,proto3" json:"PubKey,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *MixConfig) Reset()         { *m = MixConfig{} }
@@ -89,9 +86,6 @@ type ClientConfig struct {
 	Port                 string     `protobuf:"bytes,3,opt,name=Port,proto3" json:"Port,omitempty"`
 	PubKey               []byte     `protobuf:"bytes,4,opt,name=PubKey,proto3" json:"PubKey,omitempty"`
 	Provider             *MixConfig `protobuf:"bytes,5,opt,name=Provider,proto3" json:"Provider,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
-	XXX_unrecognized     []byte     `json:"-"`
-	XXX_sizecache        int32      `json:"-"`
 }
 
 func (m *ClientConfig) Reset()         { *m = ClientConfig{} }
@@ -157,9 +151,6 @@ func (m *ClientConfig) GetProvider() *MixConfig {
 type GeneralPacket struct {
 	Flag                 string   `protobuf:"bytes,1,opt,name=Flag,proto3" json:"Flag,omitempty"`
 	Data                 []byte   `protobuf:"bytes,2,opt,name=Data,proto3" json:"Data,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *GeneralPacket) Reset()         { *m = GeneralPacket{} }
@@ -204,9 +195,6 @@ func (m *GeneralPacket) GetData() []byte {
 type PullRequest struct {
 	ClientId             string   `protobuf:"bytes,1,opt,name=ClientId,proto3" json:"ClientId,omitempty"`
 	Token                []byte   `protobuf:"bytes,2,opt,name=Token,proto3" json:"Token,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *PullRequest) Reset()         { *m = PullRequest{} }

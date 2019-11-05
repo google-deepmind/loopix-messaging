@@ -23,9 +23,6 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 type SphinxPacket struct {
 	Hdr                  *Header  `protobuf:"bytes,1,opt,name=Hdr,proto3" json:"Hdr,omitempty"`
 	Pld                  []byte   `protobuf:"bytes,2,opt,name=Pld,proto3" json:"Pld,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *SphinxPacket) Reset()         { *m = SphinxPacket{} }
@@ -71,9 +68,6 @@ type Header struct {
 	Alpha                []byte   `protobuf:"bytes,1,opt,name=Alpha,proto3" json:"Alpha,omitempty"`
 	Beta                 []byte   `protobuf:"bytes,2,opt,name=Beta,proto3" json:"Beta,omitempty"`
 	Mac                  []byte   `protobuf:"bytes,3,opt,name=Mac,proto3" json:"Mac,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *Header) Reset()         { *m = Header{} }
@@ -126,9 +120,6 @@ type Hop struct {
 	Id                   string   `protobuf:"bytes,1,opt,name=Id,proto3" json:"Id,omitempty"`
 	Address              string   `protobuf:"bytes,2,opt,name=Address,proto3" json:"Address,omitempty"`
 	PubKey               []byte   `protobuf:"bytes,3,opt,name=PubKey,proto3" json:"PubKey,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *Hop) Reset()         { *m = Hop{} }
@@ -182,9 +173,6 @@ type RoutingInfo struct {
 	RoutingCommands      *Commands `protobuf:"bytes,2,opt,name=RoutingCommands,proto3" json:"RoutingCommands,omitempty"`
 	NextHopMetaData      []byte    `protobuf:"bytes,3,opt,name=NextHopMetaData,proto3" json:"NextHopMetaData,omitempty"`
 	Mac                  []byte    `protobuf:"bytes,4,opt,name=Mac,proto3" json:"Mac,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
-	XXX_unrecognized     []byte    `json:"-"`
-	XXX_sizecache        int32     `json:"-"`
 }
 
 func (m *RoutingInfo) Reset()         { *m = RoutingInfo{} }
@@ -243,9 +231,6 @@ func (m *RoutingInfo) GetMac() []byte {
 type Commands struct {
 	Delay                float64  `protobuf:"fixed64,1,opt,name=Delay,proto3" json:"Delay,omitempty"`
 	Flag                 string   `protobuf:"bytes,2,opt,name=Flag,proto3" json:"Flag,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *Commands) Reset()         { *m = Commands{} }
@@ -292,9 +277,6 @@ type HeaderInitials struct {
 	Secret               []byte   `protobuf:"bytes,2,opt,name=Secret,proto3" json:"Secret,omitempty"`
 	Blinder              []byte   `protobuf:"bytes,3,opt,name=Blinder,proto3" json:"Blinder,omitempty"`
 	SecretHash           []byte   `protobuf:"bytes,4,opt,name=SecretHash,proto3" json:"SecretHash,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *HeaderInitials) Reset()         { *m = HeaderInitials{} }
