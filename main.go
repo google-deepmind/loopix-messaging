@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"loopix-messaging/helpers"
+
 	"github.com/golang/protobuf/proto"
 )
 

@@ -38,10 +38,10 @@ var (
 	logLocal                = logging.PackageLogger()
 	loopCoverTrafficEnabled = true
 	dropCoverTrafficEnabled = true
-	assignFlag              = []byte("\xA2")
-	commFlag                = []byte("\xc6")
-	tokenFlag               = []byte("\xa9")
-	pullFlag                = []byte("\xff")
+	assignFlag              = []byte{0xA2}
+	commFlag                = []byte{0xc6}
+	tokenFlag               = []byte{0xa9}
+	pullFlag                = []byte{0xff}
 )
 
 const (
@@ -254,7 +254,7 @@ func (c *client) handleConnection(conn net.Conn) {
 		}
 		logLocal.Info("Received new message")
 	default:
-		logLocal.Info("Packet flag not recognised. Packet dropped.")
+		logLocal.Infof("Packet flag %x not recognised. Packet dropped.", packet.Flag[0])
 	}
 }
 
