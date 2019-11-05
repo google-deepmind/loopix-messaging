@@ -15,9 +15,9 @@
 #!bin/sh
 
 echo "Press CTRL-C to stop."
-rm -rf "$(PWD)/pki/database.db"
+rm -rf "$(pwd)/pki/database.db"
 
-logDir="$(PWD)/logs"
+logDir="$(pwd)/logs"
 
 if [ -d $logDir ]
 then
