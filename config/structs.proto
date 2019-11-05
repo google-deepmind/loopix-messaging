@@ -17,7 +17,7 @@ message ClientConfig {
 }
 
 message GeneralPacket {
-    string Flag = 1;
+    bytes Flag = 1;
     bytes Data = 2;
 }
 

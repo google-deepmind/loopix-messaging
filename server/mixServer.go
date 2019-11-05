@@ -25,8 +25,9 @@ import (
 	"loopix-messaging/node"
 	"loopix-messaging/sphinx"
 
-	"github.com/golang/protobuf/proto"
 	"net"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var logLocal = logging.PackageLogger()
@@ -157,8 +158,8 @@ func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
 		errs <- err
 	}
 
-	switch packet.Flag {
-	case commFlag:
+	switch string(packet.Flag) {
+	case string(commFlag):
 		err = m.receivedPacket(packet.Data)
 		if err != nil {
 			errs <- err

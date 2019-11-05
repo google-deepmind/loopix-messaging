@@ -45,7 +45,7 @@ func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.H
 
 	c <- <-timeoutCh
 	cAdr <- nextHop
-	cFlag <- commands.Flag
+	cFlag <- string(commands.Flag)
 	errCh <- nil
 
 }

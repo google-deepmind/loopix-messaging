@@ -31,11 +31,11 @@ import (
 	"os"
 )
 
-const (
-	assigneFlag = "\xa2"
-	commFlag    = "\xc6"
-	tokenFlag   = "xa9"
-	pullFlag    = "\xff"
+var (
+	assigneFlag = []byte("\xa2")
+	commFlag    = []byte("\xc6")
+	tokenFlag   = []byte("xa9")
+	pullFlag    = []byte("\xff")
 )
 
 type ProviderIt interface {
@@ -200,18 +200,18 @@ func (p *ProviderServer) handleConnection(conn net.Conn, errs chan<- error) {
 		errs <- err
 	}
 
-	switch packet.Flag {
-	case assigneFlag:
+	switch string(packet.Flag) {
+	case string(assigneFlag):
 		err = p.handleAssignRequest(packet.Data)
 		if err != nil {
 			errs <- err
 		}
-	case commFlag:
+	case string(commFlag):
 		err = p.receivedPacket(packet.Data)
 		if err != nil {
 			errs <- err
 		}
-	case pullFlag:
+	case string(pullFlag):
 		err = p.handlePullRequest(packet.Data)
 		if err != nil {
 			errs <- err

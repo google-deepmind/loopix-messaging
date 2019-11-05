@@ -38,6 +38,10 @@ var (
 	logLocal                = logging.PackageLogger()
 	loopCoverTrafficEnabled = true
 	dropCoverTrafficEnabled = true
+	assignFlag              = []byte("\xA2")
+	commFlag                = []byte("\xc6")
+	tokenFlag               = []byte("\xa9")
+	pullFlag                = []byte("\xff")
 )
 
 const (
@@ -48,11 +52,7 @@ const (
 	dropRate             = 0.1
 	// the rate at which clients are querying the provider for received packets. fetchRate value is the
 	// parameter of an exponential distribution, and is the reciprocal of the expected value of the exp. distribution
-	fetchRate  = 0.01
-	assignFlag = "\xA2"
-	commFlag   = "\xc6"
-	tokenFlag  = "xa9"
-	pullFlag   = "\xff"
+	fetchRate = 0.01
 )
 
 type Client interface {
@@ -225,8 +225,8 @@ func (c *client) handleConnection(conn net.Conn) {
 		logLocal.WithError(err).Error("Error in unmarshal incoming packet")
 	}
 
-	switch packet.Flag {
-	case tokenFlag:
+	switch string(packet.Flag) {
+	case string(tokenFlag):
 		c.registerToken(packet.Data)
 		go func() {
 			err := c.controlOutQueue()
@@ -247,7 +247,7 @@ func (c *client) handleConnection(conn net.Conn) {
 			c.controlMessagingFetching()
 		}()
 
-	case commFlag:
+	case string(commFlag):
 		_, err := c.processPacket(packet.Data)
 		if err != nil {
 			logLocal.WithError(err).Error("Error in processing received packet")

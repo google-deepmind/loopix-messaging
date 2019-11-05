@@ -263,9 +263,9 @@ func TestEncapsulateHeader(t *testing.T) {
 
 	nodes := []config.MixConfig{m1, m2, m3}
 
-	c1 := Commands{Delay: 0.34, Flag: "0"}
-	c2 := Commands{Delay: 0.25, Flag: "1"}
-	c3 := Commands{Delay: 1.10, Flag: "1"}
+	c1 := Commands{Delay: 0.34, Flag: []byte("0")}
+	c2 := Commands{Delay: 0.25, Flag: []byte("1")}
+	c3 := Commands{Delay: 1.10, Flag: []byte("1")}
 	commands := []Commands{c1, c2, c3}
 
 	x := big.NewInt(100)

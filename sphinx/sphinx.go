@@ -38,12 +38,13 @@ import (
 var curve = elliptic.P224()
 var logLocal = logging.PackageLogger()
 
+var lastHopFlag = []byte{0xf0}
+var relayFlag = []byte{0xf1}
+
 const (
 	K            = 16
 	R            = 5
 	headerLength = 192
-	lastHopFlag  = "\xf0"
-	relayFlag    = "\xf1"
 )
 
 // PackForwardMessage encapsulates the given message into the cryptographic Sphinx packet format.

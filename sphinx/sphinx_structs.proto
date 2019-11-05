@@ -28,7 +28,7 @@ message RoutingInfo {
 
 message Commands {
     double Delay = 1;
-    string Flag = 2;
+    bytes Flag = 2;
 }
 
 message HeaderInitials {
